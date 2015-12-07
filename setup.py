@@ -28,7 +28,7 @@ import os
 import sys
 
 from setuptools import find_packages, setup
-from setuptools.command.test import test as TestCommand
+from setuptools.command.test import test as TestCommand  # noqa
 
 readme = open('README.rst').read()
 history = open('CHANGES.rst').read()
@@ -42,12 +42,15 @@ tests_require = [
     'pytest-cov>=1.8.0',
     'pytest-pep8>=1.0.6',
     'pytest>=2.8.0',
+    'invenio-access>=1.0.0a3',
 ]
 
 extras_require = {
     'docs': [
         'Sphinx>=1.3',
+        'sphinxcontrib-httpdomain',
     ],
+
     'tests': tests_require,
 }
 
@@ -61,12 +64,18 @@ setup_requires = [
 
 install_requires = [
     'Flask-BabelEx>=0.9.2',
+    'Flask-CLI',
+    'fs>=0.5.4',
+    'invenio_db',
+    'invenio_rest',
+    'webargs'
 ]
 
 packages = find_packages()
 
 
 class PyTest(TestCommand):
+
     """PyTest Test."""
 
     user_options = [('pytest-args=', 'a', "Arguments to pass to py.test")]

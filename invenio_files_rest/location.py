@@ -22,30 +22,17 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-"""Files download/upload REST API similar to S3 for Invenio."""
-
-from __future__ import absolute_import, print_function
-
-from . import config
-from .views import blueprint
+"""Location factory module."""
 
 
-class InvenioFilesREST(object):
-    """Invenio-Files-REST extension."""
+class LocationFactory(object):
+    """Location factory that creates the path for a given file."""
 
-    def __init__(self, app=None):
-        """Extension initialization."""
-        if app:
-            self.init_app(app)
+    @staticmethod
+    def new(bucket_id, version_id):
+        """Return the path to a file in a given bucket.
 
-    def init_app(self, app):
-        """Flask application initialization."""
-        self.init_config(app)
-        app.register_blueprint(blueprint)
-        app.extensions['invenio-files-rest'] = self
-
-    def init_config(self, app):
-        """Initialize configuration."""
-        for k in dir(config):
-            if k.startswith('FILES_REST_'):
-                app.config.setdefault(k, getattr(config, k))
+        :param bucket_id: uuid of a bucket.
+        :returns: string with the location to a file.
+        """
+        return "{}/{}".format(str(bucket_id), str(version_id))

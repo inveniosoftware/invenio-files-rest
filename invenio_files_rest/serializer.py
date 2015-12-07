@@ -22,30 +22,31 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-"""Files download/upload REST API similar to S3 for Invenio."""
+"""REST API serializers."""
 
-from __future__ import absolute_import, print_function
+import json
 
-from . import config
-from .views import blueprint
+from flask import Response
 
 
-class InvenioFilesREST(object):
-    """Invenio-Files-REST extension."""
+def json_serializer(data=None, code=200, headers=None):
+    """Build a json flask response using the given data.
 
-    def __init__(self, app=None):
-        """Extension initialization."""
-        if app:
-            self.init_app(app)
+    :returns: A flask response with json data.
+    :returns type: :py:class:`flask.Response`
+    """
+    if data is not None:
+        response = Response(
+            json.dumps(data['json']),
+            mimetype='application/json'
+        )
+    else:
+        response = Response(mimetype='application/json')
 
-    def init_app(self, app):
-        """Flask application initialization."""
-        self.init_config(app)
-        app.register_blueprint(blueprint)
-        app.extensions['invenio-files-rest'] = self
+    response.status_code = code
+    if headers is not None:
+        response.headers.extend(headers)
 
-    def init_config(self, app):
-        """Initialize configuration."""
-        for k in dir(config):
-            if k.startswith('FILES_REST_'):
-                app.config.setdefault(k, getattr(config, k))
+    # ETag needed?
+    # response.set_etag(str(record.model.version_id))
+    return response

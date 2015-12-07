@@ -26,7 +26,7 @@
 
 from functools import partial
 
-from flask_printcipal import ActionNeed
+from flask_principal import ActionNeed
 from invenio_access.permissions import ParameterizedActionNeed
 
 BucketRead = partial(ParameterizedActionNeed, 'files-rest-bucket-read')

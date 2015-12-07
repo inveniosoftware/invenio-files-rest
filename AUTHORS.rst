@@ -27,4 +27,5 @@ Authors
 
 Files download/upload REST API similar to S3 for Invenio.
 
-- CERN <info@invenio-software.org>
+- Jose Benito Gonzalez Lopez <jose.benito.gonzalez@cern.ch>
+- Lars Holm Nielsen <lars.holm.nielsen@cern.ch>

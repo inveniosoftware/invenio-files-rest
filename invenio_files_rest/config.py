@@ -22,30 +22,14 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-"""Files download/upload REST API similar to S3 for Invenio."""
+"""Invenio File Rest module configuration file."""
 
-from __future__ import absolute_import, print_function
+FILES_REST_STORAGE_CLASS_LIST = {
+    'G': 'General: storage for frequently accessed data',
+    'I': 'Infrequent: storage class for data that is accessed less frequently',
+    'A': 'Archive: storage service for data archiving'
+}
 
-from . import config
-from .views import blueprint
+FILES_REST_DEFAULT_STORAGE_CLASS = 'G'
 
-
-class InvenioFilesREST(object):
-    """Invenio-Files-REST extension."""
-
-    def __init__(self, app=None):
-        """Extension initialization."""
-        if app:
-            self.init_app(app)
-
-    def init_app(self, app):
-        """Flask application initialization."""
-        self.init_config(app)
-        app.register_blueprint(blueprint)
-        app.extensions['invenio-files-rest'] = self
-
-    def init_config(self, app):
-        """Initialize configuration."""
-        for k in dir(config):
-            if k.startswith('FILES_REST_'):
-                app.config.setdefault(k, getattr(config, k))
+FILES_REST_ALLOWED_EXTENSIONS = set([])

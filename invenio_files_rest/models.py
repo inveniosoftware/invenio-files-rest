@@ -27,21 +27,26 @@
 from __future__ import absolute_import, print_function
 
 import uuid
+
+from flask import url_for
 from invenio_db import db
-from sqlalchemy_utils.types import UUIDType
 from sqlalchemy_utils.models import Timestamp
+from sqlalchemy_utils.types import UUIDType
 
 
 class Location(db.Model, Timestamp):
-    """Model for defining base locations."""
+    """Model defining base locations."""
 
     __tablename__ = 'files_location'
 
-    id = db.Column(db.Integer, primary_key=True, auto_increment=True)
+    id = db.Column(db.Integer, primary_key=True)
     """Id of location."""
 
-    location = db.Column(db.String(), nullable=False)
-    """Define a location."""
+    uri = db.Column(db.String(), nullable=False)
+    """URI of the location."""
+
+    active = db.Column(db.Boolean, nullable=False, default=False)
+    """True if the location is available to be used."""
 
 
 class Bucket(db.Model, Timestamp):
@@ -62,7 +67,27 @@ class Bucket(db.Model, Timestamp):
 
     size = db.Column(db.BigInteger, default=0, nullable=False)
 
-    locked = db.Column(db.Bool, default=False, nullable=False)
+    locked = db.Column(db.Boolean, default=False, nullable=False)
+
+    deleted = db.Column(db.Boolean, default=False, nullable=False)
+
+    location = db.relationship(
+        'Location',
+        backref='files_bucket',
+        primaryjoin="Location.id == Bucket.default_location"
+    )
+    """Location associated with this bucket."""
+
+    def serialize(self):
+        """Serialize bucket to dict."""
+        return {
+            'url': url_for(
+                'invenio_files_rest.bucket_api',
+                bucket_id=self.id,
+                _external=True),
+            'id': str(self.id),
+            'size': self.size
+        }
 
 
 class Object(db.Model, Timestamp):
@@ -70,21 +95,28 @@ class Object(db.Model, Timestamp):
 
     __tablename__ = 'files_object'
 
+    id = db.Column(
+        UUIDType,
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    """Object identifier."""
+
     bucket_id = db.Column(
         UUIDType,
         db.ForeignKey(Bucket.id),
         primary_key=True, )
 
-    key = db.Column(
+    filename = db.Column(
         db.String(255),
         primary_key=True, )
 
-    version_id = id = db.Column(
+    version_id = db.Column(
         UUIDType,
         primary_key=True,
         default=uuid.uuid4, )
 
-    deleted = db.Column(db.Bool, default=False, nullable=False)
+    deleted = db.Column(db.Boolean, default=False, nullable=False)
 
     location = db.Column(db.String(255), nullable=False)
 
@@ -92,7 +124,27 @@ class Object(db.Model, Timestamp):
 
     size = db.Column(db.BigInteger, default=0, nullable=False)
 
-    checksum = db.Column(db.String(255), nullable=False)
+    checksum = db.Column(db.String(255), nullable=True)
+
+    bucket = db.relationship(
+        'Bucket',
+        backref='files_object',
+        primaryjoin="Bucket.id == Object.bucket_id"
+    )
+
+    def serialize(self):
+        """Serialize object to dict."""
+        return {
+            'url': url_for(
+                'invenio_files_rest.object_api',
+                version_id=self.version_id,
+                filename=self.filename,
+                _external=True),
+            'id': str(self.id),
+            'version_id': str(self.version_id),
+            'size': self.size,
+            'checksum': self.checksum
+        }
 
 
 __all__ = (

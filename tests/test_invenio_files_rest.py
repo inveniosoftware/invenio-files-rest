@@ -28,7 +28,6 @@
 from __future__ import absolute_import, print_function
 
 from flask import Flask
-from flask_babelex import Babel
 
 from invenio_files_rest import InvenioFilesREST
 
@@ -50,13 +49,3 @@ def test_init():
     assert 'invenio-files-rest' not in app.extensions
     ext.init_app(app)
     assert 'invenio-files-rest' in app.extensions
-
-
-def test_view(app):
-    """Test view."""
-    Babel(app)
-    InvenioFilesREST(app)
-    with app.test_client() as client:
-        res = client.get("/")
-        assert res.status_code == 200
-        assert 'Welcome to Invenio-Files-REST' in str(res.data)

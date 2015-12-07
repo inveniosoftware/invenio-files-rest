@@ -33,7 +33,10 @@ from docutils.utils import get_source_line
 def _warn_node(self, msg, node):
     """Do not warn on external images."""
     if not msg.startswith('nonlocal image URI found:'):
-        self._warnfunc(msg, '{0}:{1}'.format(get_source_line(node)))
+        try:
+            self._warnfunc(msg, '{0}:{1}'.format(get_source_line(node)))
+        except Exception:
+            pass
 
 sphinx.environment.BuildEnvironment.warn_node = _warn_node
 
@@ -52,6 +55,7 @@ extensions = [
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
+    'sphinxcontrib.httpdomain',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
