@@ -36,7 +36,6 @@ from webargs import fields
 from webargs.flaskparser import parser
 from werkzeug import secure_filename
 
-from .location import LocationFactory
 from .models import Bucket, Location, Object
 from .serializer import json_serializer
 from .storage import StorageFactory
@@ -49,6 +48,7 @@ blueprint = Blueprint(
 
 
 class BucketCollectionResource(ContentNegotiatedMethodView):
+
     """"Bucket collection resource."""
 
     def __init__(self, serializers=None, *args, **kwargs):
@@ -67,7 +67,7 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
         }
 
     def get(self, **kwargs):
-        """GET service that returns all the buckets.
+        """List all the buckets.
 
         .. http:get:: /files
 
@@ -110,10 +110,7 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
         """
         bucket_list = []
-        # FIXME: add pagination
-        for bucket in Bucket.query.filter_by(
-            deleted=False
-        ).limit(1000):
+        for bucket in Bucket.all():
             bucket_list.append(bucket.serialize())
         # FIXME: how to avoid returning a dict with key 'json'
         return {'json': bucket_list}
@@ -123,7 +120,8 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
 
         .. http:post:: /files
 
-            Creates a new bucket where objects can be uploaded.
+            Creates a new bucket where objects can be uploaded. A specific
+            location can be passed through JSON.
 
             **Request**:
 
@@ -134,8 +132,7 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
                 Host: localhost:5000
 
                 {
-                    "location_id": 1,
-                    "url": "http://inspirehep.net"
+                    "location_id": 1
                 }
 
             :reqheader Content-Type: application/json
@@ -165,15 +162,10 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
         args = parser.parse(self.post_args, request)
         try:
             if args['location_id']:
-                location = Location.query.filter_by(
-                    id=args['location_id'],
-                    active=True
-                ).first()
+                location = Location.get(args['location_id'])
             else:
                 # Get one of the active locations
-                location = Location.query.filter_by(
-                    active=True
-                ).first()
+                location = Location.all().first()
             if not location:
                 abort(400, 'Invalid location.')
             bucket = Bucket(
@@ -193,7 +185,21 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
 
 
 class BucketResource(ContentNegotiatedMethodView):
+
     """"Bucket item resource."""
+
+    def __init__(self, serializers=None, *args, **kwargs):
+        """Constructor."""
+        super(BucketResource, self).__init__(
+            serializers,
+            *args,
+            **kwargs
+        )
+        self.get_args = {
+            'versions': fields.Boolean(
+                location='query'
+            )
+        }
 
     def get(self, bucket_id, **kwargs):
         """Get list of objects in the bucket.
@@ -212,6 +218,9 @@ class BucketResource(ContentNegotiatedMethodView):
                 Host: localhost:5000
 
             :reqheader Content-Type: application/json
+            :query boolean versions: 1 (or true) in order to  list all the
+                                     versions of the files. 0 (or false) for
+                                     the most recent versions of each file.
 
             **Response**:
 
@@ -241,23 +250,20 @@ class BucketResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 404: page not found
         """
-        if bucket_id and Bucket.query.filter_by(
-            id=bucket_id,
-            deleted=False
-        ).first():
+        args = parser.parse(self.get_args, request)
+        if bucket_id and Bucket.get(bucket_id):
             object_list = []
-            for obj in Object.query.filter_by(
-                bucket_id=bucket_id,
-                deleted=False
+            for obj in Object.get_by_bucket(
+                bucket_id, versions=args.get('versions', False)
             ).all():
                 object_list.append(obj.serialize())
             return {'json': object_list}
         abort(404, 'The specified bucket does not exist or has been deleted.')
 
-    def post(self, bucket_id, **kwargs):
+    def put(self, bucket_id, **kwargs):
         """Upload object file.
 
-        .. http:post:: /files/(uuid:bucket_id)
+        .. http:put:: /files/(uuid:bucket_id)
 
             Uploads a new object file.
 
@@ -265,7 +271,7 @@ class BucketResource(ContentNegotiatedMethodView):
 
             .. sourcecode:: http
 
-                POST /files/14b0b1d3-71f3-4b6b-87a2-0796f1624bb6 HTTP/1.1
+                PUT /files/14b0b1d3-71f3-4b6b-87a2-0796f1624bb6 HTTP/1.1
                 Accept: */*
                 Accept-Encoding: gzip, deflate
                 Connection: keep-alive
@@ -294,7 +300,8 @@ class BucketResource(ContentNegotiatedMethodView):
                     "checksum": "xxxx",
                     "size": 0,
                     "url": "http://localhost:5000/files/322ea4c6-665.../f.pdf",
-                    "uuid": "322ea4c6-6650-4143-a328-274eee55f45d"
+                    "uuid": "322ea4c6-6650-4143-a328-274eee55f45d",
+                    "updated": "2015-12-10T14:16:57.202795"
                 }
 
             :resheader Content-Type: application/json
@@ -303,23 +310,19 @@ class BucketResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 500: failed request
         """
-        bucket = Bucket.query.filter_by(
-            id=bucket_id,
-            deleted=False
-        ).first()
+        bucket = Bucket.get(bucket_id)
         if bucket:
             uploaded_file = request.files['file']
             if uploaded_file:
                 location_uri = bucket.location.uri
                 filename = secure_filename(uploaded_file.filename)
                 version_id = uuid.uuid4()
-                path = LocationFactory.new(bucket_id, version_id)
-                storage = StorageFactory.get(location_uri)
-                file_loc = storage.save(
-                    uploaded_file,
-                    filename,
-                    path
+                storage = StorageFactory.get(
+                    uri=location_uri,
+                    bucket_id=bucket_id,
+                    version_id=version_id
                 )
+                file_loc = storage.save(uploaded_file, filename)
                 try:
                     obj = Object(
                         bucket_id=bucket_id,
@@ -381,17 +384,7 @@ class BucketResource(ContentNegotiatedMethodView):
             :statuscode 500: exception while deleting
         """
         try:
-            bucket = Bucket.query.filter_by(
-                id=bucket_id,
-                deleted=False
-            ).first()
-            if bucket:
-                bucket.deleted = True
-                for obj in Object.query.filter_by(
-                    bucket_id=bucket_id,
-                    deleted=False
-                ).all():
-                    obj.deleted = True
+            if Bucket.delete(bucket_id):
                 db.session.commit()
             else:
                 abort(
@@ -441,20 +434,31 @@ class BucketResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 404: the bucket does not exist
         """
-        if not bucket_id or not Bucket.query.filter_by(
-            id=bucket_id,
-            deleted=False
-        ).first():
+        if not bucket_id or not Bucket.get(bucket_id):
             abort(404, 'This bucket does not exist or has been deleted.')
 
 
 class ObjectResource(ContentNegotiatedMethodView):
+
     """"Object item resource."""
 
-    def get(self, version_id, filename, **kwargs):
+    def __init__(self, serializers=None, *args, **kwargs):
+        """Constructor."""
+        super(ObjectResource, self).__init__(
+            serializers,
+            *args,
+            **kwargs
+        )
+        self.get_args = {
+            'version_id': fields.UUID(
+                location='query'
+            )
+        }
+
+    def get(self, bucket_id, filename, **kwargs):
         """Get object.
 
-        .. http:get:: /files/(uuid:version_id)/(string:filename)
+        .. http:get:: /files/(uuid:bucket_id)/(string:filename)
 
             Sends file to the client.
 
@@ -469,6 +473,7 @@ class ObjectResource(ContentNegotiatedMethodView):
                 Host: localhost:5000
 
             :reqheader Content-Type: application/json
+            :query uuid version_id: uuid of a specific version of a file.
 
             **Response**:
 
@@ -485,113 +490,20 @@ class ObjectResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 404: page not found
         """
-        obj = Object.query.filter_by(
-            version_id=str(version_id),
-            filename=filename,
-            deleted=False
-        ).first()
+        args = parser.parse(self.get_args, request)
+        obj = Object.get(
+            bucket_id,
+            filename,
+            version_id=args.get('version_id', None))
         if obj:
             storage = StorageFactory.get(obj.location)
             return storage.send_file(obj.filename)
         abort(404, 'This object file does not exist or has been deleted.')
 
-    def put(self, version_id, filename, **kwargs):
-        """Upload new version of a file.
-
-        .. http:put:: /files/(uuid:version_id)/(string:filename)
-
-            Uploads a new version of an object file using the same URL as to
-            download it.
-
-            **Request**:
-
-            .. sourcecode:: http
-
-                PUT /files/2d4f8e99-1aa7-400f-b649-f1c570fc61fb/f.pdf HTTP/1.1
-                Accept: */*
-                Accept-Encoding: gzip, deflate
-                Connection: keep-alive
-                Content-Length: 15340
-                Content-Type: multipart/form-data; boundary=cd134c08b9974cff...
-                Host: localhost:5000
-
-                -----------------------------cd134c08b9974cff81d86b5257b3cc5f
-                Content-Disposition: form-data; name="file"; filename="f.pdf"
-                Content-Type: application/pdf
-
-                [binary]
-
-            :reqheader Content-Type: multipart/form-data
-            :formparam file file: file object.
-
-            **Responses**:
-
-            .. sourcecode:: http
-
-                HTTP/1.0 200 OK
-                Content-Length: 165
-                Content-Type: application/json
-
-                {
-                    "checksum": null,
-                    "size": 0,
-                    "url": "http://localhost:5000/files/8ed32f12-be8.../f.pdf",
-                    "uuid": "8ed32f12-be8e-47e2-b4cc-35802b6fe1de"
-                }
-
-            :resheader Content-Type: application/json
-            :statuscode 200: no error
-            :statuscode 400: invalid request
-            :statuscode 403: access denied
-            :statuscode 500: failed request
-        """
-        obj = Object.query.filter_by(
-            version_id=str(version_id),
-            filename=filename,
-            deleted=False
-        ).first()
-        if obj:
-            uploaded_file = request.files['file']
-            if uploaded_file:
-                location_uri = obj.bucket.location.uri
-                filename = secure_filename(uploaded_file.filename)
-                version_id = uuid.uuid4()
-                path = LocationFactory.new(obj.bucket_id, version_id)
-                storage = StorageFactory.get(location_uri)
-                file_loc = storage.save(
-                    uploaded_file,
-                    filename,
-                    path
-                )
-                try:
-                    obj = Object(
-                        id=obj.id,
-                        bucket_id=obj.bucket_id,
-                        filename=filename,
-                        location=file_loc,
-                        storage_class=obj.bucket.default_storage_class,
-                        version_id=version_id,
-                        size=storage.get_size(file_loc, filename),
-                    )
-                    db.session.add(obj)
-                    db.session.commit()
-                    return {'json': obj.serialize()}
-                except SQLAlchemyError:
-                    db.session.rollback()
-                    current_app.logger.exception('Failed to create object.')
-                    abort(500, 'Failed to create object.')
-            abort(400, 'Missing uploaded file.')
-        else:
-            abort(
-                404,
-                'The specified object file does not exist or has been '
-                'deleted.'
-            )
-
-    def delete(self, version_id, filename, **kwargs):
+    def delete(self, bucket_id, filename, **kwargs):
         """Set object file as deleted.
 
-        .. http:head:: /files/(uuid:version_id)/(string:filename)
+        .. http:head:: /files/(uuid:bucket_id)/(string:filename)
 
             Deletes file if it exists.
 
@@ -617,8 +529,9 @@ class ObjectResource(ContentNegotiatedMethodView):
 
             .. sourcecode:: http
 
-                HTTP/1.0 500 INTERNAL SERVER ERROR
-                Content-Type: application/json
+                HTTP/1.0 404 NOT FOUND
+                Content-Length: 0
+                Content-Type: text/html
 
             :resheader Content-Type: application/json
             :statuscode 200: no error
@@ -627,13 +540,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             :statuscode 500: exception while deleting
         """
         try:
-            obj = Object.query.filter_by(
-                version_id=version_id,
-                filename=filename,
-                deleted=False
-            ).first()
-            if obj:
-                obj.deleted = True
+            if Object.delete(bucket_id, filename):
                 db.session.commit()
             else:
                 abort(
@@ -646,10 +553,10 @@ class ObjectResource(ContentNegotiatedMethodView):
             current_app.logger.exception('Failed to delete object.')
             abort(500, 'Failed to delete object.')
 
-    def head(self, version_id, filename, **kwargs):
+    def head(self, bucket_id, filename, **kwargs):
         """Check the existence of the object file.
 
-        .. http:head:: /files/(uuid:version_id)/(string:filename)
+        .. http:head:: /files/(uuid:bucket_id)/(string:filename)
 
             Checks if the file exists.
 
@@ -682,11 +589,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 404: the file does not exist
         """
-        if not version_id or not Object.query.filter_by(
-            version_id=version_id,
-            filename=filename,
-            deleted=False
-        ).first():
+        if not bucket_id or not Object.get(bucket_id, filename):
             abort(404, 'The object file does not exist or has been deleted.')
 
 
@@ -713,10 +616,10 @@ blueprint.add_url_rule(
 blueprint.add_url_rule(
     '/<string:bucket_id>',
     view_func=bucket_view,
-    methods=['GET', 'POST', 'DELETE', 'HEAD']
+    methods=['GET', 'PUT', 'DELETE', 'HEAD']
 )
 blueprint.add_url_rule(
-    '/<string:version_id>/<string:filename>',
+    '/<string:bucket_id>/<string:filename>',
     view_func=object_view,
-    methods=['GET', 'PUT', 'DELETE', 'HEAD']
+    methods=['GET', 'DELETE', 'HEAD']
 )

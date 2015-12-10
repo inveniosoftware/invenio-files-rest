@@ -27,19 +27,21 @@
 import inspect
 import sys
 
-from flask import current_app, send_file
+from flask import send_file
 from fs.opener import fsopendir
 
 
 class StorageError(Exception):
+
     """Exception raised when a storage operation fails."""
 
 
 class StorageFactory(object):
+
     """Storage factory."""
 
     @staticmethod
-    def get(uri, data={}):
+    def get(uri, **kwargs):
         """Factory to create the storage object."""
         storage_classes = [obj
                            for (name, obj)
@@ -49,12 +51,13 @@ class StorageFactory(object):
         for storage_class in storage_classes:
             if storage_class.uri_scheme and \
                uri.startswith(storage_class.uri_scheme):
-                data['_uri'] = uri
-                return storage_class(data)
+                kwargs['_uri'] = uri
+                return storage_class(kwargs)
         raise ValueError('No storage with uri scheme as in "{}".'.format(uri))
 
 
 class Storage(object):
+
     """Base class for storage backends.
 
     :param data: A dict with data used to initialize the backend.
@@ -66,15 +69,16 @@ class Storage(object):
     def __init__(self, data):
         """Storage init."""
         self.uri = data['_uri']
+        self.bucket_id = data.get('bucket_id', None)
+        self.version_id = data.get('version_id', None)
 
-    @staticmethod
-    def allowed_file(fname):
-        """FIXME: (done we need this?) Allowed files by extension."""
-        allowed_exts = current_app.config['ALLOWED_EXTENSIONS']
-        if allowed_exts:
-            return '.' in fname and fname.rsplit('.', 1)[1] in allowed_exts
+    def make_path(self):
+        """Make path to file in a given storage location."""
+        if self.bucket_id and self.version_id:
+            return "{}/{}".format(str(self.bucket_id), str(self.version_id))
         else:
-            return True
+            raise StorageError('Cannot make path because bucket and version '
+                               'ids are missing.')
 
     def open(self, version_id):
         """Open a file in the storage for reading.
@@ -84,13 +88,12 @@ class Storage(object):
         """
         raise NotImplementedError
 
-    def save(self, file_obj, filename, path):
+    def save(self, file_obj, filename):
         """Create a new file in the storage.
 
         :param fileobj: A file-like object containing the file data as
                         bytes or a bytestring.
         :param filename: secure filename.
-        :param path: internal path to the file to be stored.
         """
         raise NotImplementedError
 
@@ -117,30 +120,32 @@ class Storage(object):
 
 
 class FileSystemStorage(Storage):
+
     """File system storage."""
 
     uri_scheme = 'file://'
 
-    def save(self, file_obj, filename, path):
+    def save(self, file_obj, filename):
         """Save file in the file system."""
         try:
-            fs = fsopendir(self.uri)
-            if fs.exists(path):
-                raise ValueError('Conflict when creating target folder.')
-            dest_folder = fs.makeopendir(path, recursive=True)
-            file_obj.save(dest_folder.open(filename, 'wb'))
-            return '{}{}'.format(
-                self.uri_scheme,
-                dest_folder.getsyspath('.')
-            )
+            with fsopendir(self.uri) as fs:
+                path = self.make_path()
+                if fs.exists(path):
+                    raise ValueError('Conflict when creating target folder.')
+                dest_folder = fs.makeopendir(path, recursive=True)
+                file_obj.save(dest_folder.open(filename, 'wb'))
+                return '{}{}'.format(
+                    self.uri_scheme,
+                    dest_folder.getsyspath('.')
+                )
         except Exception as e:
             raise StorageError('Could not save file: {}'.format(e))
 
     def get_size(self, file_loc, filename):
         """Get file size."""
         try:
-            fs = fsopendir(file_loc)
-            return fs.getsize(filename)
+            with fsopendir(file_loc) as fs:
+                return fs.getsize(filename)
         except Exception as e:
             raise StorageError(
                 'Could not get size of "{}": {}'.format(filename, e)
@@ -149,7 +154,10 @@ class FileSystemStorage(Storage):
     def send_file(self, filename):
         """Send file to the client."""
         try:
-            fs = fsopendir(self.uri)
-            return send_file(fs.open(filename))
+            with fsopendir(self.uri) as fs:
+                return send_file(
+                    fs.getsyspath(filename),
+                    attachment_filename=filename
+                )
         except Exception as e:
             raise StorageError('Could not send file: {}'.format(e))

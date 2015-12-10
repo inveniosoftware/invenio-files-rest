@@ -30,11 +30,13 @@ import uuid
 
 from flask import url_for
 from invenio_db import db
+from sqlalchemy import desc
 from sqlalchemy_utils.models import Timestamp
 from sqlalchemy_utils.types import UUIDType
 
 
 class Location(db.Model, Timestamp):
+
     """Model defining base locations."""
 
     __tablename__ = 'files_location'
@@ -48,8 +50,24 @@ class Location(db.Model, Timestamp):
     active = db.Column(db.Boolean, nullable=False, default=False)
     """True if the location is available to be used."""
 
+    @classmethod
+    def get(cls, loc_id):
+        """Fetch a specific location object."""
+        return cls.query.filter_by(
+            id=loc_id,
+            active=True
+        ).first()
+
+    @classmethod
+    def all(cls, active=True):
+        """Return query that fetches all locations."""
+        return Location.query.filter_by(
+            active=active
+        )
+
 
 class Bucket(db.Model, Timestamp):
+
     """Model for storing buckets."""
 
     __tablename__ = 'files_bucket'
@@ -89,18 +107,41 @@ class Bucket(db.Model, Timestamp):
             'size': self.size
         }
 
+    @classmethod
+    def get(cls, bucket_id):
+        """Return a specific bucket object."""
+        return cls.query.filter_by(
+            id=bucket_id,
+            deleted=False
+        ).first()
+
+    @classmethod
+    def all(cls, limit=1000):
+        """Return all buckets."""
+        return cls.query.filter_by(
+            deleted=False
+        ).limit(1000)
+
+    @classmethod
+    def delete(cls, bucket_id):
+        """Delete bucket.
+
+        :returns: True if the bucket exists and gets deleted.
+        """
+        bucket = cls.get(bucket_id)
+        if bucket:
+            bucket.deleted = True
+            for obj in Object.get_by_bucket(bucket_id, versions=True).all():
+                obj.deleted = True
+            return True
+        return False
+
 
 class Object(db.Model, Timestamp):
+
     """Model for storing objects."""
 
     __tablename__ = 'files_object'
-
-    id = db.Column(
-        UUIDType,
-        primary_key=True,
-        default=uuid.uuid4,
-    )
-    """Object identifier."""
 
     bucket_id = db.Column(
         UUIDType,
@@ -137,14 +178,67 @@ class Object(db.Model, Timestamp):
         return {
             'url': url_for(
                 'invenio_files_rest.object_api',
-                version_id=self.version_id,
+                bucket_id=self.bucket_id,
                 filename=self.filename,
                 _external=True),
-            'id': str(self.id),
             'version_id': str(self.version_id),
             'size': self.size,
-            'checksum': self.checksum
+            'checksum': self.checksum,
+            'updated': self.updated.isoformat()
         }
+
+    @classmethod
+    def get(cls, bucket_id, filename, version_id=None):
+        """Fetch a specific file."""
+        if version_id:
+            return cls.query.filter_by(
+                bucket_id=str(bucket_id),
+                filename=filename,
+                version_id=version_id,
+                deleted=False
+            ).first()
+        else:
+            return cls.query.filter_by(
+                bucket_id=str(bucket_id),
+                filename=filename,
+                deleted=False
+            ).order_by(desc(Object.updated)).first()
+
+    @classmethod
+    def delete(cls, bucket_id, filename):
+        """Delete all the versions of a file object in a bucket.
+
+        :returns: True if the object file exists.
+        """
+        objs = cls.query.filter_by(
+            bucket_id=bucket_id,
+            filename=filename,
+            deleted=False
+        ).all()
+        if objs:
+            for obj in objs:
+                obj.deleted = True
+            return True
+        return False
+
+    @classmethod
+    def get_by_bucket(cls, bucket_id, versions=False):
+        """Return query that fetches all the objects in a bucket."""
+        if versions:
+            return cls.query.filter_by(
+                bucket_id=bucket_id,
+                deleted=False
+            )
+        else:
+            table_object = db.aliased(Object)
+            return cls.query.filter(
+                cls.bucket_id == bucket_id,
+                ~cls.deleted,
+                cls.updated == db.session.query(
+                    db.func.max(table_object.updated)).filter(
+                        ~table_object.deleted,
+                        table_object.filename == cls.filename).limit(1)
+            )
 
 
 __all__ = (

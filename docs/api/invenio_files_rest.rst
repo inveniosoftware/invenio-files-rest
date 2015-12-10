@@ -8,7 +8,6 @@ Submodules
 
    invenio_files_rest.config
    invenio_files_rest.ext
-   invenio_files_rest.location
    invenio_files_rest.models
    invenio_files_rest.permissions
    invenio_files_rest.serializer

@@ -99,7 +99,7 @@ def test_delete_bucket(app, db, dummy_location):
 
         # Upload file to bucket
         with open('LICENSE', 'rb') as f:
-            resp = client.post(
+            resp = client.put(
                 bucket_url,
                 data={'file': (f, 'LICENSE')},
                 headers={'Accept': '*/*'}
@@ -128,10 +128,25 @@ def test_delete_bucket(app, db, dummy_location):
         )
         assert resp.status_code == 404
 
+        # Delete a non-existant bucket
+        resp = client.delete(
+            bucket_url,
+            headers={'Content-Type': 'application/json', 'Accept': '*/*'}
+        )
+        assert resp.status_code == 404
+
 
 def test_get_objects(app, db):
     """Test get all objects in a bucket."""
     with app.test_client() as client:
+        # Get a non-existant bucket
+        bucket_id = uuid.uuid4()
+        resp = client.get(
+            "files/{}".format(bucket_id),
+            headers={'Content-Type': 'application/json', 'Accept': '*/*'}
+        )
+        assert resp.status_code == 404
+        # Create a bucket
         resp = client.post(
             '/files',
             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
@@ -143,6 +158,54 @@ def test_get_objects(app, db):
         bucket_url = data['url'][i:]
         resp = client.get(
             bucket_url,
+            headers={'Content-Type': 'application/json', 'Accept': '*/*'}
+        )
+        assert resp.status_code == 200
+        data = json.loads(resp.data)
+        assert len(data) == 0
+        # Upload file to bucket
+        with open('LICENSE', 'rb') as f:
+            resp = client.put(
+                bucket_url,
+                data={'file': (f, 'LICENSE')},
+                headers={'Accept': '*/*'}
+            )
+        assert resp.status_code == 200
+        data = json.loads(resp.data)
+        ini_version_id = data['version_id']
+        resp = client.get(
+            bucket_url,
+            headers={'Content-Type': 'application/json', 'Accept': '*/*'}
+        )
+        assert resp.status_code == 200
+        data = json.loads(resp.data)
+        assert len(data) == 1
+        # Upload a new version of the file to bucket
+        with open('LICENSE', 'rb') as f:
+            resp = client.put(
+                bucket_url,
+                data={'file': (f, 'LICENSE')},
+                headers={'Accept': '*/*'}
+            )
+        assert resp.status_code == 200
+        resp = client.get(
+            bucket_url,
+            headers={'Content-Type': 'application/json', 'Accept': '*/*'}
+        )
+        assert resp.status_code == 200
+        data = json.loads(resp.data)
+        assert len(data) == 1
+        # Get all versions included
+        resp = client.get(
+            "{}?versions=1".format(bucket_url),
+            headers={'Content-Type': 'application/json', 'Accept': '*/*'}
+        )
+        assert resp.status_code == 200
+        data = json.loads(resp.data)
+        assert len(data) == 2
+        # Get old version of the file
+        resp = client.get(
+            "{}/LICENSE?version_id={}".format(bucket_url, ini_version_id),
             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
         )
         assert resp.status_code == 200
@@ -176,7 +239,7 @@ def test_object_complete_cycle(app, db, dummy_location):
 
         # Upload file to bucket
         with open('LICENSE', 'rb') as f:
-            resp = client.post(
+            resp = client.put(
                 bucket_url,
                 data={'file': (f, 'LICENSE')},
                 headers={'Accept': '*/*'}
@@ -191,7 +254,7 @@ def test_object_complete_cycle(app, db, dummy_location):
         assert res.status_code == 200
 
         # Try upload without file
-        resp = client.post(
+        resp = client.put(
             bucket_url,
             headers={'Accept': '*/*'}
         )
@@ -200,7 +263,7 @@ def test_object_complete_cycle(app, db, dummy_location):
         # Try to upload to a non existant bucket
         bucket_id = uuid.uuid4()
         with open('LICENSE', 'rb') as f:
-            resp = client.post(
+            resp = client.put(
                 '/files/{}'.format(bucket_id),
                 data={'file': (f, 'LICENSE')},
                 headers={'Accept': '*/*'}
@@ -228,46 +291,16 @@ def test_object_complete_cycle(app, db, dummy_location):
         )
         assert resp.status_code == 404
 
-
-def test_put_new_version_file(app, db, dummy_location):
-    """Test uploading a new copy of a file."""
-    with app.test_client() as client:
-        # Create bucket
-        resp = client.post(
-            '/files',
-            data=json.dumps({'location_id': dummy_location.id}),
+        # Get a non-existant file
+        resp = client.get(
+            object_url,
             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
         )
-        assert resp.status_code == 200
-        data = json.loads(resp.data)
-        assert 'url' in data
-        i = data['url'].index('/files')
-        bucket_url = data['url'][i:]
+        assert resp.status_code == 404
 
-        # Upload file to bucket
-        with open('LICENSE', 'rb') as f:
-            resp = client.post(
-                bucket_url,
-                data={'file': (f, 'LICENSE')},
-                headers={'Accept': '*/*'}
-            )
-        assert resp.status_code == 200
-        data = json.loads(resp.data)
-        i = data['url'].index('/files')
-        object_url = data['url'][i:]
-        object_id = data['id']
-        object_version_id = data['version_id']
-
-        # Upload file to bucket
-        with open('LICENSE', 'rb') as f:
-            resp = client.put(
-                object_url,
-                data={'file': (f, 'LICENSE')},
-                headers={'Accept': '*/*'}
-            )
-        assert resp.status_code == 200
-        data = json.loads(resp.data)
-        i = data['url'].index('/files')
-        assert object_url != data['url'][i:]
-        assert object_id == data['id']
-        assert object_version_id != data['version_id']
+        # Delete a non-existant file
+        resp = client.delete(
+            object_url,
+            headers={'Content-Type': 'application/json', 'Accept': '*/*'}
+        )
+        assert resp.status_code == 404
