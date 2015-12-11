@@ -48,27 +48,31 @@ tests_require = [
 extras_require = {
     'docs': [
         'Sphinx>=1.3',
-        'sphinxcontrib-httpdomain',
+        'sphinxcontrib-httpdomain>=1.4.0',
     ],
-
+    'postgresql': [
+        'invenio-db[postgresql]>=1.0.0a6',
+    ],
+    'mysql': [
+        'invenio-db[mysql]>=1.0.0a6',
+    ],
+    'sqlite': [
+        'invenio-db>=1.0.0a6',
+    ],
     'tests': tests_require,
 }
 
 extras_require['all'] = []
-for reqs in extras_require.values():
+for name, reqs in extras_require.items():
+    if name in ('postgresql', 'mysql', 'sqlite'):
+        continue
     extras_require['all'].extend(reqs)
 
-setup_requires = [
-    'Babel>=1.3',
-]
-
 install_requires = [
-    'Flask-BabelEx>=0.9.2',
-    'Flask-CLI',
+    'Flask-CLI>=0.2.1',
     'fs>=0.5.4',
-    'invenio_db',
-    'invenio_rest',
-    'webargs'
+    'invenio-rest>=1.0.0a3',
+    'webargs>=1.1.1'
 ]
 
 packages = find_packages()
@@ -152,7 +156,6 @@ setup(
     },
     extras_require=extras_require,
     install_requires=install_requires,
-    setup_requires=setup_requires,
     tests_require=tests_require,
     classifiers=[
         'Environment :: Web Environment',
