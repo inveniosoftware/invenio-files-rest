@@ -32,7 +32,6 @@ import shutil
 
 import pytest
 from flask import Flask
-from flask_babelex import Babel
 from flask_cli import FlaskCLI
 from invenio_db import db as db_
 from invenio_db import InvenioDB
@@ -50,7 +49,6 @@ def app(request):
     app_.config.update(
         TESTING=True
     )
-    Babel(app_)
     InvenioFilesREST(app_)
 
     app_.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
