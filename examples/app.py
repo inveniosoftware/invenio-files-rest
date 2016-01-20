@@ -38,7 +38,6 @@ from __future__ import absolute_import, print_function
 import os
 
 from flask import Flask
-from flask_babelex import Babel
 from flask_cli import FlaskCLI
 from invenio_db import InvenioDB
 
@@ -46,7 +45,6 @@ from invenio_files_rest import InvenioFilesREST
 
 # Create Flask application
 app = Flask(__name__)
-Babel(app)
 InvenioFilesREST(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
     'SQLALCHEMY_DATABASE_URI', 'sqlite:///test.db'
