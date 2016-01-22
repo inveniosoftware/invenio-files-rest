@@ -22,21 +22,31 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-"""Invenio Files Rest module configuration file."""
+"""Module test views."""
 
-FILES_REST_STORAGE_CLASS_LIST = {
-    'S': 'Standard',
-    'A': 'Archive',
-}
-"""Storage class list defines the systems storage classes.
+from __future__ import absolute_import, print_function
 
-Storage classes are useful for e.g. defining the type of storage an object
-is located on (e.g. offline/online), so that the system knowns if it can serve
-the file and/or what is the reliability.
-"""
+from flask import url_for
 
-FILES_REST_DEFAULT_STORAGE_CLASS = 'S'
-"""Default storage class."""
+from invenio_files_rest.models import Bucket
 
-FILES_REST_STORAGE_FACTORY = None
-"""Import path of factory used to create a storage instance."""
+
+def test_object_put(app, db, dummy_location):
+    """Test PUT /bucket/object."""
+    with app.test_client() as client:
+        bucket = Bucket.create()
+        db.session.commit()
+
+        object_url = url_for(
+            'invenio_files_rest.object_api',
+            bucket_id=str(bucket.id),
+            key='LICENSE')
+
+        # Upload file to bucket
+        with open('LICENSE', 'rb') as f:
+            resp = client.put(
+                object_url,
+                data={'file': (f, 'LICENSE')},
+                headers={'Accept': '*/*'}
+            )
+        assert resp.status_code == 200
