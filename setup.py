@@ -136,8 +136,21 @@ setup(
         'invenio_base.api_apps': [
             'invenio_files_rest = invenio_files_rest:InvenioFilesREST',
         ],
+        'invenio_base.apps': [
+            'invenio_files_rest = invenio_files_rest:InvenioFilesREST',
+        ],
+        'invenio_base.api_blueprints': [
+            'invenio_files_rest = invenio_files_rest.views:blueprint',
+        ],
         'invenio_db.models': [
             'invenio_files_rest = invenio_files_rest.models',
+        ],
+        'invenio_admin.views': [
+            'location_adminview = invenio_files_rest.admin:location_adminview',
+            'bucket_adminview = invenio_files_rest.admin:bucket_adminview',
+            'object_adminview = invenio_files_rest.admin:object_adminview',
+            'fileinstance_adminview '
+            '= invenio_files_rest.admin:fileinstance_adminview',
         ],
         'invenio_access.actions': [
             'bucket_create = invenio_files_rest.permissions:bucket_create',
@@ -152,7 +165,7 @@ setup(
             'invenio_files_rest.permissions:object_update_all',
             'object_delete_all = '
             'invenio_files_rest.permissions:object_delete_all',
-        ]
+        ],
     },
     extras_require=extras_require,
     install_requires=install_requires,

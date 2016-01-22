@@ -26,8 +26,28 @@
 
 from __future__ import absolute_import, print_function
 
+from werkzeug.utils import import_string
+
 from . import config
-from .views import blueprint
+from .storage import storage_factory
+
+
+class _FilesRESTState(object):
+    """Invenio Files REST state."""
+
+    def __init__(self, app):
+        """Initialize state."""
+        self.app = app
+        self._storage_factory = None
+
+    @property
+    def storage_factory(self):
+        """Load default permission factory."""
+        if self._storage_factory is None:
+            imp = self.app.config["FILES_REST_STORAGE_FACTORY"]
+            self._storage_factory = import_string(imp) if imp else \
+                storage_factory
+        return self._storage_factory
 
 
 class InvenioFilesREST(object):
@@ -41,8 +61,7 @@ class InvenioFilesREST(object):
     def init_app(self, app):
         """Flask application initialization."""
         self.init_config(app)
-        app.register_blueprint(blueprint)
-        app.extensions['invenio-files-rest'] = self
+        app.extensions['invenio-files-rest'] = _FilesRESTState(app)
 
     def init_config(self, app):
         """Initialize configuration."""
