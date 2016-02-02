@@ -51,8 +51,7 @@ def app(request):
         TESTING=True,
         SQLALCHEMY_TRACK_MODIFICATIONS=True,
         SQLALCHEMY_DATABASE_URI=os.environ.get(
-            'SQLALCHEMY_DATABASE_URI',
-            'postgresql+psycopg2://localhost:5432/files'),
+            'SQLALCHEMY_DATABASE_URI', 'sqlite:///test.db'),
     )
     FlaskCLI(app_)
     InvenioDB(app_)

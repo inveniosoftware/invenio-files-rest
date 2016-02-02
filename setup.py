@@ -43,6 +43,7 @@ tests_require = [
     'pytest-pep8>=1.0.6',
     'pytest>=2.8.0',
     'invenio-access>=1.0.0a3',
+    'moto',
 ]
 
 extras_require = {
@@ -79,7 +80,6 @@ packages = find_packages()
 
 
 class PyTest(TestCommand):
-
     """PyTest Test."""
 
     user_options = [('pytest-args=', 'a', "Arguments to pass to py.test")]
@@ -111,6 +111,7 @@ class PyTest(TestCommand):
         import pytest
         errno = pytest.main(self.pytest_args)
         sys.exit(errno)
+
 
 # Get the version string. Cannot be done with import!
 g = {}
