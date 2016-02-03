@@ -61,6 +61,9 @@ extras_require = {
         'invenio-db>=1.0.0a6',
     ],
     'tests': tests_require,
+    's3': [
+        'boto'
+    ]
 }
 
 extras_require['all'] = []
