@@ -1,9 +1,31 @@
-# coding=utf-8
+# -*- coding: utf-8 -*-
+#
+# This file is part of Invenio.
+# Copyright (C) 2015 CERN.
+#
+# Invenio is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# Invenio is distributed in the hope that it will be
+# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Invenio; if not, write to the
+# Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+# MA 02111-1307, USA.
+#
+# In applying this license, CERN does not
+# waive the privileges and immunities granted to it by virtue of its status
+# as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 """Storage s3 module tests."""
 
 import hashlib
-from os.path import getsize
+import pytest
 
 import boto
 from moto import mock_s3
@@ -32,29 +54,17 @@ def test_s3filesystemstorage(app, db, dummy_location):
         db.session.add(obj.file)
 
     # Test missing config
-    try:
-        AmazonS3(obj, obj.file)
-    except StorageError as e:
-        assert e.message == "Missing AWS Key"
-
+    pytest.raises(StorageError, AmazonS3, obj, obj.file)
     app.config["FILES_REST_AWS_KEY"] = "test_key"
-
-    try:
-        AmazonS3(obj, obj.file)
-    except StorageError as e:
-        assert e.message == "Missing AWS Secret"
-
+    pytest.raises(StorageError, AmazonS3, obj, obj.file)
     app.config["FILES_REST_AWS_SECRET"] = "test_secret"
-
     storage = AmazonS3(obj, obj.file)
-    try:
-        storage.open()
-        assert False
-    except Exception as e:
-        assert True
+    pytest.raises(Exception, storage.open)
 
     with open('LICENSE', 'rb') as fp:
         loc, size, checksum = storage.save(fp)
+
+    obj.file.set_uri(loc, size, checksum, storage_class=AmazonS3)
 
     assert size == len(open('LICENSE', 'rb').read())
     assert size == storage.get_size()
@@ -71,8 +81,17 @@ def test_s3filesystemstorage(app, db, dummy_location):
         assert len(fp_content) == size
         assert m.hexdigest() == checksum
 
-    assert size == getsize('LICENSE')
-    assert size == getsize('LICENSE')
+    with storage.open() as fp:
+        fp.seek(20)
+        fp_content = fp.read(3)
+        assert fp_content == "GNU"
+        fp.seek(10056)
+        fp_content = fp.read(1)
+        assert fp_content == "6"
+        # to be sure index does work
+        fp_content = fp.read(1)
+        assert fp_content == "."
+
     res = storage.send_file("")
     assert res.status_code == 302
     assert res.data.find("".join((l.uri, ".s3.amazonaws.com"))) > -1
