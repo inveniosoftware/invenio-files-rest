@@ -22,21 +22,12 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-"""Invenio Files Rest module configuration file."""
+"""Models for Invenio-Files-REST."""
 
-FILES_REST_STORAGE_CLASS_LIST = {
-    'S': 'Standard',
-    'A': 'Archive',
-}
-"""Storage class list defines the systems storage classes.
+from __future__ import absolute_import, print_function
 
-Storage classes are useful for e.g. defining the type of storage an object
-is located on (e.g. offline/online), so that the system knowns if it can serve
-the file and/or what is the reliability.
-"""
+from blinker import Namespace
 
-FILES_REST_DEFAULT_STORAGE_CLASS = 'S'
-"""Default storage class."""
+_signals = Namespace()
 
-FILES_REST_STORAGE_FACTORY = None
-"""Import path of factory used to create a storage instance."""
+file_download = _signals.signal('file-download')

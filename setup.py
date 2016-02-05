@@ -43,6 +43,7 @@ tests_require = [
     'pytest-pep8>=1.0.6',
     'pytest>=2.8.0',
     'invenio-access>=1.0.0a3',
+    'moto',
 ]
 
 extras_require = {
@@ -60,6 +61,9 @@ extras_require = {
         'invenio-db>=1.0.0a6',
     ],
     'tests': tests_require,
+    's3': [
+        'boto'
+    ]
 }
 
 extras_require['all'] = []
@@ -79,7 +83,6 @@ packages = find_packages()
 
 
 class PyTest(TestCommand):
-
     """PyTest Test."""
 
     user_options = [('pytest-args=', 'a', "Arguments to pass to py.test")]
@@ -112,6 +115,7 @@ class PyTest(TestCommand):
         errno = pytest.main(self.pytest_args)
         sys.exit(errno)
 
+
 # Get the version string. Cannot be done with import!
 g = {}
 with open(os.path.join('invenio_files_rest', 'version.py'), 'rt') as fp:
@@ -136,8 +140,21 @@ setup(
         'invenio_base.api_apps': [
             'invenio_files_rest = invenio_files_rest:InvenioFilesREST',
         ],
+        'invenio_base.apps': [
+            'invenio_files_rest = invenio_files_rest:InvenioFilesREST',
+        ],
+        'invenio_base.api_blueprints': [
+            'invenio_files_rest = invenio_files_rest.views:blueprint',
+        ],
         'invenio_db.models': [
             'invenio_files_rest = invenio_files_rest.models',
+        ],
+        'invenio_admin.views': [
+            'location_adminview = invenio_files_rest.admin:location_adminview',
+            'bucket_adminview = invenio_files_rest.admin:bucket_adminview',
+            'object_adminview = invenio_files_rest.admin:object_adminview',
+            'fileinstance_adminview '
+            '= invenio_files_rest.admin:fileinstance_adminview',
         ],
         'invenio_access.actions': [
             'bucket_create = invenio_files_rest.permissions:bucket_create',
@@ -152,7 +169,7 @@ setup(
             'invenio_files_rest.permissions:object_update_all',
             'object_delete_all = '
             'invenio_files_rest.permissions:object_delete_all',
-        ]
+        ],
     },
     extras_require=extras_require,
     install_requires=install_requires,

@@ -24,84 +24,47 @@
 
 """Storage related module."""
 
-import inspect
-import sys
+from __future__ import absolute_import, print_function
 
-from flask import send_file
-from fs.opener import fsopendir
+import hashlib
+import time
+from os.path import join
+
+from fs.opener import opener
+
+from .errors import StorageError
+from .helpers import send_stream
 
 
-class StorageError(Exception):
-
-    """Exception raised when a storage operation fails."""
-
-
-class StorageFactory(object):
-
-    """Storage factory."""
-
-    @staticmethod
-    def get(uri, **kwargs):
-        """Factory to create the storage object."""
-        storage_classes = [obj
-                           for (name, obj)
-                           in inspect.getmembers(sys.modules[__name__])
-                           if inspect.isclass(obj) and issubclass(obj, Storage)
-                           ]
-        for storage_class in storage_classes:
-            if storage_class.uri_scheme and \
-               uri.startswith(storage_class.uri_scheme):
-                kwargs['_uri'] = uri
-                return storage_class(kwargs)
-        raise ValueError('No storage with uri scheme as in "{}".'.format(uri))
+def storage_factory(obj=None, fileinstance=None):
+    """Factory function for creating a storage instance."""
+    return PyFilesystemStorage(obj, fileinstance)
 
 
 class Storage(object):
-
     """Base class for storage backends.
 
-    :param data: A dict with data used to initialize the backend.
+    :param object: A dict with data used to initialize the backend.
     """
 
-    uri_scheme = None
-    """URI scheme of the storage backend (e.g. s3://)."""
-
-    def __init__(self, data):
+    def __init__(self, object, fileinstance):
         """Storage init."""
-        self.uri = data['_uri']
-        self.bucket_id = data.get('bucket_id', None)
-        self.version_id = data.get('version_id', None)
+        self.obj = object
+        self.file = fileinstance
 
     def make_path(self):
         """Make path to file in a given storage location."""
-        if self.bucket_id and self.version_id:
-            return "{}/{}".format(str(self.bucket_id), str(self.version_id))
-        else:
-            raise StorageError('Cannot make path because bucket and version '
-                               'ids are missing.')
+        return join(
+            str(self.obj.bucket_id),
+            str(self.obj.version_id),
+        )
 
-    def open(self, version_id):
-        """Open a file in the storage for reading.
-
-        :param version_id: The UUID of the file object.
-        :returns: a file-like objec.
-        """
-        raise NotImplementedError
-
-    def save(self, file_obj, filename):
+    def save(self, incoming_stream, size=None, chunk_size=None):
         """Create a new file in the storage.
 
         :param fileobj: A file-like object containing the file data as
                         bytes or a bytestring.
         :param filename: secure filename.
-        """
-        raise NotImplementedError
-
-    def get_size(self, file_loc, filename):
-        """Get the size in bytes of a file.
-
-        :param file_loc: The location of the file within the storage backend.
-        :param filename: The filename of the file within the storage backend.
         """
         raise NotImplementedError
 
@@ -118,46 +81,49 @@ class Storage(object):
         """
         raise NotImplementedError
 
+    def _save_stream(self, src, dst, chunk_size=None):
+        """Save stream from src to dest and compute checksum."""
+        chunk_size = chunk_size or 1024 * 64
 
-class FileSystemStorage(Storage):
+        m = hashlib.md5()
+        bytes_written = 0
 
-    """File system storage."""
+        while 1:
+            chunk = src.read(chunk_size)
+            if not chunk:
+                break
+            dst.write(chunk)
+            bytes_written += len(chunk)
+            m.update(chunk)
 
-    uri_scheme = 'file://'
+        return bytes_written, m.hexdigest()
 
-    def save(self, file_obj, filename):
+
+class PyFilesystemStorage(Storage):
+    """File system storage using PyFilesystem."""
+
+    def save(self, incoming_stream, size=None, chunk_size=None):
         """Save file in the file system."""
-        try:
-            with fsopendir(self.uri) as fs:
-                path = self.make_path()
-                if fs.exists(path):
-                    raise ValueError('Conflict when creating target folder.')
-                dest_folder = fs.makeopendir(path, recursive=True)
-                file_obj.save(dest_folder.open(filename, 'wb'))
-                return '{}{}'.format(
-                    self.uri_scheme,
-                    dest_folder.getsyspath('.')
-                )
-        except Exception as e:
-            raise StorageError('Could not save file: {}'.format(e))
+        uri = self.obj.bucket.location.uri
+        path = self.make_path()
 
-    def get_size(self, file_loc, filename):
-        """Get file size."""
-        try:
-            with fsopendir(file_loc) as fs:
-                return fs.getsize(filename)
-        except Exception as e:
-            raise StorageError(
-                'Could not get size of "{}": {}'.format(filename, e)
-            )
+        with opener.opendir(uri) as fs:
+            dest_file = fs.makeopendir(path, recursive=True).open('data', 'wb')
+            bytes_written, checksum = self._save_stream(
+                incoming_stream, dest_file, chunk_size=chunk_size)
+            dest_file.close()
 
-    def send_file(self, filename):
+        return join(uri, path, 'data'), bytes_written, checksum
+
+    def send_file(self, restricted=False):
         """Send file to the client."""
         try:
-            with fsopendir(self.uri) as fs:
-                return send_file(
-                    fs.getsyspath(filename),
-                    attachment_filename=filename
-                )
+            fs, path = opener.parse(self.file.uri)
+            fp = fs.open(path, 'rb')
+            return send_stream(
+                fp, path, self.file.size,
+                time.mktime(self.file.updated.timetuple()),
+                restricted=restricted, etag=self.file.checksum,
+                content_md5=self.file.checksum)
         except Exception as e:
             raise StorageError('Could not send file: {}'.format(e))
