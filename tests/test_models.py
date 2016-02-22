@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015 CERN.
+# Copyright (C) 2015, 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -92,7 +92,7 @@ def test_bucket_create(app, db):
 
     # Create with location_name and storage class
     with db.session.begin_nested():
-        b = Bucket.create(location_name='test1', storage_class='A')
+        b = Bucket.create(location=l1, storage_class='A')
         assert b.default_location == Location.get_by_name('test1').id
         assert b.default_storage_class == 'A'
         db.session.add(b)
@@ -190,16 +190,29 @@ def test_object_multibucket(app, db, dummy_location):
 
 def test_object_get_by_bucket(app, db, dummy_location):
     """Test object creation."""
-    with db.session.begin_nested():
-        b1 = Bucket.create()
-        b2 = Bucket.create()
-        obj1_first = Object.create(b1, "test")
-        obj1_first.set_location("b1test1", 1, "achecksum")
-        Object.create(b1, "test")
-        obj1_latest = Object.create(b1, "test")
-        obj1_latest.set_location("b1test3", 1, "achecksum")
-        Object.create(b1, "another").set_location("b1another1", 1, "achecksum")
-        Object.create(b2, "test").set_location("b2test1", 1, "achecksum")
+    b1 = Bucket.create()
+    b2 = Bucket.create()
+
+    obj1_first = Object.create(b1, "test")
+    obj1_first.set_location("b1test1", 1, "achecksum")
+    print(obj1_first.created)
+    db.session.commit()
+    print(obj1_first.created)
+
+    # Intermediate obj without file_id.
+    obj1_intermediate = Object.create(b1, "test")
+    obj1_intermediate.set_location("b1test2", 1, "achecksum")
+    print(obj1_intermediate.created)
+    db.session.commit()
+    print(obj1_intermediate.created)
+
+    obj1_latest = Object.create(b1, "test")
+    obj1_latest.set_location("b1test3", 1, "achecksum")
+    print(obj1_intermediate.obj1_latest)
+    Object.create(b1, "another").set_location("b1another1", 1, "achecksum")
+    Object.create(b2, "test").set_location("b2test1", 1, "achecksum")
+    db.session.commit()
+    print(obj1_intermediate.obj1_latest)
 
     # Sanity check
     assert Object.query.count() == 5
@@ -209,7 +222,7 @@ def test_object_get_by_bucket(app, db, dummy_location):
 
     # Retrieve objects for a bucket with/without versions
     assert Object.get_by_bucket(b1.id).count() == 2
-    assert Object.get_by_bucket(b1.id, versions=True).count() == 3
+    assert Object.get_by_bucket(b1.id, versions=True).count() == 4
     assert Object.get_by_bucket(b2.id).count() == 1
     assert Object.get_by_bucket(b2.id, versions=True).count() == 1
 
@@ -220,11 +233,15 @@ def test_object_get_by_bucket(app, db, dummy_location):
 
     # Assert order of returned objects verions (creation date ascending)
     objs = Object.get_by_bucket(b1.id, versions=True).all()
+    print(objs)
+    print([x.created for x in objs])
     assert objs[0].key == "another"
     assert objs[1].key == "test"
     assert objs[1].version_id == obj1_latest.version_id
     assert objs[2].key == "test"
-    assert objs[2].version_id == obj1_first.version_id
+    assert objs[2].version_id == obj1_intermediate.version_id
+    assert objs[3].key == "test"
+    assert objs[3].version_id == obj1_first.version_id
 
 
 def test_object_delete(app, db, dummy_location):

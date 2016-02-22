@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015 CERN.
+# Copyright (C) 2015, 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -29,6 +29,7 @@ from __future__ import absolute_import, print_function
 import re
 import uuid
 
+import six
 from flask import current_app
 from invenio_db import db
 from sqlalchemy.orm import validates
@@ -142,13 +143,13 @@ class Bucket(db.Model, Timestamp):
         )
 
     @classmethod
-    def create(cls, location_name=None, storage_class=None):
+    def create(cls, location=None, storage_class=None):
         """Create a bucket."""
         with db.session.begin_nested():
-            if location_name is None:
+            if location is None:
                 location = Location.get_default()
-            else:
-                location = Location.get_by_name(location_name)
+            elif isinstance(Location, six.string_types):
+                location = Location.get_by_name(location)
 
             obj = cls(
                 location=location,
@@ -267,6 +268,11 @@ class Object(db.Model, Timestamp):
     file = db.relationship(FileInstance, backref='objects')
     """Relationship to file instance."""
 
+    def __repr__(self):
+        """Return representation of location."""
+        return "{0}:{1}?versionId={2}".format(
+            self.bucket_id, self.key, self.version_id)
+
     @property
     def is_deleted(self):
         """Determine if object is a delete marker."""
@@ -300,7 +306,7 @@ class Object(db.Model, Timestamp):
         return self.file.send_file(self)
 
     @classmethod
-    def create(cls, bucket, key):
+    def create(cls, bucket, key, stream=None, **kwargs):
         """Create a new object in a bucket."""
         with db.session.begin_nested():
             latest_obj = cls.get(bucket.id, key)
@@ -317,6 +323,8 @@ class Object(db.Model, Timestamp):
                 is_head=True,
             )
             db.session.add(obj)
+        if stream:
+            obj.set_contents(stream, **kwargs)
         return obj
 
     @classmethod

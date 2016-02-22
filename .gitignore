@@ -54,3 +54,6 @@ docs/_build/
 
 # PyBuilder
 target/
+
+examples/data/
+examples/test.db

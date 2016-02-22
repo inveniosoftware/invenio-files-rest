@@ -30,6 +30,7 @@ from werkzeug.utils import import_string
 
 from . import config
 from .storage import storage_factory
+from .views import blueprint
 
 
 class _FilesRESTState(object):
@@ -61,6 +62,7 @@ class InvenioFilesREST(object):
     def init_app(self, app):
         """Flask application initialization."""
         self.init_config(app)
+        app.register_blueprint(blueprint)
         app.extensions['invenio-files-rest'] = _FilesRESTState(app)
 
     def init_config(self, app):

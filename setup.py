@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015 CERN.
+# Copyright (C) 2015, 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -36,13 +36,17 @@ history = open('CHANGES.rst').read()
 tests_require = [
     'check-manifest>=0.25',
     'coverage>=4.0',
+    'Flask-BabelEx>=0.9.3',
+    'Flask-Menu>=0.2.1',
+    'invenio-access>=1.0.0a3',
+    'invenio-accounts>=1.0.0a2',
+    'invenio-admin>=1.0.0a2',
     'isort>=4.2.2',
     'pep257>=0.7.0',
     'pytest-cache>=1.0',
     'pytest-cov>=1.8.0',
     'pytest-pep8>=1.0.6',
     'pytest>=2.8.0',
-    'invenio-access>=1.0.0a3',
 ]
 
 extras_require = {
@@ -70,16 +74,18 @@ for name, reqs in extras_require.items():
 
 install_requires = [
     'Flask-CLI>=0.2.1',
+    'Flask-WTF>=0.12',
+    'Flask>=0.10',
     'fs>=0.5.4',
-    'invenio-rest>=1.0.0a3',
-    'webargs>=1.1.1'
+    'invenio-rest[cors]>=1.0.0a5',
+    'webargs>=1.1.1',
+    'WTForms>=2.0',
 ]
 
 packages = find_packages()
 
 
 class PyTest(TestCommand):
-
     """PyTest Test."""
 
     user_options = [('pytest-args=', 'a', "Arguments to pass to py.test")]
