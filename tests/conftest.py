@@ -52,7 +52,7 @@ def app(request):
         SQLALCHEMY_TRACK_MODIFICATIONS=True,
         SQLALCHEMY_DATABASE_URI=os.environ.get(
             'SQLALCHEMY_DATABASE_URI',
-            'postgresql+psycopg2://localhost:5432/files'),
+            'sqlite:///:memory:'),
     )
     FlaskCLI(app_)
     InvenioDB(app_)

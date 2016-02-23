@@ -195,24 +195,15 @@ def test_object_get_by_bucket(app, db, dummy_location):
 
     obj1_first = Object.create(b1, "test")
     obj1_first.set_location("b1test1", 1, "achecksum")
-    print(obj1_first.created)
-    db.session.commit()
-    print(obj1_first.created)
-
     # Intermediate obj without file_id.
     obj1_intermediate = Object.create(b1, "test")
     obj1_intermediate.set_location("b1test2", 1, "achecksum")
-    print(obj1_intermediate.created)
-    db.session.commit()
-    print(obj1_intermediate.created)
-
     obj1_latest = Object.create(b1, "test")
     obj1_latest.set_location("b1test3", 1, "achecksum")
-    print(obj1_intermediate.obj1_latest)
     Object.create(b1, "another").set_location("b1another1", 1, "achecksum")
     Object.create(b2, "test").set_location("b2test1", 1, "achecksum")
+
     db.session.commit()
-    print(obj1_intermediate.obj1_latest)
 
     # Sanity check
     assert Object.query.count() == 5
@@ -233,8 +224,6 @@ def test_object_get_by_bucket(app, db, dummy_location):
 
     # Assert order of returned objects verions (creation date ascending)
     objs = Object.get_by_bucket(b1.id, versions=True).all()
-    print(objs)
-    print([x.created for x in objs])
     assert objs[0].key == "another"
     assert objs[1].key == "test"
     assert objs[1].version_id == obj1_latest.version_id

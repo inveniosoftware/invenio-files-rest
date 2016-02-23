@@ -28,17 +28,43 @@ from __future__ import absolute_import, print_function
 
 import re
 import uuid
+from datetime import datetime
 
 import six
 from flask import current_app
 from invenio_db import db
+from sqlalchemy.dialects import mysql
 from sqlalchemy.orm import validates
-from sqlalchemy_utils.models import Timestamp
 from sqlalchemy_utils.types import UUIDType
 
 from .errors import FileInstanceAlreadySetError
 
 slug_pattern = re.compile("^[a-z][a-z0-9-]+$")
+
+
+class Timestamp(object):
+    """Timestamp model mix-in with fractional seconds support.
+
+    SQLAlchemy-Utils timestamp model, does not have support for fractional
+    seconds.
+    """
+
+    created = db.Column(
+        db.DateTime().with_variant(mysql.DATETIME(fsp=6), "mysql"),
+        default=datetime.utcnow,
+        nullable=False
+    )
+    updated = db.Column(
+        db.DateTime().with_variant(mysql.DATETIME(fsp=6), "mysql"),
+        default=datetime.utcnow,
+        nullable=False
+    )
+
+
+@db.event.listens_for(Timestamp, 'before_update', propagate=True)
+def timestamp_before_update(mapper, connection, target):
+    """Listener for updating ."""
+    target.updated = datetime.utcnow()
 
 
 class Location(db.Model, Timestamp):
@@ -338,9 +364,9 @@ class Object(db.Model, Timestamp):
         if version_id:
             args.append(cls.version_id == version_id)
         else:
-            args.append(cls.is_head == True)  # noqa
+            args.append(cls.is_head.is_(True))
         if not with_deleted:
-            args.append(cls.file_id != None)  # noqa
+            args.append(cls.file_id.isnot(None))
 
         return cls.query.filter(*args).one_or_none()
 
@@ -359,11 +385,11 @@ class Object(db.Model, Timestamp):
         """Return query that fetches all the objects in a bucket."""
         args = [
             cls.bucket_id == bucket_id,
-            cls.file_id != None,  # noqa
+            cls.file_id.isnot(None),
         ]
 
         if not versions:
-            args.append(cls.is_head == True)  # noqa
+            args.append(cls.is_head.is_(True))
 
         return cls.query.filter(*args).order_by(cls.key, cls.created.desc())
 
