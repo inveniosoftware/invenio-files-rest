@@ -30,8 +30,10 @@ from os.path import getsize
 
 import pytest
 
-from invenio_files_rest.errors import FileInstanceAlreadySetError
-from invenio_files_rest.models import Bucket, FileInstance, Location, Object
+from invenio_files_rest.errors import FileInstanceAlreadySetError, \
+    InvalidOperationError
+from invenio_files_rest.models import Bucket, FileInstance, Location, \
+    ObjectVersion
 
 
 def test_location(app, db):
@@ -39,7 +41,7 @@ def test_location(app, db):
     with db.session.begin_nested():
         l1 = Location(name='test1', uri='file:///tmp', default=False)
         l2 = Location(name='test2', uri='file:///tmp', default=True)
-        l3 = Location(name='test3', uri='file:///tmp', default=True)
+        l3 = Location(name='test3', uri='file:///tmp', default=False)
         db.session.add(l1)
         db.session.add(l2)
         db.session.add(l3)
@@ -52,6 +54,23 @@ def test_location(app, db):
     assert len(Location.all()) == 3
 
     assert str(Location.get_by_name('test1')) == 'test1'
+
+
+def test_location_default(app, db):
+    """Test location model."""
+    with db.session.begin_nested():
+        l1 = Location(name='test1', uri='file:///tmp', default=False)
+        db.session.add(l1)
+
+    assert Location.get_default() is None
+
+    with db.session.begin_nested():
+        l2 = Location(name='test2', uri='file:///tmp', default=True)
+        l3 = Location(name='test3', uri='file:///tmp', default=True)
+        db.session.add(l2)
+        db.session.add(l3)
+
+    assert Location.get_default() is None
 
 
 def test_location_validation(app, db):
@@ -82,7 +101,6 @@ def test_bucket_create(app, db):
         assert b.size == 0
         assert b.quota_size is None
         assert b.deleted is False
-        db.session.add(b)
 
     # __repr__ test
     assert str(b) == str(b.id)
@@ -95,10 +113,13 @@ def test_bucket_create(app, db):
         b = Bucket.create(location=l1, storage_class='A')
         assert b.default_location == Location.get_by_name('test1').id
         assert b.default_storage_class == 'A'
-        db.session.add(b)
 
-    # Retreieve one
-    assert Bucket.all().count() == 2
+        # Create using location name instead
+        b = Bucket.create(location=l2.name, storage_class='A')
+        assert b.default_location == Location.get_by_name('test2').id
+
+    # Retrieve one
+    assert Bucket.all().count() == 3
 
     # Invalid storage class.
     pytest.raises(ValueError, Bucket.create, storage_class='X')
@@ -106,12 +127,14 @@ def test_bucket_create(app, db):
 
 def test_bucket_retrieval(app, db, dummy_location):
     """Test bucket get/create."""
+    # Create two buckets
     with db.session.begin_nested():
         b1 = Bucket.create()
         Bucket.create()
 
     assert Bucket.all().count() == 2
 
+    # Mark one as deleted.
     with db.session.begin_nested():
         b1.deleted = True
 
@@ -122,7 +145,8 @@ def test_object_create(app, db, dummy_location):
     """Test object creation."""
     with db.session.begin_nested():
         b = Bucket.create()
-        obj1 = Object.create(b, "test")
+        # Create one object version
+        obj1 = ObjectVersion.create(b, "test")
         assert obj1.bucket_id == b.id
         assert obj1.key == 'test'
         assert obj1.version_id
@@ -133,7 +157,8 @@ def test_object_create(app, db, dummy_location):
         # Set fake location.
         obj1.set_location("file:///tmp/obj1", 1, "checksum")
 
-        obj2 = Object.create(b, "test")
+        # Create one object version for same object key
+        obj2 = ObjectVersion.create(b, "test")
         assert obj2.bucket_id == b.id
         assert obj2.key == 'test'
         assert obj2.version_id != obj1.version_id
@@ -144,86 +169,99 @@ def test_object_create(app, db, dummy_location):
         # Set fake location
         obj2.set_location("file:///tmp/obj2", 2, "checksum")
 
-        # Obj 3 has no location, and thus considered deleted.
-        Object.create(b, "deleted_obj")
+        # Create a new object version for a different object with no location.
+        # I.e. it is considered a delete marker.
+        obj3 = ObjectVersion.create(b, "deleted_obj")
+
+    # Object __repr__
+    assert str(obj1) == \
+        "{0}:{1}:{2}".format(obj1.bucket_id, obj1.version_id, obj1.key)
 
     # Sanity check
-    assert Object.query.count() == 3
+    assert ObjectVersion.query.count() == 3
 
     # Assert that obj2 is the head version
-    obj = Object.get(b.id, "test", version_id=obj1.version_id)
+    obj = ObjectVersion.get(b.id, "test", version_id=obj1.version_id)
     assert obj.version_id == obj1.version_id
     assert obj.is_head is False
-    obj = Object.get(b.id, "test", version_id=obj2.version_id)
+    obj = ObjectVersion.get(b.id, "test", version_id=obj2.version_id)
     assert obj.version_id == obj2.version_id
     assert obj.is_head is True
-    obj = Object.get(b.id, "test")
+    # Assert that getting latest version gets obj2
+    obj = ObjectVersion.get(b.id, "test")
     assert obj.version_id == obj2.version_id
     assert obj.is_head is True
 
-    # Assert that obj3 is not retrievable.
-    assert Object.get(b.id, "deleted_obj") is None
-    assert Object.get(b.id, "deleted_obj", with_deleted=True) is not None
+    # Assert that obj3 is not retrievable (without specifying version id).
+    assert ObjectVersion.get(b.id, "deleted_obj") is None
+    # Assert that obj3 *is* retrievable (when specifying version id).
+    assert \
+        ObjectVersion.get(b.id, "deleted_obj", version_id=obj3.version_id) == \
+        obj3
 
 
 def test_object_multibucket(app, db, dummy_location):
-    """Test object creation."""
+    """Test object creation in multiple buckets."""
     with db.session.begin_nested():
+        # Create two buckets each with an object using the same key
         b1 = Bucket.create()
         b2 = Bucket.create()
-        obj1 = Object.create(b1, "test")
+        obj1 = ObjectVersion.create(b1, "test")
         obj1.set_location("file:///tmp/obj1", 1, "checksum")
-        obj2 = Object.create(b2, "test")
+        obj2 = ObjectVersion.create(b2, "test")
         obj2.set_location("file:///tmp/obj2", 2, "checksum")
 
     # Sanity check
-    assert Object.query.count() == 2
+    assert ObjectVersion.query.count() == 2
 
-    # Assert no versions are created
-    obj = Object.get(b1.id, "test")
+    # Assert object versions are correctly created in each bucket.
+    obj = ObjectVersion.get(b1.id, "test")
     assert obj.is_head is True
     assert obj.version_id == obj1.version_id
-    obj = Object.get(b2.id, "test")
+    obj = ObjectVersion.get(b2.id, "test")
     assert obj.is_head is True
     assert obj.version_id == obj2.version_id
 
 
 def test_object_get_by_bucket(app, db, dummy_location):
-    """Test object creation."""
+    """Test object listing."""
     b1 = Bucket.create()
     b2 = Bucket.create()
 
-    obj1_first = Object.create(b1, "test")
+    # First version of object
+    obj1_first = ObjectVersion.create(b1, "test")
     obj1_first.set_location("b1test1", 1, "achecksum")
-    # Intermediate obj without file_id.
-    obj1_intermediate = Object.create(b1, "test")
+    # Intermediate version which is a delete marker.
+    obj1_intermediate = ObjectVersion.create(b1, "test")
     obj1_intermediate.set_location("b1test2", 1, "achecksum")
-    obj1_latest = Object.create(b1, "test")
+    # Latest version of object
+    obj1_latest = ObjectVersion.create(b1, "test")
     obj1_latest.set_location("b1test3", 1, "achecksum")
-    Object.create(b1, "another").set_location("b1another1", 1, "achecksum")
-    Object.create(b2, "test").set_location("b2test1", 1, "achecksum")
-
+    # Create objects in/not in same bucket using different key.
+    ObjectVersion.create(b1, "another").set_location(
+        "b1another1", 1, "achecksum")
+    ObjectVersion.create(b2, "test").set_location("b2test1", 1, "achecksum")
     db.session.commit()
 
     # Sanity check
-    assert Object.query.count() == 5
-    assert Object.get(b1.id, "test")
-    assert Object.get(b1.id, "another")
-    assert Object.get(b2.id, "test")
+    assert ObjectVersion.query.count() == 5
+    assert ObjectVersion.get(b1, "test")
+    assert ObjectVersion.get(b1, "another")
+    assert ObjectVersion.get(b2, "test")
 
     # Retrieve objects for a bucket with/without versions
-    assert Object.get_by_bucket(b1.id).count() == 2
-    assert Object.get_by_bucket(b1.id, versions=True).count() == 4
-    assert Object.get_by_bucket(b2.id).count() == 1
-    assert Object.get_by_bucket(b2.id, versions=True).count() == 1
+    assert ObjectVersion.get_by_bucket(b1).count() == 2
+    assert ObjectVersion.get_by_bucket(b1, versions=True).count() == 4
+    assert ObjectVersion.get_by_bucket(b2).count() == 1
+    assert ObjectVersion.get_by_bucket(b2, versions=True).count() == 1
 
     # Assert order of returned objects (alphabetical)
-    objs = Object.get_by_bucket(b1.id).all()
+    objs = ObjectVersion.get_by_bucket(b1.id).all()
     assert objs[0].key == "another"
     assert objs[1].key == "test"
 
     # Assert order of returned objects verions (creation date ascending)
-    objs = Object.get_by_bucket(b1.id, versions=True).all()
+    objs = ObjectVersion.get_by_bucket(b1.id, versions=True).all()
     assert objs[0].key == "another"
     assert objs[1].key == "test"
     assert objs[1].version_id == obj1_latest.version_id
@@ -235,33 +273,36 @@ def test_object_get_by_bucket(app, db, dummy_location):
 
 def test_object_delete(app, db, dummy_location):
     """Test object creation."""
+    # Create three versions, with latest being a delete marker.
     with db.session.begin_nested():
         b1 = Bucket.create()
-        Object.create(b1, "test").set_location("b1test1", 1, "achecksum")
-        Object.create(b1, "test").set_location("b1test2", 1, "achecksum")
-        Object.delete(b1.id, "test")
+        ObjectVersion.create(b1, "test").set_location(
+            "b1test1", 1, "achecksum")
+        ObjectVersion.create(b1, "test").set_location(
+            "b1test2", 1, "achecksum")
+        obj_deleted = ObjectVersion.delete(b1, "test")
 
-    assert Object.query.count() == 3
-    assert Object.get(b1.id, "test") is None
-    assert Object.get_by_bucket(b1.id).count() == 0
+    assert ObjectVersion.query.count() == 3
+    assert ObjectVersion.get(b1, "test") is None
+    assert ObjectVersion.get_by_bucket(b1).count() == 0
 
-    obj = Object.get(b1.id, "test", with_deleted=True)
+    obj = ObjectVersion.get(b1, "test", version_id=obj_deleted.version_id)
     assert obj.is_deleted
     assert obj.file_id is None
 
-    with db.session.begin_nested():
-        Object.create(b1, "test").set_location("b1test4", 1, "achecksum")
+    ObjectVersion.create(b1, "test").set_location(
+        "b1test4", 1, "achecksum")
 
-    assert Object.query.count() == 4
-    assert Object.get(b1.id, "test") is not None
-    assert Object.get_by_bucket(b1.id).count() == 1
+    assert ObjectVersion.query.count() == 4
+    assert ObjectVersion.get(b1.id, "test") is not None
+    assert ObjectVersion.get_by_bucket(b1.id).count() == 1
 
 
 def test_object_set_contents(app, db, dummy_location):
     """Test object set contents."""
     with db.session.begin_nested():
         b1 = Bucket.create()
-        obj = Object.create(b1, "LICENSE")
+        obj = ObjectVersion.create(b1, "LICENSE")
         assert obj.file_id is None
         assert FileInstance.query.count() == 0
 
@@ -283,7 +324,7 @@ def test_object_set_contents(app, db, dummy_location):
 
     # Save a new version with different content
     with db.session.begin_nested():
-        obj2 = Object.create(b1, "LICENSE")
+        obj2 = ObjectVersion.create(b1, "LICENSE")
         with open('README.rst', 'rb') as fp:
             obj2.set_contents(fp)
 
@@ -297,7 +338,7 @@ def test_object_set_location(app, db, dummy_location):
     """Test object set contents."""
     with db.session.begin_nested():
         b1 = Bucket.create()
-        obj = Object.create(b1, "LICENSE")
+        obj = ObjectVersion.create(b1, "LICENSE")
         assert obj.file_id is None
         assert FileInstance.query.count() == 0
         obj.set_location("b1test1", 1, "achecksum")
@@ -305,3 +346,126 @@ def test_object_set_location(app, db, dummy_location):
         pytest.raises(
             FileInstanceAlreadySetError,
             obj.set_location, "b1test1", 1, "achecksum")
+
+
+def test_object_snapshot(app, db, dummy_location):
+    """Test snapshot creation."""
+    b1 = Bucket.create()
+    b2 = Bucket.create()
+    ObjectVersion.create(b1, "versioned").set_location("b1v1", 1, "achecksum")
+    ObjectVersion.create(b1, "versioned").set_location("b1v2", 1, "achecksum")
+    ObjectVersion.create(b1, "deleted").set_location("b1d1", 1, "achecksum")
+    ObjectVersion.delete(b1, "deleted")
+    ObjectVersion.create(b1, "undeleted").set_location("b1u1", 1, "achecksum")
+    ObjectVersion.delete(b1, "undeleted")
+    ObjectVersion.create(b1, "undeleted").set_location("b1u2", 1, "achecksum")
+    ObjectVersion.create(b1, "simple").set_location("b1s1", 1, "achecksum")
+    ObjectVersion.create(b2, "another").set_location("b2a1", 1, "achecksum")
+    db.session.commit()
+
+    assert ObjectVersion.query.count() == 9
+    assert FileInstance.query.count() == 7
+    assert Bucket.query.count() == 2
+    assert ObjectVersion.get_by_bucket(b1).count() == 3
+    assert ObjectVersion.get_by_bucket(b2).count() == 1
+
+    b3 = b1.snapshot(lock=True)
+    db.session.commit()
+
+    # Must be locked as requested.
+    assert b1.locked is False
+    assert b3.locked is True
+
+    assert Bucket.query.count() == 3
+    assert ObjectVersion.query.count() == 12
+    assert FileInstance.query.count() == 7
+    assert ObjectVersion.get_by_bucket(b1).count() == 3
+    assert ObjectVersion.get_by_bucket(b2).count() == 1
+    assert ObjectVersion.get_by_bucket(b3).count() == 3
+    assert ObjectVersion.get_by_bucket(b1, versions=True).count() == 8
+    assert ObjectVersion.get_by_bucket(b3, versions=True).count() == 3
+
+
+def test_object_snapshot_deleted(app, db, dummy_location):
+    """Deleted bucket."""
+    b1 = Bucket.create()
+    b2 = Bucket.create()
+    b2.deleted = True
+    db.session.commit()
+
+    b3 = b1.snapshot()
+    assert b3.id != b1.id
+    assert b3.locked is False
+
+    # b2 is deleted.
+    pytest.raises(InvalidOperationError, b2.snapshot)
+
+
+def test_object_copy(app, db, dummy_location):
+    """Copy object."""
+    f = FileInstance(uri="f1", size=1, checksum="mychecksum")
+    db.session.add(f)
+    db.session.commit()
+    b1 = Bucket.create()
+    b2 = Bucket.create()
+
+    # Delete markers cannot be copied
+    obj_deleted = ObjectVersion.create(b1, "deleted")
+    assert pytest.raises(InvalidOperationError, obj_deleted.copy, b2)
+
+    # Copy onto self.
+    obj = ObjectVersion.create(b1, "selftest").set_file(f)
+    db.session.commit()
+    obj_copy = obj.copy()
+    db.session.commit()
+    assert obj_copy.version_id != obj.version_id
+    assert obj_copy.key == obj.key
+    assert obj_copy.bucket == obj.bucket
+    assert obj_copy.file_id == obj.file_id
+    versions = ObjectVersion.get_versions(b1, "selftest").all()
+    assert versions[0] == obj_copy
+    assert versions[1] == obj
+
+    # Copy new key
+    obj_copy2 = obj_copy.copy(key='newkeytest')
+    db.session.commit()
+    assert obj_copy2.version_id != obj_copy.version_id
+    assert obj_copy2.key == "newkeytest"
+    assert obj_copy2.bucket == obj_copy.bucket
+    assert obj_copy2.file_id == obj_copy.file_id
+
+    # Copy to bucket
+    obj_copy3 = obj_copy2.copy(bucket=b2)
+    assert obj_copy3.version_id != obj_copy2.version_id
+    assert obj_copy3.key == obj_copy2.key
+    assert obj_copy3.bucket == b2
+    assert obj_copy3.file_id == obj_copy2.file_id
+
+
+def test_object_restore(app, db, dummy_location):
+    """Restore object."""
+    f1 = FileInstance(uri="f1", size=1, checksum="mychecksum")
+    f2 = FileInstance(uri="f2", size=2, checksum="mychecksum2")
+    db.session.add(f1)
+    db.session.add(f2)
+    b1 = Bucket.create()
+
+    obj1 = ObjectVersion.create(b1, "test").set_file(f1)
+    ObjectVersion.create(b1, "test").set_file(f2)
+    obj_deleted = ObjectVersion.delete(b1, "test")
+    db.session.commit()
+
+    assert ObjectVersion.query.count() == 3
+    # Cannot restore a deleted version.
+    pytest.raises(InvalidOperationError, obj_deleted.restore)
+
+    # Restore first version
+    obj_new = obj1.restore()
+    db.session.commit()
+
+    assert ObjectVersion.query.count() == 4
+    assert obj_new.is_head is True
+    assert obj_new.version_id != obj1.version_id
+    assert obj_new.key == obj1.key
+    assert obj_new.file_id == obj1.file_id
+    assert obj_new.bucket == obj1.bucket

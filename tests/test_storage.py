@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015 CERN.
+# Copyright (C) 2015, 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -29,7 +29,7 @@ from __future__ import absolute_import, print_function
 import hashlib
 from os.path import getsize, join
 
-from invenio_files_rest.models import Bucket, FileInstance, Object
+from invenio_files_rest.models import Bucket, FileInstance, ObjectVersion
 from invenio_files_rest.storage import PyFilesystemStorage
 
 
@@ -38,7 +38,7 @@ def test_pyfilesystemstorage(app, db, dummy_location):
     # Create bucket and object
     with db.session.begin_nested():
         b = Bucket.create()
-        obj = Object.create(b, "LICENSE")
+        obj = ObjectVersion.create(b, "LICENSE")
         obj.file = FileInstance()
         db.session.add(obj.file)
 
@@ -66,7 +66,7 @@ def test_pyfs_send_file(app, db, dummy_location):
     """Test send file."""
     with db.session.begin_nested():
         b = Bucket.create()
-        obj = Object.create(b, "LICENSE")
+        obj = ObjectVersion.create(b, "LICENSE")
         with open('LICENSE', 'rb') as fp:
             obj.set_contents(fp)
 

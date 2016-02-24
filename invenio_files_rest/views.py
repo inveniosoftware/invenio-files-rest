@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015 CERN.
+# Copyright (C) 2015, 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -33,7 +33,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from webargs import fields
 from webargs.flaskparser import parser, use_kwargs
 
-from .models import Bucket, Location, Object
+from .models import Bucket, Location, ObjectVersion
 from .serializer import json_serializer
 
 blueprint = Blueprint(
@@ -247,7 +247,7 @@ class BucketResource(ContentNegotiatedMethodView):
         args = parser.parse(self.get_args, request)
         if bucket_id and Bucket.get(bucket_id):
             object_list = []
-            for obj in Object.get_by_bucket(
+            for obj in ObjectVersion.get_by_bucket(
                 bucket_id, versions=args.get('versions', False)
             ).all():
                 object_list.append(obj.serialize())
@@ -413,7 +413,7 @@ class ObjectResource(ContentNegotiatedMethodView):
         """
         # TODO: Check access permission on bucket.
         # TODO: Support partial range requests.
-        obj = Object.get(bucket_id, key, version_id=version_id)
+        obj = ObjectVersion.get(bucket_id, key, version_id=version_id)
         if obj is None:
             abort(404, 'Object does not exist.')
         return obj.storage.send_file()
@@ -487,7 +487,7 @@ class ObjectResource(ContentNegotiatedMethodView):
 
         try:
             # TODO: Pass storage class to get_or_create
-            obj = Object.create(bucket, key)
+            obj = ObjectVersion.create(bucket, key)
             obj.set_contents(uploaded_file, size=content_length)
             db.session.commit()
             # TODO: Fix response object to only include headers?
@@ -537,7 +537,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             :statuscode 500: exception while deleting
         """
         try:
-            if Object.delete(bucket_id, filename):
+            if ObjectVersion.delete(bucket_id, filename):
                 db.session.commit()
             else:
                 abort(
@@ -586,7 +586,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 404: the file does not exist
         """
-        if not bucket_id or not Object.get(bucket_id, filename):
+        if not bucket_id or not ObjectVersion.get(bucket_id, filename):
             abort(404, 'The object file does not exist or has been deleted.')
 
 

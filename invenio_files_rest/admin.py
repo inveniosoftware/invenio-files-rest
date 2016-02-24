@@ -26,7 +26,7 @@ from flask_admin.contrib.sqla import ModelView
 from flask_wtf import Form
 from wtforms.validators import ValidationError
 
-from .models import Bucket, FileInstance, Location, Object, slug_pattern
+from .models import Bucket, FileInstance, Location, ObjectVersion, slug_pattern
 
 
 def _(x):
@@ -168,7 +168,7 @@ bucket_adminview = dict(
     category=_('Files'))
 object_adminview = dict(
     modelview=ObjectModelView,
-    model=Object,
+    model=ObjectVersion,
     category=_('Files'))
 fileinstance_adminview = dict(
     modelview=FileInstanceModelView,

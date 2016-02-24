@@ -1,6 +1,6 @@
 ..
     This file is part of Invenio.
-    Copyright (C) 2015 CERN.
+    Copyright (C) 2016 CERN.
 
     Invenio is free software; you can redistribute it
     and/or modify it under the terms of the GNU General Public License as
@@ -22,42 +22,44 @@
     as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 
-.. include:: ../README.rst
+API Docs
+========
 
-User's Guide
-------------
+.. automodule:: invenio_files_rest.ext
+   :members:
+   :undoc-members:
 
-This part of the documentation will show you how to get started in using
-Invenio-Base.
+Models
+------
 
-.. toctree::
-   :maxdepth: 2
+.. automodule:: invenio_files_rest.models
+   :members:
+   :undoc-members:
 
-   installation
-   usage
+Storage
+-------
 
+.. automodule:: invenio_files_rest.storage
+   :members:
+   :undoc-members:
 
-API Reference
--------------
+Signals
+-------
 
-If you are looking for information on a specific function, class or method,
-this part of the documentation is for you.
+.. automodule:: invenio_files_rest.signals
+   :members:
+   :undoc-members:
 
-.. toctree::
-   :maxdepth: 2
+File streaming
+--------------
 
-   api
+.. automodule:: invenio_files_rest.helpers
+   :members:
+   :undoc-members:
 
-Additional Notes
-----------------
+Exceptions
+----------
 
-Notes on how to contribute, legal information and changes are here for the
-interested.
-
-.. toctree::
-   :maxdepth: 1
-
-   contributing
-   changes
-   license
-   authors
+.. automodule:: invenio_files_rest.errors
+   :members:
+   :undoc-members:
