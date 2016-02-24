@@ -127,3 +127,17 @@ class PyFilesystemStorage(Storage):
                 content_md5=self.file.checksum)
         except Exception as e:
             raise StorageError('Could not send file: {}'.format(e))
+
+
+class AmazonS3(Storage):
+    def get_size(self, file_loc, filename):
+        raise NotImplementedError
+
+    def send_file(self, filename):
+        raise NotImplementedError
+
+    def open(self, version_id):
+        raise NotImplementedError
+
+    def save(self, file_obj, filename):
+        raise NotImplementedError
