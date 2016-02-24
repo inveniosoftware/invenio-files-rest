@@ -328,6 +328,10 @@ class FileInstance(db.Model, Timestamp):
         return current_app.extensions['invenio-files-rest'].storage_factory(
             obj=obj, fileinstance=self)
 
+    def verify_checksum(self, obj=None):
+        """Verify checksum of file instance."""
+        assert self.checksum == self.storage(obj).compute_checksum()
+
     def set_contents(self, obj, stream, size=None, chunk_size=None):
         """Save contents of stream to this file.
 
@@ -494,7 +498,7 @@ class ObjectVersion(db.Model, Timestamp):
     def restore(self):
         """Restore version of an object.
 
-        Raises an exception if the object.
+        Raises an exception if the object is not the latest version.
         """
         if self.is_head:
             raise InvalidOperationError("Cannot restore latest version.")

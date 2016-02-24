@@ -50,7 +50,7 @@ def test_pyfilesystemstorage(app, db, dummy_location):
     with open('LICENSE', 'rb') as fp:
         m = hashlib.md5()
         m.update(fp.read())
-        assert m.hexdigest() == checksum
+        assert "md5:{0}".format(m.hexdigest()) == checksum
 
     assert size == getsize('LICENSE')
     assert size == getsize('LICENSE')
@@ -60,6 +60,19 @@ def test_pyfilesystemstorage(app, db, dummy_location):
             str(b.id),
             str(obj.version_id),
             "data")
+
+
+def test_pyfilesystemstorage_checksum(app, db, dummy_location):
+    """Test fixity."""
+    # Compute checksum of license file/
+    with open('LICENSE', 'rb') as fp:
+        m = hashlib.md5()
+        m.update(fp.read())
+        checksum = "md5:{0}".format(m.hexdigest())
+
+    # Now do it with storage interfacee
+    storage = PyFilesystemStorage(None, FileInstance(uri="LICENSE"))
+    assert checksum == storage.compute_checksum()
 
 
 def test_pyfs_send_file(app, db, dummy_location):

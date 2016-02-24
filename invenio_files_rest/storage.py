@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015 CERN.
+# Copyright (C) 2015, 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -60,26 +60,34 @@ class Storage(object):
         )
 
     def save(self, incoming_stream, size=None, chunk_size=None):
-        """Create a new file in the storage.
-
-        :param fileobj: A file-like object containing the file data as
-                        bytes or a bytestring.
-        :param filename: secure filename.
-        """
+        """Create a new file in the storage."""
         raise NotImplementedError
 
-    def send_file(self, filename):
-        """Send the file to the client.
-
-        This returns a flask response that will eventually result in
-        the user being offered to download the file (or view it in the
-        browser).  Depending on the storage backend it may actually
-        send a redirect to an external URL where the file is available.
-
-        :param filename: The file name to use when sending the file to
-                         the client.
-        """
+    def send_file(self):
+        """Send the file to the client."""
         raise NotImplementedError
+
+    def compute_checksum(self):
+        """Compute checksum of file."""
+        raise NotImplementedError
+
+    def _compute_checksum(self, src, chunk_size=None):
+        """Helper method to compute checksum from a stream.
+
+        Naive implementation that can be overwritten by subclasses in order to
+        provide more efficient implementation.
+        """
+        try:
+            m = hashlib.md5()
+            while 1:
+                chunk = src.read(chunk_size)
+                if not chunk:
+                    break
+                m.update(chunk)
+            return "md5:{0}".format(m.hexdigest())
+        except Exception as e:
+            raise StorageError(
+                'Could not compute checksum of file: {}'.format(e))
 
     def _save_stream(self, src, dst, chunk_size=None):
         """Save stream from src to dest and compute checksum."""
@@ -96,7 +104,7 @@ class Storage(object):
             bytes_written += len(chunk)
             m.update(chunk)
 
-        return bytes_written, m.hexdigest()
+        return bytes_written, "md5:{0}".format(m.hexdigest())
 
 
 class PyFilesystemStorage(Storage):
@@ -127,3 +135,14 @@ class PyFilesystemStorage(Storage):
                 content_md5=self.file.checksum)
         except Exception as e:
             raise StorageError('Could not send file: {}'.format(e))
+
+    def compute_checksum(self):
+        """Compute checksum of file."""
+        fs, path = opener.parse(self.file.uri)
+        fp = fs.open(path, 'rb')
+        try:
+            value = self._compute_checksum(fp)
+        except StorageError:
+            fp.close()
+            raise
+        return value

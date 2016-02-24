@@ -333,6 +333,10 @@ def test_object_set_contents(app, db, dummy_location):
     assert obj2.file.uri != obj.file.uri
     assert Bucket.get(b1.id).size == obj.file.size + obj2.file.size
 
+    obj2.file.verify_checksum()
+    obj2.file.checksum = "md5:invalid"
+    pytest.raises(AssertionError, obj2.file.verify_checksum)
+
 
 def test_object_set_location(app, db, dummy_location):
     """Test object set contents."""
