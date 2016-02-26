@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015 CERN.
+# Copyright (C) 2015, 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -27,38 +27,39 @@
 
 from __future__ import absolute_import, print_function
 
-import uuid
+from hashlib import md5
 
 from flask import json
 
-# def test_get_buckets(app, db, dummy_location):
-#     """Test get buckets."""
-#     with app.test_client() as client:
-#         resp = client.get(
-#             '/files',
-#             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-#         )
-#         assert resp.status_code == 200
 
-#         # With location_id
-#         resp = client.post(
-#             '/files',
-#             data=json.dumps({'location_id': dummy_location.id}),
-#             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-#         )
-#         assert resp.status_code == 200
+def test_get_buckets(app, dummy_location):
+    """Test get buckets."""
+    with app.test_client() as client:
+        resp = client.get(
+            '/files',
+            headers={'Content-Type': 'application/json', 'Accept': '*/*'}
+        )
+        assert resp.status_code == 200
+
+        # With location_name
+        resp = client.post(
+            '/files',
+            data=json.dumps({'location_name': dummy_location.name}),
+            headers={'Content-Type': 'application/json', 'Accept': '*/*'}
+        )
+        assert resp.status_code == 200
 
 
-# def test_post_bucket(app, db):
-#     """Test post a bucket."""
-#     with app.test_client() as client:
-#         resp = client.post(
-#             '/files',
-#             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-#         )
-#         assert resp.status_code == 200
-#         data = json.loads(resp.data)
-#         assert 'url' in data
+def test_post_bucket(app, dummy_location):
+    """Test post a bucket."""
+    with app.test_client() as client:
+        resp = client.post(
+            '/files',
+            headers={'Content-Type': 'application/json', 'Accept': '*/*'}
+        )
+        assert resp.status_code == 200
+        data = json.loads(resp.data)
+        assert 'url' in data
 
 
 # def test_head_bucket(app, db):
@@ -87,7 +88,7 @@ from flask import json
 #         # Create bucket
 #         resp = client.post(
 #             '/files',
-#             data=json.dumps({'location_id': dummy_location.id}),
+#             data=json.dumps({'location_name': dummy_location.name}),
 #             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
 #         )
 #         assert resp.status_code == 200
@@ -134,6 +135,47 @@ from flask import json
 #         )
 #         assert resp.status_code == 404
 
+# def test_get_object_list(app, dummy_objects):
+
+
+def test_get_object_get(app, objects):
+    """Test object download"""
+    with app.test_client() as client:
+        for obj in objects:
+            resp = client.get(
+                "/files/{0}/{1}".format(obj.bucket_id, obj.key),
+                headers={'Content-Type': 'application/json', 'Accept': '*/*'}
+            )
+            assert resp.status_code == 200
+
+            # Check md5
+            md5_local = "md5:{}".format(md5(open(obj.file.uri[7:], 'rb')
+                                        .read()).hexdigest())
+            assert resp.content_md5 == md5_local
+            # Check etag
+            assert resp.get_etag()[0] == md5_local
+
+
+def test_get_object_get_404(app, objects):
+    """Test object download 404 error"""
+    with app.test_client() as client:
+        for obj in objects:
+            resp = client.get(
+                "/files/{0}/{1}".format(obj.bucket_id, obj.key + "Missing"),
+                headers={'Content-Type': 'application/json', 'Accept': '*/*'}
+            )
+            assert resp.status_code == 404
+
+
+# def test_get_object_get_access_denied_403(app, objects):
+#     """Test object download 403 access denied"""
+#     with app.test_client() as client:
+#         for obj in objects:
+#             resp = client.get(
+#                 "/files/{}/{}".format(obj.bucket_id, obj.key),
+#                 headers={'Content-Type': 'application/json', 'Accept': '*/*'}
+#             )
+#             assert resp.status_code == 403
 
 # def test_get_objects(app, db):
 #     """Test get all objects in a bucket."""
@@ -226,7 +268,7 @@ from flask import json
 #         # Create bucket
 #         resp = client.post(
 #             '/files',
-#             data=json.dumps({'location_id': dummy_location.id}),
+#             data=json.dumps({'location_name': dummy_location.name}),
 #             headers={'Content-Type': 'application/json',
 #                      'Accept': '*/*'}
 #         )

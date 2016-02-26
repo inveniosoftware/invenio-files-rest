@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015 CERN.
+# Copyright (C) 2015, 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -30,6 +30,7 @@ from __future__ import absolute_import, print_function
 import os
 import shutil
 import tempfile
+from os.path import dirname, join
 
 import pytest
 from flask import Flask
@@ -39,7 +40,7 @@ from invenio_db import InvenioDB
 from sqlalchemy_utils.functions import create_database, database_exists
 
 from invenio_files_rest import InvenioFilesREST
-from invenio_files_rest.models import Location
+from invenio_files_rest.models import Bucket, Location, ObjectVersion
 from invenio_files_rest.views import blueprint
 
 
@@ -75,7 +76,7 @@ def db(app):
 
 
 @pytest.yield_fixture()
-def dummy_location(request, db):
+def dummy_location(db):
     """File system location."""
     tmppath = tempfile.mkdtemp()
 
@@ -90,3 +91,18 @@ def dummy_location(request, db):
     yield loc
 
     shutil.rmtree(tmppath)
+
+
+@pytest.yield_fixture()
+def objects(dummy_location):
+    """File system location."""
+    srcroot = dirname(dirname(__file__))
+
+    # Bucket 1
+    b1 = Bucket.create(dummy_location)
+    objects = []
+    for f in ['README.rst', 'LICENSE']:
+        with open(join(srcroot, f), 'rb') as fp:
+            objects.append(ObjectVersion.create(b1, f, stream=fp))
+
+    yield objects

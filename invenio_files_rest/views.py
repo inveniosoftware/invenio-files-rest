@@ -26,7 +26,7 @@
 
 from __future__ import absolute_import, print_function
 
-from flask import Blueprint, abort, current_app, request
+from flask import Blueprint, abort, current_app, request, url_for
 from invenio_db import db
 from invenio_rest import ContentNegotiatedMethodView
 from sqlalchemy.exc import SQLAlchemyError
@@ -54,10 +54,9 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
             **kwargs
         )
         self.post_args = {
-            'location_id': fields.Int(
+            'location_name': fields.String(
                 missing=None,
-                location='json',
-                validate=lambda val: val >= 0
+                location='json'
             )
         }
 
@@ -106,7 +105,13 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
         """
         bucket_list = []
         for bucket in Bucket.all():
-            bucket_list.append(bucket.serialize())
+            # TODO: Implement serializer
+            bucket_list.append({
+                'size': bucket.size,
+                'url': url_for("invenio_files_rest.bucket_api",
+                               bucket_id=bucket.id, _external=True),
+                'uuid': str(bucket.id)
+                })
         # FIXME: how to avoid returning a dict with key 'json'
         return {'json': bucket_list}
 
@@ -127,11 +132,11 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
                 Host: localhost:5000
 
                 {
-                    "location_id": 1
+                    "location_name": "storage_one"
                 }
 
             :reqheader Content-Type: application/json
-            :json body: A `location_id` can be passed (as an integer). If none
+            :json body: A `location_name` can be passed (as an string). If none
                         is passed, a random active location will be used.
 
             **Responses**:
@@ -156,11 +161,12 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
         """
         args = parser.parse(self.post_args, request)
         try:
-            if args['location_id']:
-                location = Location.get(args['location_id'])
+            if args['location_name']:
+                # TODO: Check why query is used directly.
+                location = Location.get_by_name(args['location_name'])
             else:
                 # Get one of the active locations
-                location = Location.all().first()
+                location = Location.get_default()
             if not location:
                 abort(400, 'Invalid location.')
             bucket = Bucket(
@@ -176,7 +182,14 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
             current_app.logger.exception('Failed to create bucket.')
             abort(500, 'Failed to create bucket.')
 
-        return {'json': bucket.serialize()}
+        # TODO: Implement serializer
+        return {'json':
+                {'size': bucket.size,
+                 'url': url_for("invenio_files_rest.bucket_api",
+                                bucket_id=bucket.id, _external=True),
+                 'uuid': str(bucket.id)
+                 }
+                }
 
 
 class BucketResource(ContentNegotiatedMethodView):
@@ -244,13 +257,23 @@ class BucketResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 404: page not found
         """
+        # TODO: Implement serializer
+        def serialize(bucket):
+            return {'size': bucket.file.size,
+                    'checksum': bucket.file.checksum,
+                    'url': url_for('invenio_files_rest.object_api',
+                                   bucket_id=bucket.bucket_id,
+                                   key=bucket.key,
+                                   _external=True),
+                    'uuid': str(bucket.file.id)}
+
         args = parser.parse(self.get_args, request)
         if bucket_id and Bucket.get(bucket_id):
             object_list = []
             for obj in ObjectVersion.get_by_bucket(
                 bucket_id, versions=args.get('versions', False)
             ).all():
-                object_list.append(obj.serialize())
+                object_list.append(serialize(obj))
             return {'json': object_list}
         abort(404, 'The specified bucket does not exist or has been deleted.')
 
@@ -409,15 +432,16 @@ class ObjectResource(ContentNegotiatedMethodView):
             :resheader Content-Type: application/json
             :statuscode 200: no error
             :statuscode 403: access denied
-            :statuscode 404: page not found
+            :statuscode 404: Object does not exist
         """
         # TODO: Check access permission on bucket.
         # TODO: Support partial range requests.
         # TODO: Support for access token
+        # TODO: Exception if file is not found (deleted by hand or accident)
         obj = ObjectVersion.get(bucket_id, key, version_id=version_id)
         if obj is None:
             abort(404, 'Object does not exist.')
-        return obj.storage.send_file()
+        return obj.send_file()
 
     @use_kwargs(put_args)
     def put(self, bucket_id, key, content_length=None, content_md5=None):
