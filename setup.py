@@ -40,7 +40,7 @@ tests_require = [
     'Flask-Menu>=0.2.1',
     'invenio-access>=1.0.0a3',
     'invenio-accounts>=1.0.0a2',
-    'invenio-admin>=1.0.0a2',
+    'invenio-admin>=1.0.0a3.dev20150000',
     'isort>=4.2.2',
     'pep257>=0.7.0',
     'pytest-cache>=1.0',
@@ -80,6 +80,7 @@ install_requires = [
     'invenio-rest[cors]>=1.0.0a5',
     'webargs>=1.1.1',
     'WTForms>=2.0',
+    'SQLAlchemy-Utils>=0.31.0'
 ]
 
 packages = find_packages()

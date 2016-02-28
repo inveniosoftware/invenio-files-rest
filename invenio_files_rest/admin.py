@@ -21,9 +21,12 @@
 
 from __future__ import absolute_import, print_function
 
-from flask import current_app
+from flask import current_app, url_for
 from flask_admin.contrib.sqla import ModelView
 from flask_wtf import Form
+from invenio_admin.filters import FilterConverter
+from invenio_admin.forms import LazyChoices
+from markupsafe import Markup
 from wtforms.validators import ValidationError
 
 from .models import Bucket, FileInstance, Location, ObjectVersion, slug_pattern
@@ -40,33 +43,35 @@ def require_slug(form, field):
         raise ValidationError(_("Invalid location name."))
 
 
-class LazyChoices(object):
-    """Lazy form choices."""
-
-    def __init__(self, func):
-        """Initialize lazy choices."""
-        self._func = func
-
-    def __iter__(self):
-        """Iterate over lazy choices."""
-        return iter(self._func())
+def link(text, link_func):
+    """Generate a object formatter for links.."""
+    def object_formatter(v, c, m, p):
+        """Format object view link."""
+        return Markup('<a href="{0}">{1}</a>'.format(
+            link_func(m), text))
+    return object_formatter
 
 
 class LocationModelView(ModelView):
     """ModelView for the locations."""
 
+    filter_converter = FilterConverter()
     can_create = True
     can_edit = True
     can_delete = True
     can_view_details = True
-    column_editable_list = ('default', )
-    column_details_list = ('name', 'uri', 'default', 'created', 'updated', )
-    column_list = ('name', 'uri', 'default', 'created', 'updated', )
+    column_formatters = dict(
+        buckets=link('Buckets', lambda o: url_for(
+            'bucket.index_view', flt2_2=o.name))
+    )
+    column_details_list = (
+        'name', 'uri', 'default', 'created', 'updated', 'buckets')
+    column_list = ('name', 'uri', 'default', 'created', 'updated', 'buckets')
     column_labels = dict(
         id=_('ID'),
         uri=_('URI'),
     )
-    column_filters = ('default', 'created', 'updated', )
+    column_filters = ('default', 'created', 'updated')
     column_searchable_list = ('uri', 'name')
     column_default_sort = 'name'
     form_base_class = Form
@@ -80,16 +85,24 @@ class LocationModelView(ModelView):
 class BucketModelView(ModelView):
     """ModelView for the buckets."""
 
+    filter_converter = FilterConverter()
     can_create = True
     can_delete = False
     can_edit = True
     can_view_details = True
+    column_formatters = dict(
+        objects=link('Objects', lambda o: url_for(
+            'objectversion.index_view', flt0_0=o.id, flt1_37=1, sort=1)),
+        object_versions=link('Object Versions', lambda o: url_for(
+            'objectversion.index_view', flt0_0=o.id, flt1_29=1, sort=1)),
+    )
     column_details_list = (
         'id', 'location', 'default_storage_class', 'deleted', 'locked',
-        'created', 'updated', )
+        'created', 'updated', 'objects', 'object_versions'
+    )
     column_list = (
         'id', 'location', 'default_storage_class', 'deleted', 'locked', 'size',
-        'created', 'updated',
+        'created', 'updated', 'objects',
     )
     column_labels = dict(
         id=_('UUID'),
@@ -97,8 +110,10 @@ class BucketModelView(ModelView):
         pid_provider=_('Storage Class'),
     )
     column_filters = (
-        'deleted', 'locked', 'default_location', 'default_storage_class',
-        'created', 'updated')
+        # Change of order affects Location.column_formatters!
+        'location.name', 'default_storage_class', 'deleted', 'locked', 'size',
+        'created', 'updated',
+    )
     column_default_sort = ('updated', True)
     form_base_class = Form
     form_columns = ('location', 'default_storage_class', 'locked', 'deleted', )
@@ -111,26 +126,49 @@ class BucketModelView(ModelView):
 class ObjectModelView(ModelView):
     """ModelView for the objects."""
 
+    filter_converter = FilterConverter()
     can_create = False
     can_edit = False
     can_delete = False
     can_view_details = True
+    column_formatters = dict(
+        file_instance=link('File', lambda o: url_for(
+            'fileinstance.index_view', flt0_0=o.file_id)),
+        versions=link('Versions', lambda o: url_for(
+            'objectversion.index_view',
+            sort=7, desc=1, flt0_0=o.bucket_id, flt1_29=o.key)),
+        bucket_objs=link('Objects', lambda o: url_for(
+            'objectversion.index_view',
+            flt0_0=o.bucket_id, flt1_37=1, sort=1)),
+    )
     column_labels = {
         'version_id': _('Version'),
+        'file_id': _('File UUID'),
         'file.uri': _('URI'),
         'file.size': _('Size'),
         'is_deleted': _('Deleted'),
+        'file.checksum': _('Checksum'),
+        'file.read_only': _('Read only'),
+        'file.storage_class': _('Storage class'),
+        'bucket_objs': _("Objects"),
+        'file_instance': _("File"),
     }
     column_list = (
         'bucket', 'key', 'version_id', 'file.uri', 'is_head', 'is_deleted',
-        'file.size', 'created', 'updated', )
+        'file.size', 'created', 'updated', 'versions', 'bucket_objs',
+        'file_instance')
     column_searchable_list = ('key', )
     column_details_list = (
         'bucket', 'key', 'version_id', 'file_id', 'file.uri', 'file.checksum',
         'file.size', 'file.storage_class', 'is_head', 'is_deleted', 'created',
-        'updated', )
+        'updated', 'file_instance', 'versions')
     column_filters = (
-        'bucket', 'key', 'is_head', 'file.storage_class', 'created', 'updated')
+        # Order affects column_formatters in other model views.
+        'bucket.id', 'bucket.locked', 'bucket.deleted', 'bucket.location.name',
+        'file_id', 'file.checksum', 'file.storage_class', 'file.read_only',
+        'key', 'version_id', 'is_head', 'file.size', 'created', 'updated', )
+    column_sortable_list = (
+        'key', 'file.uri', 'is_head', 'file.size', 'created', 'updated')
     column_default_sort = ('updated', True)
     page_size = 25
 
@@ -138,22 +176,29 @@ class ObjectModelView(ModelView):
 class FileInstanceModelView(ModelView):
     """ModelView for the objects."""
 
+    filter_converter = FilterConverter()
     can_create = False
     can_edit = False
     can_delete = False
     can_view_details = True
+    column_formatters = dict(
+        objects=link('Objects', lambda o: url_for(
+            'objectversion.index_view', flt3_12=o.id)),
+    )
     column_labels = dict(
+        id=_('ID'),
         uri=_('URI'),
     )
     column_list = (
         'id', 'uri', 'storage_class', 'size', 'checksum', 'read_only',
-        'created', 'updated', )
+        'created', 'updated', 'objects')
     column_searchable_list = ('uri', 'size', 'checksum', )
     column_details_list = (
         'id', 'uri', 'storage_class', 'size', 'checksum', 'read_only',
-        'created', 'updated', )
+        'created', 'updated', 'objects', )
     column_filters = (
-        'uri', 'size', 'checksum', 'read_only', 'created', 'updated')
+        'id', 'uri', 'storage_class', 'size', 'checksum', 'read_only',
+        'created', 'updated')
     column_default_sort = ('updated', True)
     page_size = 25
 

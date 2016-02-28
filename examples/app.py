@@ -75,7 +75,8 @@ from invenio_db import InvenioDB, db
 from invenio_rest import InvenioREST
 
 from invenio_files_rest import InvenioFilesREST
-from invenio_files_rest.models import Bucket, FileInstance, Location, Object
+from invenio_files_rest.models import Bucket, FileInstance, Location, \
+    ObjectVersion
 
 # Create Flask application
 app = Flask(__name__)
@@ -120,7 +121,7 @@ def files():
     makedirs(d)
 
     # Clear data
-    Object.query.delete()
+    ObjectVersion.query.delete()
     Bucket.query.delete()
     FileInstance.query.delete()
     Location.query.delete()
@@ -134,21 +135,21 @@ def files():
     b1 = Bucket.create(loc)
     for f in ['README.rst', 'LICENSE']:
         with open(join(srcroot, f), 'r') as fp:
-            Object.create(b1, f, stream=fp)
+            ObjectVersion.create(b1, f, stream=fp)
 
     # Bucket 1
     b2 = Bucket.create(loc)
     k = 'AUTHORS.rst'
     with open(join(srcroot, 'CHANGES.rst'), 'r') as fp:
-        Object.create(b2, k, stream=fp)
+        ObjectVersion.create(b2, k, stream=fp)
     with open(join(srcroot, 'AUTHORS.rst'), 'r') as fp:
-        Object.create(b2, k, stream=fp)
+        ObjectVersion.create(b2, k, stream=fp)
 
     k = 'RELEASE-NOTES.rst'
     with open(join(srcroot, 'RELEASE-NOTES.rst'), 'r') as fp:
-        Object.create(b2, k, stream=fp)
+        ObjectVersion.create(b2, k, stream=fp)
     with open(join(srcroot, 'CHANGES.rst'), 'r') as fp:
-        Object.create(b2, k, stream=fp)
-    Object.delete(b2.id, k)
+        ObjectVersion.create(b2, k, stream=fp)
+    ObjectVersion.delete(b2.id, k)
 
     db.session.commit()
