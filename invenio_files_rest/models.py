@@ -315,6 +315,12 @@ class FileInstance(db.Model, Timestamp):
     read_only = db.Column(db.Boolean, default=False, nullable=False)
     """Defines if the file is read only."""
 
+    last_check_at = db.Column(db.DateTime, nullable=True)
+    """Timestamp of last fixity check."""
+
+    last_check = db.Column(db.Boolean, default=True, nullable=False)
+    """Result of last fixity check."""
+
     def storage(self, obj):
         """Get storage interface for object.
 
@@ -328,9 +334,14 @@ class FileInstance(db.Model, Timestamp):
         return current_app.extensions['invenio-files-rest'].storage_factory(
             obj=obj, fileinstance=self)
 
-    def verify_checksum(self, obj=None):
+    def verify_checksum(self, obj=None, progress_callback=None):
         """Verify checksum of file instance."""
-        assert self.checksum == self.storage(obj).compute_checksum()
+        real_checksum = self.storage(obj).compute_checksum(
+            progress_callback=progress_callback)
+        with db.session.begin_nested():
+            self.last_check = (self.checksum == real_checksum)
+            self.last_check_at = datetime.utcnow()
+        return self.last_check
 
     def set_contents(self, obj, stream, size=None, chunk_size=None):
         """Save contents of stream to this file.

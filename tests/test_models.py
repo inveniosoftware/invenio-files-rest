@@ -334,8 +334,10 @@ def test_object_set_contents(app, db, dummy_location):
     assert Bucket.get(b1.id).size == obj.file.size + obj2.file.size
 
     obj2.file.verify_checksum()
+    assert obj2.file.last_check_at
+    assert obj2.file.last_check is True
     obj2.file.checksum = "md5:invalid"
-    pytest.raises(AssertionError, obj2.file.verify_checksum)
+    assert obj2.file.verify_checksum() is False
 
 
 def test_object_set_location(app, db, dummy_location):

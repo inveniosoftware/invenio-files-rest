@@ -45,8 +45,13 @@ Run example development server:
 
 .. code-block:: console
 
-   $ cd examples
    $ flask -a app.py --debug run
+
+Run example worker:
+
+.. code-block:: console
+
+   $ celery worker -A app.celery -l info --purge
 
 Administration interface is available on::
 
@@ -71,6 +76,7 @@ from invenio_access import InvenioAccess
 from invenio_accounts import InvenioAccounts
 from invenio_accounts.views import blueprint
 from invenio_admin import InvenioAdmin
+from invenio_celery import InvenioCelery
 from invenio_db import InvenioDB, db
 from invenio_rest import InvenioREST
 
@@ -81,7 +87,7 @@ from invenio_files_rest.models import Bucket, FileInstance, Location, \
 # Create Flask application
 app = Flask(__name__)
 app.config.update(dict(
-    CELERY_ALWAYS_EAGER=True,
+    CELERY_ALWAYS_EAGER=False,
     CELERY_CACHE_BACKEND='memory',
     CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
     CELERY_RESULT_BACKEND='cache',
@@ -104,6 +110,8 @@ InvenioAccess(app)
 InvenioFilesREST(app)
 
 app.register_blueprint(blueprint)
+
+celery = InvenioCelery(app).celery
 
 
 @app.cli.group()
@@ -134,21 +142,21 @@ def files():
     # Bucket 1
     b1 = Bucket.create(loc)
     for f in ['README.rst', 'LICENSE']:
-        with open(join(srcroot, f), 'r') as fp:
+        with open(join(srcroot, f), 'rb') as fp:
             ObjectVersion.create(b1, f, stream=fp)
 
     # Bucket 1
     b2 = Bucket.create(loc)
     k = 'AUTHORS.rst'
-    with open(join(srcroot, 'CHANGES.rst'), 'r') as fp:
+    with open(join(srcroot, 'CHANGES.rst'), 'rb') as fp:
         ObjectVersion.create(b2, k, stream=fp)
-    with open(join(srcroot, 'AUTHORS.rst'), 'r') as fp:
+    with open(join(srcroot, 'AUTHORS.rst'), 'rb') as fp:
         ObjectVersion.create(b2, k, stream=fp)
 
     k = 'RELEASE-NOTES.rst'
-    with open(join(srcroot, 'RELEASE-NOTES.rst'), 'r') as fp:
+    with open(join(srcroot, 'RELEASE-NOTES.rst'), 'rb') as fp:
         ObjectVersion.create(b2, k, stream=fp)
-    with open(join(srcroot, 'CHANGES.rst'), 'r') as fp:
+    with open(join(srcroot, 'CHANGES.rst'), 'rb') as fp:
         ObjectVersion.create(b2, k, stream=fp)
     ObjectVersion.delete(b2.id, k)
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015 CERN.
+# Copyright (C) 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -22,7 +22,33 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
--e git+https://github.com/inveniosoftware/invenio-access#egg=invenio-access
--e git+https://github.com/inveniosoftware/invenio-accounts#egg=invenio-accounts
--e git+https://github.com/inveniosoftware/invenio-admin#egg=invenio-admin
--e git+https://github.com/inveniosoftware/invenio-db#egg=invenio-db
+"""Celery tasks for Invenio-Files-REST."""
+
+from __future__ import absolute_import, print_function
+
+import uuid
+
+from celery import current_task, shared_task
+from celery.states import state
+from celery.utils.log import get_task_logger
+from invenio_db import db
+
+from .models import FileInstance
+
+logger = get_task_logger(__name__)
+
+
+def progress_updater(size, total):
+    """Progress reporter for checksum verification."""
+    current_task.update_state(
+        state=state('PROGRESS'),
+        meta=dict(size=size, total=total)
+    )
+
+
+@shared_task(ignore_result=True)
+def verify_checksum(file_id):
+    """Verify checksum of a file instance."""
+    f = FileInstance.query.get(uuid.UUID(file_id))
+    f.verify_checksum(progress_callback=progress_updater)
+    db.session.commit()

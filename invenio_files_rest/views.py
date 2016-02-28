@@ -413,6 +413,7 @@ class ObjectResource(ContentNegotiatedMethodView):
         """
         # TODO: Check access permission on bucket.
         # TODO: Support partial range requests.
+        # TODO: Support for access token
         obj = ObjectVersion.get(bucket_id, key, version_id=version_id)
         if obj is None:
             abort(404, 'Object does not exist.')

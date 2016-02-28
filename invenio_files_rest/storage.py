@@ -67,23 +67,31 @@ class Storage(object):
         """Send the file to the client."""
         raise NotImplementedError
 
-    def compute_checksum(self):
+    def compute_checksum(self, progress_callback=None):
         """Compute checksum of file."""
         raise NotImplementedError
 
-    def _compute_checksum(self, src, chunk_size=None):
+    def _compute_checksum(self, src, chunk_size=None, progress_callback=None):
         """Helper method to compute checksum from a stream.
 
         Naive implementation that can be overwritten by subclasses in order to
         provide more efficient implementation.
         """
+        bytes_read = 0
+        total_size = self.file.size
+
         try:
             m = hashlib.md5()
             while 1:
                 chunk = src.read(chunk_size)
                 if not chunk:
+                    if progress_callback:
+                        progress_callback(total_size, total_size)
                     break
                 m.update(chunk)
+                bytes_read += len(chunk)
+                if progress_callback:
+                    progress_callback(bytes_read, total_size)
             return "md5:{0}".format(m.hexdigest())
         except Exception as e:
             raise StorageError(
@@ -136,12 +144,13 @@ class PyFilesystemStorage(Storage):
         except Exception as e:
             raise StorageError('Could not send file: {}'.format(e))
 
-    def compute_checksum(self):
+    def compute_checksum(self, progress_callback=None):
         """Compute checksum of file."""
         fs, path = opener.parse(self.file.uri)
         fp = fs.open(path, 'rb')
         try:
-            value = self._compute_checksum(fp)
+            value = self._compute_checksum(
+                fp, progress_callback=progress_callback)
         except StorageError:
             fp.close()
             raise

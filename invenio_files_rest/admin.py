@@ -21,7 +21,10 @@
 
 from __future__ import absolute_import, print_function
 
-from flask import current_app, url_for
+import uuid
+
+from flask import current_app, flash, url_for
+from flask_admin.actions import action
 from flask_admin.contrib.sqla import ModelView
 from flask_wtf import Form
 from invenio_admin.filters import FilterConverter
@@ -30,6 +33,7 @@ from markupsafe import Markup
 from wtforms.validators import ValidationError
 
 from .models import Bucket, FileInstance, Location, ObjectVersion, slug_pattern
+from .tasks import verify_checksum
 
 
 def _(x):
@@ -71,7 +75,7 @@ class LocationModelView(ModelView):
         id=_('ID'),
         uri=_('URI'),
     )
-    column_filters = ('default', 'created', 'updated')
+    column_filters = ('default', 'created', 'updated', )
     column_searchable_list = ('uri', 'name')
     column_default_sort = 'name'
     form_base_class = Form
@@ -188,19 +192,42 @@ class FileInstanceModelView(ModelView):
     column_labels = dict(
         id=_('ID'),
         uri=_('URI'),
+        last_check=_('Fixity'),
+        last_check_at=_('Checked'),
     )
     column_list = (
         'id', 'uri', 'storage_class', 'size', 'checksum', 'read_only',
-        'created', 'updated', 'objects')
+        'last_check', 'last_check_at', 'created', 'updated', 'objects')
     column_searchable_list = ('uri', 'size', 'checksum', )
     column_details_list = (
         'id', 'uri', 'storage_class', 'size', 'checksum', 'read_only',
-        'created', 'updated', 'objects', )
+        'last_check', 'last_check_at', 'created', 'updated', 'objects', )
     column_filters = (
         'id', 'uri', 'storage_class', 'size', 'checksum', 'read_only',
-        'created', 'updated')
+        'last_check', 'last_check_at', 'created', 'updated')
     column_default_sort = ('updated', True)
     page_size = 25
+
+    @action('verify_checksum', _('Run fixity check'))
+    def action_verify_checksum(self, ids):
+        """Inactivate users."""
+        try:
+            count = 0
+            for file_id in ids:
+                f = FileInstance.query.filter_by(
+                    id=uuid.UUID(file_id)).one_or_none()
+                if f is None:
+                    raise ValueError(_("Cannot find file instance."))
+                verify_checksum.delay(file_id)
+                count += 1
+            if count > 0:
+                flash(_('Fixity check(s) sent to queue.'), 'success')
+        except Exception as exc:
+            if not self.handle_view_exception(exc):
+                raise
+            current_app.logger.exception(str(exc))  # pragma: no cover
+            flash(_('Failed to run fixity checks.'),
+                  'error')  # pragma: no cover
 
 
 location_adminview = dict(

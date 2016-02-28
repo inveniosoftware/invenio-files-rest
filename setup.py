@@ -40,7 +40,8 @@ tests_require = [
     'Flask-Menu>=0.2.1',
     'invenio-access>=1.0.0a3',
     'invenio-accounts>=1.0.0a2',
-    'invenio-admin>=1.0.0a3.dev20150000',
+    'invenio-admin>=1.0.0a3',
+    'invenio-celery>=1.0.0a4',
     'isort>=4.2.2',
     'pep257>=0.7.0',
     'pytest-cache>=1.0',
@@ -73,14 +74,15 @@ for name, reqs in extras_require.items():
     extras_require['all'].extend(reqs)
 
 install_requires = [
+    'celery>=3.1.18',
     'Flask-CLI>=0.2.1',
     'Flask-WTF>=0.12',
     'Flask>=0.10',
     'fs>=0.5.4',
     'invenio-rest[cors]>=1.0.0a5',
+    'SQLAlchemy-Utils>=0.31.0',
     'webargs>=1.1.1',
     'WTForms>=2.0',
-    'SQLAlchemy-Utils>=0.31.0'
 ]
 
 packages = find_packages()
@@ -151,6 +153,9 @@ setup(
         ],
         'invenio_db.models': [
             'invenio_files_rest = invenio_files_rest.models',
+        ],
+        'invenio_celery.tasks': [
+            'invenio_files_rest = invenio_files_rest.tasks',
         ],
         'invenio_admin.views': [
             'location_adminview = invenio_files_rest.admin:location_adminview',
