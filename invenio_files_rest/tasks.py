@@ -33,7 +33,7 @@ from celery.states import state
 from celery.utils.log import get_task_logger
 from invenio_db import db
 
-from .models import FileInstance
+from .models import FileInstance, Location, ObjectVersion
 
 logger = get_task_logger(__name__)
 
@@ -52,3 +52,36 @@ def verify_checksum(file_id):
     f = FileInstance.query.get(uuid.UUID(file_id))
     f.verify_checksum(progress_callback=progress_updater)
     db.session.commit()
+
+
+@shared_task(ignore_result=True, max_retries=3, default_retry_delay=20 * 60)
+def migrate_file(src_id, location_name, post_fixity_check=False):
+    """Task to migrate a file instance to a new location."""
+    location = Location.get_by_name(location_name)
+    f_src = FileInstance.get(src_id)
+
+    # Create destination
+    f_dst = FileInstance.create()
+    db.session.commit()
+
+    try:
+        # Copy contents
+        f_dst.copy_contents(
+            f_src,
+            progress_callback=progress_updater,
+            location=location,
+        )
+        db.session.commit()
+    except Exception:
+        # Remove destination file instance if an error occurred.
+        db.session.delete(f_dst)
+        db.session.commit()
+        raise
+
+    # Update all objects pointing to file.
+    ObjectVersion.relink_all(f_src, f_dst)
+    db.session.commit()
+
+    # Start a fixity check
+    if post_fixity_check:
+        verify_checksum.delay(str(f_dst.id))

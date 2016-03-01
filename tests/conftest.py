@@ -30,12 +30,11 @@ from __future__ import absolute_import, print_function
 import os
 import shutil
 import tempfile
-from hashlib import md5
-from os.path import dirname, join
 
 import pytest
 from flask import Flask
 from flask_babelex import Babel
+from flask_celeryext import FlaskCeleryExt
 from flask_cli import FlaskCLI
 from flask_menu import Menu
 from invenio_access import InvenioAccess
@@ -45,7 +44,7 @@ from invenio_accounts.testutils import create_test_user
 from invenio_accounts.views import blueprint as accounts_blueprint
 from invenio_db import db as db_
 from invenio_db import InvenioDB
-from six import BytesIO
+from six import BytesIO, b
 from sqlalchemy_utils.functions import create_database, database_exists
 
 from invenio_files_rest import InvenioFilesREST
@@ -60,6 +59,10 @@ def app(request):
     """Flask application fixture."""
     app_ = Flask('testapp')
     app_.config.update(
+        # CELERY_ALWAYS_EAGER=True,
+        # CELERY_RESULT_BACKEND="cache",
+        # CELERY_CACHE_BACKEND="memory",
+        # CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
         TESTING=True,
         SQLALCHEMY_TRACK_MODIFICATIONS=True,
         SQLALCHEMY_DATABASE_URI=os.environ.get(
@@ -71,6 +74,7 @@ def app(request):
         SECRET_KEY='TEST_SECRET_KEY',
     )
     FlaskCLI(app_)
+    FlaskCeleryExt(app_)
     InvenioDB(app_)
     Babel(app_)
     Menu(app_)
@@ -102,7 +106,7 @@ def dummy_location(db):
 
     loc = Location(
         name='testloc',
-        uri="file://{0}".format(tmppath),
+        uri=tmppath,
         default=True
     )
     db.session.add(loc)
@@ -114,53 +118,73 @@ def dummy_location(db):
 
 
 @pytest.yield_fixture()
-def objects(dummy_location):
+def extra_location(db):
     """File system location."""
-    srcroot = dirname(dirname(__file__))
+    tmppath = tempfile.mkdtemp()
 
-    # Bucket 1
-    b1 = Bucket.create(dummy_location)
-    objects = []
-    for f in ['README.rst', 'LICENSE']:
-        with open(join(srcroot, f), 'rb') as fp:
-            objects.append(ObjectVersion.create(b1, f, stream=fp))
+    loc = Location(
+        name='extra',
+        uri=tmppath,
+        default=False
+    )
+    db.session.add(loc)
+    db.session.commit()
 
-    yield objects
+    yield loc
+
+    shutil.rmtree(tmppath)
+
+
+@pytest.fixture()
+def bucket(db, dummy_location):
+    """File system location."""
+    b1 = Bucket.create()
+    db.session.commit()
+    return b1
 
 
 @pytest.yield_fixture()
-def test_data(dummy_location, db):
-    """Create some test data."""
-    # Create the bucket with a single file
-    buc1 = Bucket.create()
-    key1 = "key1"  # Object key
-    stream1 = b'contents1'  # Contents of the data stream
-    o1 = ObjectVersion.create(buc1, key1, stream=BytesIO(stream1))
-    md5_1 = md5(BytesIO(stream1).read()).hexdigest()
+def objects(db, bucket):
+    """File system location."""
+    obj1 = ObjectVersion.create(
+        bucket, 'LICENSE', stream=BytesIO(b('license file')))
+    obj2 = ObjectVersion.create(
+        bucket, 'README.rst', stream=BytesIO(b('readme file')))
+    db.session.commit()
 
-    # Create the test users
-    u1_data = dict(email='user1@invenio-software.org', password='pass1')
-    u2_data = dict(email='user2@invenio-software.org', password='pass1')
-    u1 = create_test_user(active=True, **u1_data)  # User with permissions
-    u2 = create_test_user(active=True, **u2_data)  # User w/o permissions
+    yield [obj1, obj2]
 
+
+@pytest.fixture()
+def users_data(db):
+    """User data fixture."""
+    return [
+        dict(email='user1@invenio-software.org', password='pass1'),
+        dict(email='user2@invenio-software.org', password='pass1'),
+    ]
+
+
+@pytest.fixture()
+def users(db, users_data):
+    """Create test users."""
+    return [
+        create_test_user(active=True, **users_data[0]),
+        create_test_user(active=True, **users_data[1]),
+    ]
+
+
+@pytest.yield_fixture()
+def permissions(db, users, bucket):
+    """Bucket permissions."""
     # Give permissions to user 'user1', but not to 'user2'
     perms = [objects_create, objects_read_all, objects_update_all,
              objects_delete_all]
+
     for perm in perms:
         au = ActionUsers(action=perm.value,
-                         argument=str(buc1.id),
-                         user=u1)
+                         argument=str(bucket.id),
+                         user=users[0])
         db.session.add(au)
     db.session.commit()
 
-    data = {'bucket': buc1,
-            'files': (o1, ),  # List of files
-            'files_streams': (stream1, ),  # List of files contents
-            'files_md5': (md5_1, ),  # List of files md5
-            'user1': u1,  # User object
-            'user1_data': u1_data,  # User data (used for login)
-            'user2': u2,
-            'user2_data': u2_data, }
-
-    yield data
+    yield None

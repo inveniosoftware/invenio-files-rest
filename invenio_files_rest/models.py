@@ -26,22 +26,25 @@
 
 The entities of this module consists of:
 
- * Buckets - Identified by UUIDs, and contains objects.
- * Buckets tags - Identified uniquely with a bucket by a key. Used to store
+ * **Buckets** - Identified by UUIDs, and contains objects.
+ * **Buckets tags** - Identified uniquely with a bucket by a key. Used to store
    extra metadata for a bucket.
- * Objects - Identified uniquely within a bucket by string keys. Each object
-   can have multiple object versions.
- * Object versions - Identified by UUIDs and belongs to one specific object
+ * **Objects** - Identified uniquely within a bucket by string keys. Each
+   object can have multiple object versions (note: Objects do not have their
+   own database table).
+ * **Object versions** - Identified by UUIDs and belongs to one specific object
    in one bucket. Each object version has zero or one file instance. If the
    object version has no file instance, it is considered a *delete marker*.
- * File instance - Identified by UUIDs. Represents a physical file on disk.
+ * **File instance** - Identified by UUIDs. Represents a physical file on disk.
    The location of the file is specified via a URI. A file instance can have
    many object versions.
- * Locations - A bucket belongs to a specific location. Locations can be used
-   to represent e.g. different storage systems and/or geographical locations.
+ * **Locations** - A bucket belongs to a specific location. Locations can be
+   used to represent e.g. different storage systems and/or geographical
+   locations.
 
 The actual file access is handled by a storage interface. Also, objects do not
-have their own model, but are represented via the ObjectVersion model.
+have their own model, but are represented via the :py:data:`ObjectVersion`
+model.
 """
 
 from __future__ import absolute_import, print_function
@@ -75,11 +78,14 @@ class Timestamp(object):
         default=datetime.utcnow,
         nullable=False
     )
+    """Creation timestamp."""
+
     updated = db.Column(
         db.DateTime().with_variant(mysql.DATETIME(fsp=6), "mysql"),
         default=datetime.utcnow,
         nullable=False
     )
+    """Modification timestamp."""
 
 
 @db.event.listens_for(Timestamp, 'before_update', propagate=True)
@@ -386,8 +392,15 @@ class FileInstance(db.Model, Timestamp):
     checksum = db.Column(db.String(255), nullable=True)
     """String representing the checksum of the object."""
 
-    read_only = db.Column(db.Boolean, default=False, nullable=False)
+    readable = db.Column(db.Boolean, default=True, nullable=False)
     """Defines if the file is read only."""
+
+    writable = db.Column(db.Boolean, default=True, nullable=False)
+    """Defines if file is writable.
+
+    This property is used to create a file instance prior to having the actual
+    file at the given URI. This is useful when e.g. copying a file instance.
+    """
 
     last_check_at = db.Column(db.DateTime, nullable=True)
     """Timestamp of last fixity check."""
@@ -395,51 +408,94 @@ class FileInstance(db.Model, Timestamp):
     last_check = db.Column(db.Boolean, default=True, nullable=False)
     """Result of last fixity check."""
 
-    def storage(self, obj):
+    @classmethod
+    def get(cls, file_id):
+        """Get a file instance."""
+        return cls.query.filter_by(id=file_id).one_or_none()
+
+    @classmethod
+    def get_by_uri(cls, uri):
+        """Get a file instance by URI."""
+        assert uri is not None
+        return cls.query.filter_by(uri=uri).one_or_none()
+
+    @classmethod
+    def create(cls):
+        """Create a file instance.
+
+        Note, object is only added to the database session.
+        """
+        obj = cls(
+            id=uuid.uuid4(),
+            writable=True,
+            readable=False,
+            size=0,
+        )
+        db.session.add(obj)
+        return obj
+
+    def storage(self, **kwargs):
         """Get storage interface for object.
 
         Uses the applications storage factory to create a storage interface
         that can be used for this particular file instance.
 
-        :param obj: ObjectVersion instance from where this file is accessed
-            from.
         :returns: Storage interface.
         """
         return current_app.extensions['invenio-files-rest'].storage_factory(
-            obj=obj, fileinstance=self)
+            fileinstance=self, **kwargs)
 
-    def verify_checksum(self, obj=None, progress_callback=None):
+    def verify_checksum(self, progress_callback=None, **kwargs):
         """Verify checksum of file instance."""
-        real_checksum = self.storage(obj).compute_checksum(
+        real_checksum = self.storage(**kwargs).compute_checksum(
             progress_callback=progress_callback)
         with db.session.begin_nested():
             self.last_check = (self.checksum == real_checksum)
             self.last_check_at = datetime.utcnow()
         return self.last_check
 
-    def set_contents(self, obj, stream, size=None, chunk_size=None):
+    def set_contents(self, stream, chunk_size=None,
+                     progress_callback=None, **kwargs):
         """Save contents of stream to this file.
 
         :param obj: ObjectVersion instance from where this file is accessed
             from.
         :param stream: File-like stream.
         """
-        if self.read_only:
-            raise ValueError("FileInstance is read-only.")
-        self.set_uri(*self.storage(obj).save(
-            stream, size=size, chunk_size=chunk_size), read_only=True)
+        if not self.writable:
+            raise ValueError("File instance is not writable.")
+        self.set_uri(
+            *self.storage(**kwargs).save(
+                stream, chunk_size=chunk_size,
+                progress_callback=progress_callback))
 
-    def send_file(self, obj):
+    def copy_contents(self, fileinstance, progress_callback=None, **kwargs):
+        """Copy this file instance into another file instance."""
+        if not fileinstance.readable:
+            raise ValueError("Source file instance is not readable.")
+        if not self.writable:
+            raise ValueError("File instance is not writable.")
+        if not self.size == 0:
+            raise ValueError("File instance has data.")
+
+        self.set_uri(
+            *self.storage(**kwargs).copy(
+                fileinstance, progress_callback=progress_callback))
+
+    def send_file(self, **kwargs):
         """Send file to client."""
-        return self.storage(obj).send_file()
+        if not self.readable:
+            raise ValueError("File instance is not readable.")
+        return self.storage(**kwargs).send_file()
 
-    def set_uri(self, uri, size, checksum, read_only=True,
+    def set_uri(self, uri, size, checksum, readable=True, writable=False,
                 storage_class=None):
         """Set a location of a file."""
         self.uri = uri
         self.size = size
         self.checksum = checksum
-        self.read_only = read_only
+        self.writable = writable
+        self.readable = readable
         self.storage_class = \
             current_app.config['FILES_REST_DEFAULT_STORAGE_CLASS'] \
             if storage_class is None else \
@@ -517,7 +573,8 @@ class ObjectVersion(db.Model, Timestamp):
         """Determine if object version is a delete marker."""
         return self.file_id is None
 
-    def set_contents(self, stream, size=None, chunk_size=None):
+    def set_contents(self, stream, size=None, chunk_size=None,
+                     progress_callback=None):
         """Save contents of stream to file instance.
 
         If a file instance has already been set, this methods raises an
@@ -531,10 +588,10 @@ class ObjectVersion(db.Model, Timestamp):
         if self.file_id is not None:
             raise FileInstanceAlreadySetError()
 
-        self.file = FileInstance()
-        db.session.add(self.file)
+        self.file = FileInstance.create()
         self.file.set_contents(
-            self, stream, size=size, chunk_size=chunk_size)
+            stream, size=size, chunk_size=chunk_size,
+            progress_callback=progress_callback, objectversion=self)
 
         self.bucket.size += self.file.size
 
@@ -572,13 +629,6 @@ class ObjectVersion(db.Model, Timestamp):
             raise FileInstanceAlreadySetError()
         self.file = fileinstance
         return self
-
-    def send_file(self):
-        """Send file to client.
-
-        :returns: Response.
-        """
-        return self.file.send_file(self)
 
     def restore(self):
         """Restore version of an object.
@@ -730,6 +780,22 @@ class ObjectVersion(db.Model, Timestamp):
             args.append(cls.is_head.is_(True))
 
         return cls.query.filter(*args).order_by(cls.key, cls.created.desc())
+
+    @classmethod
+    def relink_all(cls, old_file, new_file):
+        """Relink all object versions (for a given file) to a new file.
+
+        .. warning::
+
+           Use this method with great care.
+        """
+        assert old_file.checksum == new_file.checksum
+        assert old_file.id
+        assert new_file.id
+
+        with db.session.begin_nested():
+            ObjectVersion.query.filter_by(file_id=str(old_file.id)).update({
+                ObjectVersion.file_id: str(new_file.id)})
 
 
 __all__ = (

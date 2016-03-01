@@ -152,7 +152,7 @@ class ObjectModelView(ModelView):
         'file.size': _('Size'),
         'is_deleted': _('Deleted'),
         'file.checksum': _('Checksum'),
-        'file.read_only': _('Read only'),
+        'file.readable': _('Readable'),
         'file.storage_class': _('Storage class'),
         'bucket_objs': _("Objects"),
         'file_instance': _("File"),
@@ -169,7 +169,7 @@ class ObjectModelView(ModelView):
     column_filters = (
         # Order affects column_formatters in other model views.
         'bucket.id', 'bucket.locked', 'bucket.deleted', 'bucket.location.name',
-        'file_id', 'file.checksum', 'file.storage_class', 'file.read_only',
+        'file_id', 'file.checksum', 'file.storage_class', 'file.readable',
         'key', 'version_id', 'is_head', 'file.size', 'created', 'updated', )
     column_sortable_list = (
         'key', 'file.uri', 'is_head', 'file.size', 'created', 'updated')
@@ -196,15 +196,18 @@ class FileInstanceModelView(ModelView):
         last_check_at=_('Checked'),
     )
     column_list = (
-        'id', 'uri', 'storage_class', 'size', 'checksum', 'read_only',
-        'last_check', 'last_check_at', 'created', 'updated', 'objects')
+        'id', 'uri', 'storage_class', 'size', 'checksum', 'readable',
+        'writable', 'last_check', 'last_check_at', 'created', 'updated',
+        'objects')
     column_searchable_list = ('uri', 'size', 'checksum', )
     column_details_list = (
-        'id', 'uri', 'storage_class', 'size', 'checksum', 'read_only',
-        'last_check', 'last_check_at', 'created', 'updated', 'objects', )
+        'id', 'uri', 'storage_class', 'size', 'checksum', 'readable',
+        'writable', 'last_check', 'last_check_at', 'created', 'updated',
+        'objects')
     column_filters = (
-        'id', 'uri', 'storage_class', 'size', 'checksum', 'read_only',
-        'last_check', 'last_check_at', 'created', 'updated')
+        'id', 'uri', 'storage_class', 'size', 'checksum', 'readable',
+        'writable', 'last_check', 'last_check_at', 'created', 'updated',
+        'objects')
     column_default_sort = ('updated', True)
     page_size = 25
 

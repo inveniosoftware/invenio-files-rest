@@ -26,53 +26,82 @@
 
 from __future__ import absolute_import, print_function
 
+import errno
 import hashlib
 from os.path import getsize, join
 
+import pytest
+from mock import patch
+from six import BytesIO, b
+
+from invenio_files_rest.errors import StorageError
 from invenio_files_rest.models import Bucket, FileInstance, ObjectVersion
-from invenio_files_rest.storage import PyFilesystemStorage
+from invenio_files_rest.storage import PyFilesystemStorage, Storage
 
 
 def test_pyfilesystemstorage(app, db, dummy_location):
     """Test pyfs storage."""
     # Create bucket and object
     with db.session.begin_nested():
-        b = Bucket.create()
-        obj = ObjectVersion.create(b, "LICENSE")
-        obj.file = FileInstance()
-        db.session.add(obj.file)
+        b1 = Bucket.create()
+        obj = ObjectVersion.create(b1, "LICENSE")
+        obj.file = FileInstance.create()
 
-    storage = PyFilesystemStorage(obj, obj.file)
-    with open('LICENSE', 'rb') as fp:
-        loc, size, checksum = storage.save(fp)
+    storage = PyFilesystemStorage(obj.file, base_uri=obj.bucket.location.uri)
+    counter = dict(size=0)
+
+    def callback(total, size):
+        counter['size'] = size
+
+    data = b("this is some content")
+    stream = BytesIO(data)
+    loc, size, checksum = storage.save(stream, progress_callback=callback)
 
     # Verify checksum, size and location.
-    with open('LICENSE', 'rb') as fp:
-        m = hashlib.md5()
-        m.update(fp.read())
-        assert "md5:{0}".format(m.hexdigest()) == checksum
+    m = hashlib.md5()
+    m.update(data)
+    assert "md5:{0}".format(m.hexdigest()) == checksum
 
-    assert size == getsize('LICENSE')
-    assert size == getsize('LICENSE')
-    assert loc == \
-        join(
-            dummy_location.uri,
-            str(b.id),
-            str(obj.version_id),
-            "data")
+    assert size == len(data)
+    assert loc == join(
+        dummy_location.uri,
+        str(obj.file.id),
+        "data")
 
 
 def test_pyfilesystemstorage_checksum(app, db, dummy_location):
     """Test fixity."""
     # Compute checksum of license file/
-    with open('LICENSE', 'rb') as fp:
+    with open("LICENSE", "rb") as fp:
         m = hashlib.md5()
         m.update(fp.read())
         checksum = "md5:{0}".format(m.hexdigest())
 
+    counter = dict(size=0)
+
+    def callback(total, size):
+        counter["size"] = size
+
     # Now do it with storage interfacee
-    storage = PyFilesystemStorage(None, FileInstance(uri="LICENSE"))
-    assert checksum == storage.compute_checksum()
+    storage = PyFilesystemStorage(
+        FileInstance(uri="LICENSE", size=getsize("LICENSE")))
+    assert checksum == storage.compute_checksum(
+        chunk_size=2, progress_callback=callback)
+    assert counter["size"] == getsize("LICENSE")
+
+
+def test_pyfilesystemstorage_checksum_fail(app, db, dummy_location):
+    """Test fixity problems."""
+    # Raise an error during checksum calculation
+    def callback(total, size):
+        raise OSError(errno.EPERM, "Permission")
+
+    f = FileInstance.create()
+    f.set_contents(BytesIO(b("test")), location=dummy_location)
+
+    pytest.raises(
+        StorageError, PyFilesystemStorage(f).compute_checksum,
+        progress_callback=callback)
 
 
 def test_pyfs_send_file(app, db, dummy_location):
@@ -80,16 +109,16 @@ def test_pyfs_send_file(app, db, dummy_location):
     with db.session.begin_nested():
         b = Bucket.create()
         obj = ObjectVersion.create(b, "LICENSE")
-        with open('LICENSE', 'rb') as fp:
+        with open("LICENSE", "rb") as fp:
             obj.set_contents(fp)
 
     with app.test_request_context():
-        res = obj.send_file()
+        res = obj.file.send_file()
         assert res.status_code == 200
         h = res.headers
-        assert h['Content-Length'] == str(obj.file.size)
-        assert h['Content-MD5'] == obj.file.checksum
-        assert h['ETag'] == '"{0}"'.format(obj.file.checksum)
+        assert h["Content-Length"] == str(obj.file.size)
+        assert h["Content-MD5"] == obj.file.checksum
+        assert h["ETag"] == '"{0}"'.format(obj.file.checksum)
 
         # Content-Type: application/octet-stream
         # ETag: "b234ee4d69f5fce4486a80fdaf4a4263"
@@ -98,3 +127,25 @@ def test_pyfs_send_file(app, db, dummy_location):
         # Expires: Sat, 23 Jan 2016 19:21:04 GMT
         # Date: Sat, 23 Jan 2016 07:21:04 GMT
         # print(res.headers)
+
+
+def test_pyfs_send_file_fail(app, db, dummy_location):
+    """Test send file."""
+    f = FileInstance.create()
+    f.set_contents(BytesIO(b("test")), location=dummy_location)
+
+    with patch('invenio_files_rest.storage.send_stream') as send_stream:
+        send_stream.side_effect = OSError(errno.EPERM, "Permission problem")
+        with app.test_request_context():
+            pytest.raises(StorageError, f.send_file)
+
+
+def test_storage_interface():
+    """Test storage interface."""
+    f = FileInstance.create()
+    s = Storage(f)
+
+    pytest.raises(NotImplementedError, s.open)
+    pytest.raises(NotImplementedError, s.send_file)
+    pytest.raises(NotImplementedError, s.save, None)
+    pytest.raises(NotImplementedError, s.compute_checksum, None)

@@ -43,6 +43,7 @@ tests_require = [
     'invenio-admin>=1.0.0a3',
     'invenio-celery>=1.0.0a4',
     'isort>=4.2.2',
+    'mock>=1.3.0',
     'pep257>=0.7.0',
     'pytest-cache>=1.0',
     'pytest-cov>=1.8.0',

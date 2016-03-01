@@ -44,7 +44,7 @@ blueprint = Blueprint(
     url_prefix='/files'
 )
 
-permission_factory = LocalProxy(
+current_permission_factory = LocalProxy(
     lambda: current_app.extensions['invenio-files-rest'].permission_factory)
 
 
@@ -450,14 +450,15 @@ class ObjectResource(ContentNegotiatedMethodView):
             abort(404, 'Bucket does not exist.')
 
         if not current_user.is_authenticated:
-            abort(401, 'Authentication required.')
-        if not permission_factory(bucket, action='objects-read').can():
-            abort(403, 'Permission denied.')
+            abort(401)
+        if not current_permission_factory(bucket, action='objects-read').can():
+            abort(403)
 
         obj = ObjectVersion.get(bucket_id, key, version_id=version_id)
         if obj is None:
             abort(404, 'Object does not exist.')
-        return obj.send_file()
+
+        return obj.file.send_file()
 
     @use_kwargs(put_args)
     def put(self, bucket_id, key, content_length=None, content_md5=None):
@@ -522,7 +523,8 @@ class ObjectResource(ContentNegotiatedMethodView):
 
         if not current_user.is_authenticated:
             abort(401, 'Authentication required.')
-        if not permission_factory(bucket, action='objects-update').can():
+        perm = current_permission_factory(bucket, action='objects-update')
+        if not perm.can():
             abort(403, 'Permission denied.')
 
         # TODO: Check access permission on the bucket

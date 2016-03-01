@@ -57,6 +57,13 @@ File streaming
    :members:
    :undoc-members:
 
+Tasks
+-----
+
+.. automodule:: invenio_files_rest.tasks
+   :members:
+   :undoc-members:
+
 Exceptions
 ----------
 

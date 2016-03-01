@@ -26,9 +26,11 @@
 
 from __future__ import absolute_import, print_function
 
+import uuid
 from os.path import getsize
 
 import pytest
+from six import BytesIO, b
 
 from invenio_files_rest.errors import FileInstanceAlreadySetError, \
     InvalidOperationError
@@ -448,6 +450,17 @@ def test_object_copy(app, db, dummy_location):
     assert obj_copy3.file_id == obj_copy2.file_id
 
 
+def test_object_set_file(app, db, dummy_location):
+    """Test object set file."""
+    b = Bucket.create()
+    f = FileInstance(uri="f1", size=1, checksum="mychecksum")
+    obj = ObjectVersion.create(b, "test").set_file(f)
+    db.session.commit()
+    assert obj.file == f
+
+    assert pytest.raises(FileInstanceAlreadySetError, obj.set_file, f)
+
+
 def test_object_restore(app, db, dummy_location):
     """Restore object."""
     f1 = FileInstance(uri="f1", size=1, checksum="mychecksum")
@@ -475,6 +488,34 @@ def test_object_restore(app, db, dummy_location):
     assert obj_new.key == obj1.key
     assert obj_new.file_id == obj1.file_id
     assert obj_new.bucket == obj1.bucket
+
+
+def test_object_relink_all(app, db, dummy_location):
+    """Test relinking files."""
+    b1 = Bucket.create()
+    obj1 = ObjectVersion.create(
+        b1, "relink-test", stream=BytesIO(b('relinkthis')))
+    ObjectVersion.create(b1, "do-not-touch", stream=BytesIO(b('na')))
+    b1.snapshot()
+    db.session.commit()
+
+    assert ObjectVersion.query.count() == 4
+    assert FileInstance.query.count() == 2
+
+    fnew = FileInstance.create()
+    fnew.copy_contents(obj1.file, location=b1.location)
+    db.session.commit()
+
+    fold = obj1.file
+
+    assert ObjectVersion.query.filter_by(file_id=fold.id).count() == 2
+    assert ObjectVersion.query.filter_by(file_id=fnew.id).count() == 0
+
+    ObjectVersion.relink_all(obj1.file, fnew)
+    db.session.commit()
+
+    assert ObjectVersion.query.filter_by(file_id=fold.id).count() == 0
+    assert ObjectVersion.query.filter_by(file_id=fnew.id).count() == 2
 
 
 def test_bucket_tags(app, db, dummy_location):
@@ -516,3 +557,141 @@ def test_bucket_tags(app, db, dummy_location):
     Bucket.query.delete()
     db.session.commit()
     assert BucketTag.query.count() == 0
+
+
+def test_fileinstance_get(app, db, dummy_location):
+    """Test fileinstance get."""
+    f = FileInstance.create()
+    db.session.commit()
+    # Get existing file.
+    assert FileInstance.get(f.id) is not None
+    # Non-existing files returns none
+    assert FileInstance.get(uuid.uuid4()) is None
+
+
+def test_fileinstance_get_by_uri(app, db, dummy_location):
+    """Test file get by uri."""
+    f = FileInstance.create()
+    f.uri = "LICENSE"
+    db.session.commit()
+
+    assert FileInstance.get_by_uri("LICENSE") is not None
+    FileInstance.get_by_uri("NOTVALID") is None
+    pytest.raises(AssertionError, FileInstance.get_by_uri, None)
+
+
+def test_fileinstance_create(app, db, dummy_location):
+    """Test file instance create."""
+    f = FileInstance.create()
+    assert f.id
+    assert f.readable is False
+    assert f.writable is True
+    assert f.uri is None
+    assert f.size == 0
+    assert f.checksum is None
+    assert f.last_check_at is None
+    assert f.last_check is None
+    db.session.commit()
+
+    # Check unique constraint on URI with none values.
+    f = FileInstance.create()
+    f = FileInstance.create()
+    db.session.commit()
+
+
+def test_fileinstance_set_contents(app, db, dummy_location):
+    """Test file instance create."""
+    counter = dict(called=False)
+
+    def callback(total, size):
+        counter['called'] = True
+
+    f = FileInstance.create()
+    db.session.commit()
+    assert f.readable is False
+    assert f.writable is True
+    data = BytesIO(b("test file instance set contents"))
+    f.set_contents(data, location=dummy_location, progress_callback=callback)
+    db.session.commit()
+    assert f.readable is True
+    assert f.writable is False
+    assert counter['called']
+
+    pytest.raises(
+        ValueError,
+        f.set_contents,
+        BytesIO(b("different content")),
+        location=dummy_location,
+    )
+
+
+def test_fileinstance_copy_contents(app, db, dummy_location):
+    """Test copy contents."""
+    counter = dict(called=False)
+
+    def callback(total, size):
+        counter['called'] = True
+
+    # Create source and set data.
+    data = b('this is some data')
+    src = FileInstance.create()
+    src.set_contents(BytesIO(data), location=dummy_location)
+    db.session.commit()
+
+    # Create destination - and use it to copy_contents from another object.
+    dst = FileInstance.create()
+    assert dst.size == 0
+    assert dst.uri is None
+    db.session.commit()
+
+    # Copy contents
+    dst.copy_contents(src, progress_callback=callback, location=dummy_location)
+    db.session.commit()
+    assert dst.size == src.size
+    assert dst.checksum == src.checksum
+    assert dst.uri != src.uri
+    assert counter['called']
+
+    # Read data
+    fp = dst.storage().open()
+    assert data == fp.read()
+    fp.close()
+
+
+def test_fileinstance_copy_contents_invalid(app, db, dummy_location):
+    """Test invalid copy contents."""
+    # Source not readable
+    src = FileInstance.create()
+    dst = FileInstance.create()
+    pytest.raises(ValueError, dst.copy_contents, src)
+
+    # Create valid source
+    data = b('this is some data')
+    src = FileInstance.create()
+    src.set_contents(BytesIO(data), location=dummy_location)
+    db.session.commit()
+
+    # Destination not writable
+    dst.writable = False
+    pytest.raises(ValueError, dst.copy_contents, src)
+    # Size is not 0
+    dst.writable = True
+    dst.size = 1
+    pytest.raises(ValueError, dst.copy_contents, src)
+
+
+def test_fileinstance_send_file(app, db, dummy_location):
+    """Test file instance send file."""
+    f = FileInstance.create()
+    # File not readable
+    pytest.raises(ValueError, f.send_file)
+
+    # Write data
+    data = b("test file instance set contents")
+    f.set_contents(BytesIO(data), location=dummy_location)
+    db.session.commit()
+
+    # Send data
+    with app.test_request_context():
+        res = f.send_file()
+        assert int(res.headers['Content-Length']) == len(data)

@@ -137,15 +137,21 @@ def test_post_bucket(app, dummy_location):
 # def test_get_object_list(app, dummy_objects):
 
 
-def test_get_object(app, test_data):
+def test_get_object_permissions(app, objects, bucket, users_data, permissions):
     """Test ObjectResource view GET method."""
-    bucket1 = test_data['bucket']
-    key1 = test_data['files'][0].key
+    # Bucket and object
+    obj = objects[0]
+    key = obj.key
+
+    # Users
+    u1_data = users_data[0]  # Privileged user
+    u2_data = users_data[1]  # Unprivileged user
+
+    # URLs
     login_url = url_for('security.login')
-    u1_data = test_data['user1_data']  # Privileged user
-    u2_data = test_data['user2_data']  # Unprivileged user
-    object_url = "/files/{0}/{1}".format(bucket1.id, key1)
-    object_url_invalid = "/files/{0}/{1}".format(bucket1.id, key1 + "XYZ")
+    object_url = "/files/{0}/{1}".format(bucket.id, key)
+    object_url_invalid = "/files/{0}/{1}".format(bucket.id, key + "XYZ")
+
     headers = {'Content-Type': 'application/json', 'Accept': '*/*'}
 
     with app.test_client() as client:
@@ -168,31 +174,31 @@ def test_get_object(app, test_data):
         assert resp.status_code == 403
 
     with app.test_client() as client:
+        # Login with privileged user and get object
         client.post(login_url, data=u1_data)
         resp = client.get(object_url, headers=headers)
         assert resp.status_code == 200
 
-        # Check md5
-        md5_local = "md5:{}".format(test_data['files_md5'][0])
-        assert resp.content_md5 == md5_local
-        assert resp.get_etag()[0] == md5_local
+        # Check headers
+        assert resp.content_md5 == obj.file.checksum
+        assert resp.get_etag()[0] == obj.file.checksum
 
 
-def test_put_object(app, test_data):
+def test_put_object(app, objects, bucket, users_data, permissions):
     """Test ObjectResource view PUT method."""
-    bucket1 = test_data['bucket']
-    key1 = test_data['files'][0].key
+    key = objects[0].key
+    u2_data = users_data[1]  # Unprivileged user
     login_url = url_for('security.login')
-    u2_data = test_data['user2_data']  # Unprivileged user
-    object_url = "/files/{0}/{1}".format(bucket1.id, key1)
+    object_url = "/files/{0}/{1}".format(bucket.id, key)
     headers = {'Accept': '*/*'}
 
     with app.test_client() as client:
         # Get object that doesn't exist. Gets the "401 Unauthorized" before 404
-        # Try to update the file under 'key1' (with 'contents2')
+        # Try to update the file under 'key' (with 'contents2')
         data = {'file': (BytesIO(b'contents2'), 'file.dat')}
         resp = client.put(object_url, data=data, headers=headers)
         assert resp.status_code == 401
+
         # Login with 'user2' (no permissions), try to PUT, receive 403
         client.post(login_url, data=u2_data)
         data = {'file': (BytesIO(b'contents2'), 'file.dat')}
