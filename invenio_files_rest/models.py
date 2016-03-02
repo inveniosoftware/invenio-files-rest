@@ -27,6 +27,8 @@
 The entities of this module consists of:
 
  * Buckets - Identified by UUIDs, and contains objects.
+ * Buckets tags - Identified uniquely with a bucket by a key. Used to store
+   extra metadata for a bucket.
  * Objects - Identified uniquely within a bucket by string keys. Each object
    can have multiple object versions.
  * Object versions - Identified by UUIDs and belongs to one specific object
@@ -234,6 +236,10 @@ class Bucket(db.Model, Timestamp):
 
         return b
 
+    def get_tags(self):
+        """Get tags for bucket as dictionary."""
+        return {t.key: t.value for t in self.tags}
+
     @classmethod
     def create(cls, location=None, storage_class=None):
         """Create a bucket.
@@ -275,6 +281,74 @@ class Bucket(db.Model, Timestamp):
         return cls.query.filter_by(
             deleted=False
         )
+
+
+class BucketTag(db.Model):
+    """Model for storing tags associated to buckets.
+
+    This is useful to store extra information for a bucket.
+    """
+
+    __tablename__ = 'files_buckettags'
+
+    bucket_id = db.Column(
+        UUIDType,
+        db.ForeignKey(Bucket.id, ondelete='CASCADE'),
+        default=uuid.uuid4,
+        primary_key=True, )
+
+    key = db.Column(db.String(255), primary_key=True)
+    """Tag key."""
+
+    value = db.Column(db.Text, nullable=False)
+    """Tag value."""
+
+    bucket = db.relationship(Bucket, backref='tags')
+    """Relationship to buckets."""
+
+    @classmethod
+    def get(cls, bucket, key):
+        """Get tag object."""
+        return cls.query.filter_by(
+            bucket_id=bucket.id if isinstance(bucket, Bucket) else bucket,
+            key=key,
+        ).one_or_none()
+
+    @classmethod
+    def create(cls, bucket, key, value):
+        """Create a new tag for bucket."""
+        with db.session.begin_nested():
+            obj = cls(
+                bucket_id=bucket.id if isinstance(bucket, Bucket) else bucket,
+                key=key,
+                value=value
+            )
+            db.session.add(obj)
+        return obj
+
+    @classmethod
+    def create_or_update(cls, bucket, key, value):
+        """Create a new tag for bucket."""
+        obj = cls.get(bucket, key)
+        if obj:
+            obj.value = value
+        else:
+            cls.create(bucket, key, value)
+
+    @classmethod
+    def get_value(cls, bucket, key):
+        """Get tag value."""
+        obj = cls.get(bucket, key)
+        return obj.value if obj else None
+
+    @classmethod
+    def delete(cls, bucket, key):
+        """Delete a tag."""
+        with db.session.begin_nested():
+            cls.query.filter_by(
+                bucket_id=bucket.id if isinstance(bucket, Bucket) else bucket,
+                key=key,
+            ).delete()
 
 
 class FileInstance(db.Model, Timestamp):

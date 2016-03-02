@@ -32,8 +32,8 @@ import pytest
 
 from invenio_files_rest.errors import FileInstanceAlreadySetError, \
     InvalidOperationError
-from invenio_files_rest.models import Bucket, FileInstance, Location, \
-    ObjectVersion
+from invenio_files_rest.models import Bucket, BucketTag, FileInstance, \
+    Location, ObjectVersion
 
 
 def test_location(app, db):
@@ -475,3 +475,44 @@ def test_object_restore(app, db, dummy_location):
     assert obj_new.key == obj1.key
     assert obj_new.file_id == obj1.file_id
     assert obj_new.bucket == obj1.bucket
+
+
+def test_bucket_tags(app, db, dummy_location):
+    """Test bucket tags."""
+    b = Bucket.create()
+    BucketTag.create(b, "mykey", "testvalue")
+    BucketTag.create(b, "another_key", "another value")
+    db.session.commit()
+
+    # Duplicate key
+    pytest.raises(Exception, BucketTag.create, b, "mykey", "newvalue")
+
+    # Test get
+    assert BucketTag.query.count() == 2
+    assert BucketTag.get(b.id, "mykey").value == "testvalue"
+    assert BucketTag.get_value(b, "another_key") == "another value"
+    assert BucketTag.get_value(b.id, "invalid") is None
+
+    # Test delete
+    BucketTag.delete(b, "mykey")
+    assert BucketTag.query.count() == 1
+    BucketTag.delete(b, "invalid")
+    assert BucketTag.query.count() == 1
+
+    # Create or update
+    BucketTag.create_or_update(b, "another_key", "newval")
+    BucketTag.create_or_update(b, "newkey", "testval")
+    db.session.commit()
+    assert BucketTag.get_value(b, "another_key") == "newval"
+    assert BucketTag.get_value(b, "newkey") == "testval"
+
+    # Get tags as dictionary
+    assert b.get_tags() == dict(another_key="newval", newkey="testval")
+
+    b2 = Bucket.create()
+    assert b2.get_tags() == dict()
+
+    # Test cascading delete.
+    Bucket.query.delete()
+    db.session.commit()
+    assert BucketTag.query.count() == 0
