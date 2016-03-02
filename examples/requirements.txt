@@ -1,0 +1,2 @@
+invenio-db>=1.0.0a9
+invenio-admin>=1.0.0a3
