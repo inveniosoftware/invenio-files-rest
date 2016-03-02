@@ -47,3 +47,8 @@ Files download/upload REST API similar to S3 for Invenio.
 
 * Free software: GPLv2 license
 * Documentation: https://pythonhosted.org/invenio-files-rest/
+
+
+.. image:: https://badges.gitter.im/inveniosoftware/invenio-files-rest.svg
+   :alt: Join the chat at https://gitter.im/inveniosoftware/invenio-files-rest
+   :target: https://gitter.im/inveniosoftware/invenio-files-rest?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
