@@ -27,9 +27,8 @@
 
 from __future__ import absolute_import, print_function
 
-from hashlib import md5
-
-from flask import json
+from flask import json, url_for
+from six import BytesIO
 
 
 def test_get_buckets(app, dummy_location):
@@ -138,33 +137,67 @@ def test_post_bucket(app, dummy_location):
 # def test_get_object_list(app, dummy_objects):
 
 
-def test_get_object_get(app, objects):
-    """Test object download"""
+def test_get_object(app, test_data):
+    """Test ObjectResource view GET method."""
+    bucket1 = test_data['bucket']
+    key1 = test_data['files'][0].key
+    login_url = url_for('security.login')
+    u1_data = test_data['user1_data']  # Privileged user
+    u2_data = test_data['user2_data']  # Unprivileged user
+    object_url = "/files/{0}/{1}".format(bucket1.id, key1)
+    object_url_invalid = "/files/{0}/{1}".format(bucket1.id, key1 + "XYZ")
+    headers = {'Content-Type': 'application/json', 'Accept': '*/*'}
+
     with app.test_client() as client:
-        for obj in objects:
-            resp = client.get(
-                "/files/{0}/{1}".format(obj.bucket_id, obj.key),
-                headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-            )
-            assert resp.status_code == 200
+        # Get object that doesn't exist. Gets the "401 Unauthorized" before 404
+        resp = client.get(object_url_invalid, headers=headers)
+        assert resp.status_code == 401
+        # Get 404 after login
+        client.post(login_url, data=u1_data)
+        resp = client.get(object_url_invalid, headers=headers)
+        assert resp.status_code == 404
 
-            # Check md5
-            md5_local = "md5:{}".format(md5(open(obj.file.uri[7:], 'rb')
-                                        .read()).hexdigest())
-            assert resp.content_md5 == md5_local
-            # Check etag
-            assert resp.get_etag()[0] == md5_local
-
-
-def test_get_object_get_404(app, objects):
-    """Test object download 404 error"""
     with app.test_client() as client:
-        for obj in objects:
-            resp = client.get(
-                "/files/{0}/{1}".format(obj.bucket_id, obj.key + "Missing"),
-                headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-            )
-            assert resp.status_code == 404
+        # Request the object anonymously, get "401 Unauthorized"
+        resp = client.get(object_url, headers=headers)
+        assert resp.status_code == 401
+
+        # Request the object with user2 (no permissions), get "403 Forbidden"
+        client.post(login_url, data=u2_data)  # Login with user2
+        resp = client.get(object_url, headers=headers)
+        assert resp.status_code == 403
+
+    with app.test_client() as client:
+        client.post(login_url, data=u1_data)
+        resp = client.get(object_url, headers=headers)
+        assert resp.status_code == 200
+
+        # Check md5
+        md5_local = "md5:{}".format(test_data['files_md5'][0])
+        assert resp.content_md5 == md5_local
+        assert resp.get_etag()[0] == md5_local
+
+
+def test_put_object(app, test_data):
+    """Test ObjectResource view PUT method."""
+    bucket1 = test_data['bucket']
+    key1 = test_data['files'][0].key
+    login_url = url_for('security.login')
+    u2_data = test_data['user2_data']  # Unprivileged user
+    object_url = "/files/{0}/{1}".format(bucket1.id, key1)
+    headers = {'Accept': '*/*'}
+
+    with app.test_client() as client:
+        # Get object that doesn't exist. Gets the "401 Unauthorized" before 404
+        # Try to update the file under 'key1' (with 'contents2')
+        data = {'file': (BytesIO(b'contents2'), 'file.dat')}
+        resp = client.put(object_url, data=data, headers=headers)
+        assert resp.status_code == 401
+        # Login with 'user2' (no permissions), try to PUT, receive 403
+        client.post(login_url, data=u2_data)
+        data = {'file': (BytesIO(b'contents2'), 'file.dat')}
+        resp = client.put(object_url, data=data, headers=headers)
+        assert resp.status_code == 403
 
 
 # def test_get_object_get_access_denied_403(app, objects):

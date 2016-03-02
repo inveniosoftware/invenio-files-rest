@@ -26,9 +26,10 @@
 
 from __future__ import absolute_import, print_function
 
-from werkzeug.utils import import_string
+from werkzeug.utils import cached_property, import_string
 
 from . import config
+from .permissions import permission_factory
 from .storage import storage_factory
 from .views import blueprint
 
@@ -40,15 +41,26 @@ class _FilesRESTState(object):
         """Initialize state."""
         self.app = app
         self._storage_factory = None
+        self._read_permission_factory = None
 
-    @property
+    @cached_property
     def storage_factory(self):
-        """Load default permission factory."""
+        """Load default storage factory."""
         if self._storage_factory is None:
             imp = self.app.config["FILES_REST_STORAGE_FACTORY"]
             self._storage_factory = import_string(imp) if imp else \
                 storage_factory
         return self._storage_factory
+
+    @cached_property
+    def permission_factory(self):
+        """Load default read permission factory."""
+        if self._read_permission_factory is None:
+            imp = self.app.config.get(
+                'FILES_REST_DEFAULT_PERMISSION_FACTORY')
+            self._read_permission_factory = import_string(imp) if imp else \
+                permission_factory
+        return self._read_permission_factory
 
 
 class InvenioFilesREST(object):

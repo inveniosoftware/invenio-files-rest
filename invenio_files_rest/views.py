@@ -27,11 +27,13 @@
 from __future__ import absolute_import, print_function
 
 from flask import Blueprint, abort, current_app, request, url_for
+from flask_login import current_user
 from invenio_db import db
 from invenio_rest import ContentNegotiatedMethodView
 from sqlalchemy.exc import SQLAlchemyError
 from webargs import fields
 from webargs.flaskparser import parser, use_kwargs
+from werkzeug.local import LocalProxy
 
 from .models import Bucket, Location, ObjectVersion
 from .serializer import json_serializer
@@ -41,6 +43,9 @@ blueprint = Blueprint(
     __name__,
     url_prefix='/files'
 )
+
+permission_factory = LocalProxy(
+    lambda: current_app.extensions['invenio-files-rest'].permission_factory)
 
 
 class BucketCollectionResource(ContentNegotiatedMethodView):
@@ -431,13 +436,24 @@ class ObjectResource(ContentNegotiatedMethodView):
 
             :resheader Content-Type: application/json
             :statuscode 200: no error
+            :statuscode 401: authentication required
             :statuscode 403: access denied
             :statuscode 404: Object does not exist
         """
-        # TODO: Check access permission on bucket.
         # TODO: Support partial range requests.
         # TODO: Support for access token
         # TODO: Exception if file is not found (deleted by hand or accident)
+
+        # Retrieve bucket.
+        bucket = Bucket.get(bucket_id)
+        if bucket is None:
+            abort(404, 'Bucket does not exist.')
+
+        if not current_user.is_authenticated:
+            abort(401, 'Authentication required.')
+        if not permission_factory(bucket, action='objects-read').can():
+            abort(403, 'Permission denied.')
+
         obj = ObjectVersion.get(bucket_id, key, version_id=version_id)
         if obj is None:
             abort(404, 'Object does not exist.')
@@ -504,7 +520,12 @@ class ObjectResource(ContentNegotiatedMethodView):
         if bucket is None:
             abort(404, 'Bucket does not exist.')
 
-        # TODO: Check access permission on bucket.
+        if not current_user.is_authenticated:
+            abort(401, 'Authentication required.')
+        if not permission_factory(bucket, action='objects-update').can():
+            abort(403, 'Permission denied.')
+
+        # TODO: Check access permission on the bucket
         # TODO: Check quota on bucket using content length
         # TODO: Support checking incoming MD5 header
         # TODO: Support setting content-type

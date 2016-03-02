@@ -171,12 +171,13 @@ setup(
             'invenio_files_rest.permissions:bucket_update_all',
             'bucket_delete_all = '
             'invenio_files_rest.permissions:bucket_delete_all',
-            'object_create = invenio_files_rest.permissions:object_create',
-            'object_read_all = invenio_files_rest.permissions:object_read_all',
-            'object_update_all = '
-            'invenio_files_rest.permissions:object_update_all',
-            'object_delete_all = '
-            'invenio_files_rest.permissions:object_delete_all',
+            'objects_create = invenio_files_rest.permissions:objects_create',
+            'objects_read_all = '
+            'invenio_files_rest.permissions:objects_read_all',
+            'objects_update_all = '
+            'invenio_files_rest.permissions:objects_update_all',
+            'objects_delete_all = '
+            'invenio_files_rest.permissions:objects_delete_all',
         ],
     },
     extras_require=extras_require,

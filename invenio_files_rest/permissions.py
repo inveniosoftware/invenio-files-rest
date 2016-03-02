@@ -27,22 +27,35 @@
 from functools import partial
 
 from flask_principal import ActionNeed
-from invenio_access.permissions import ParameterizedActionNeed
+from invenio_access.permissions import DynamicPermission, \
+    ParameterizedActionNeed
 
 BucketRead = partial(ParameterizedActionNeed, 'files-rest-bucket-read')
 BucketUpdate = partial(ParameterizedActionNeed, 'files-rest-bucket-update')
 BucketDelete = partial(ParameterizedActionNeed, 'files-rest-bucket-delete')
 
-ObjectRead = partial(ParameterizedActionNeed, 'files-rest-object-read')
-ObjectUpdate = partial(ParameterizedActionNeed, 'files-rest-object-update')
-ObjectDelete = partial(ParameterizedActionNeed, 'files-rest-object-delete')
+ObjectsRead = partial(ParameterizedActionNeed, 'files-rest-objects-read')
+ObjectsUpdate = partial(ParameterizedActionNeed, 'files-rest-objects-update')
+ObjectsDelete = partial(ParameterizedActionNeed, 'files-rest-objects-delete')
 
 bucket_create = ActionNeed('files-rest-bucket-create')
 bucket_read_all = BucketRead(None)
 bucket_update_all = BucketUpdate(None)
 bucket_delete_all = BucketDelete(None)
 
-object_create = ActionNeed('files-rest-object-create')
-object_read_all = ObjectRead(None)
-object_update_all = ObjectUpdate(None)
-object_delete_all = ObjectDelete(None)
+objects_create = ActionNeed('files-rest-objects-create')
+objects_read_all = ObjectsRead(None)
+objects_update_all = ObjectsUpdate(None)
+objects_delete_all = ObjectsDelete(None)
+
+_action2need_map = {
+    'objects-read': ObjectsRead,
+    'objects-update': ObjectsUpdate,
+    'objects-delete': ObjectsRead,
+}
+
+
+def permission_factory(bucket, action='objects-read'):
+    """Permission factory for the actions on Bucket and ObjectVersion items."""
+    Need = _action2need_map[action]
+    return DynamicPermission(Need(str(bucket.id)))

@@ -40,3 +40,6 @@ FILES_REST_DEFAULT_STORAGE_CLASS = 'S'
 
 FILES_REST_STORAGE_FACTORY = None
 """Import path of factory used to create a storage instance."""
+
+FILES_REST_DEFAULT_PERMISSION_FACTORY = "invenio_files_rest.permissions" \
+                                        ":permission_factory"
