@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # This file is part of Invenio.
 # Copyright (C) 2015, 2016 CERN.
 #
@@ -31,9 +29,16 @@ import mimetypes
 import os
 from time import time
 
-from flask import current_app, request
+from flask import abort, current_app, request
+from invenio_db import db
 from werkzeug.datastructures import Headers
+from werkzeug.local import LocalProxy
 from werkzeug.wsgi import FileWrapper
+
+from .models import MultipartObject
+
+current_files_rest = LocalProxy(
+    lambda: current_app.extensions['invenio-files-rest'])
 
 
 def send_stream(stream, filename, size, mtime, mimetype=None, restricted=False,
@@ -140,3 +145,57 @@ def populate_from_path(bucket, source, checksum=True, key_prefix=''):
                 assert filename.startswith(source)
                 parts = [p for p in filename[len(source):].split(os.sep) if p]
                 yield create_file('/'.join(parts), os.path.join(root, name))
+
+
+def file_size_limiter(bucket):
+    """Retrieve the internal quota from the provided bucket."""
+    if bucket.quota_size:
+        return (bucket.quota_size - bucket.size,
+                'Bucket quota is {0} bytes. {1} bytes are currently '
+                'used.'.format(bucket.quota_size, bucket.size))
+    return (None, None)
+
+
+def proccess_chunked_upload(bucket, key, content_length=None):
+    """Proccess chunked upload.
+
+    :param bucket: The bucket
+    :param key: The filename
+    """
+    if request.args.get('uploads') is not None:
+        size = int(request.headers.get('Uploader-File-Size', 0))
+        # check content size limit
+        size_limit, size_limit_reason = current_files_rest.file_size_limiter(
+            bucket=bucket)
+        if size_limit is not None and size > size_limit:
+            abort(400, size_limit_reason)
+        # requesting a new uplaod_id
+        obj = MultipartObject.create(bucket, key, size)
+        db.session.commit()
+        return obj
+    elif request.form.get('upload_id') is not None:
+        params = current_app.extensions[
+            'invenio-files-rest'].upload_factory(
+            request.form)
+        # Get the upload_id
+        upload_id = request.form.get('upload_id')
+        if upload_id:
+            # Get the upload object
+            obj = MultipartObject.get(upload_id)
+            # If it has chunks proccess them otherwise throw error
+            if params.get('current'):
+                # Update the file
+                uploaded_file = request.files['file']
+                if not uploaded_file:
+                    abort(400, 'file missing in request.')
+                # If current chunk less than total chunks
+                if params.get('current') <= params.get('total'):
+                    obj.set_contents(
+                        uploaded_file, size=content_length
+                    )
+                    # If the current chunk < avg size finalize
+                    if params.get('current') < params.get('size'):
+                        obj.finalize()
+                    db.session.commit()
+                    return obj
+    abort(400, 'Not valid chunk parameters.')

@@ -32,7 +32,8 @@ from invenio_admin.forms import LazyChoices
 from markupsafe import Markup
 from wtforms.validators import ValidationError
 
-from .models import Bucket, FileInstance, Location, ObjectVersion, slug_pattern
+from .models import Bucket, FileInstance, Location, MultipartObject, \
+    ObjectVersion, slug_pattern
 from .tasks import verify_checksum
 
 
@@ -237,6 +238,33 @@ class FileInstanceModelView(ModelView):
                   'error')  # pragma: no cover
 
 
+class MultipartObjectModelView(ModelView):
+    """ModelView for the objects."""
+
+    filter_converter = FilterConverter()
+    can_create = False
+    can_edit = False
+    can_delete = False
+    can_view_details = True
+    column_formatters = dict(
+        file_instance=link('File', lambda o: url_for(
+            'fileinstance.index_view', flt0_0=o.file_id)),
+    )
+    column_labels = dict(
+        id=_('ID'),
+        complete=_('Complete'),
+        file_instance=_('File'),
+    )
+    column_list = (
+        'upload_id', 'complete', 'created', 'updated', 'file_instance', )
+    column_details_list = (
+        'upload_id', 'complete', 'created', 'updated', 'file_instance', )
+    column_filters = (
+        'upload_id', 'complete', 'created', 'updated', )
+    column_default_sort = ('upload_id', True)
+    page_size = 25
+
+
 location_adminview = dict(
     modelview=LocationModelView,
     model=Location,
@@ -252,4 +280,8 @@ object_adminview = dict(
 fileinstance_adminview = dict(
     modelview=FileInstanceModelView,
     model=FileInstance,
+    category=_('Files'))
+multipartobject_adminview = dict(
+    modelview=MultipartObjectModelView,
+    model=MultipartObject,
     category=_('Files'))

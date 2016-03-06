@@ -53,3 +53,12 @@ class FileSizeError(RESTException):
     """Exception raised when a file larger than allowed."""
 
     code = 400
+    """Exception raise when an invalid operation is performed."""
+
+
+class MultipartObjectException(FilesException):
+    """Exception for multipart objects."""
+
+
+class MultipartObjectAlreadyCompleted(MultipartObjectException):
+    """Exception raised when multipart object is already completed."""
