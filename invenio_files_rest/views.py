@@ -40,6 +40,7 @@ from webargs.flaskparser import parser, use_kwargs
 from werkzeug.local import LocalProxy
 
 from .errors import FileSizeError, UnexpectedFileSizeError
+from .helpers import proccess_chunked_upload
 from .models import Bucket, Location, ObjectVersion
 from .proxies import current_bucket_collection_permission_factory, \
     current_bucket_permission_factory, current_files_rest, \
@@ -609,17 +610,16 @@ class ObjectResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 500: failed request
         """
-        # TODO: Support checking incoming MD5 header
         # TODO: Support setting content-type
-        # TODO: Don't create a new file if content is identical.
-
         # TODO: Pass storage class to get_or_create
-        with db.session.begin_nested():
-            obj = ObjectVersion.create(bucket.id, obj.key)
-            obj.set_contents(uploaded_file)
-        db.session.commit()
+        if request.args.get('uploads') or request.form.get('upload_id'):
+            obj = proccess_chunked_upload(bucket, obj.key)
+        else:
+            with db.session.begin_nested():
+                obj = ObjectVersion.create(bucket.id, obj.key)
+                obj.set_contents(uploaded_file)
+            db.session.commit()
 
-        # TODO: Fix response object to only include headers?
         return obj
 
     @pass_bucket

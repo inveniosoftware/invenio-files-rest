@@ -135,6 +135,8 @@ setup(
             'object_adminview = invenio_files_rest.admin:object_adminview',
             'fileinstance_adminview '
             '= invenio_files_rest.admin:fileinstance_adminview',
+            'multipartobject_adminview '
+            '= invenio_files_rest.admin:multipartobject_adminview',
         ],
         'invenio_access.actions': [
             'bucket_create_object = '

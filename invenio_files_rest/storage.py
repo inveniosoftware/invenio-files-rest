@@ -74,6 +74,10 @@ class Storage(object):
         """Send the file to the client."""
         raise NotImplementedError
 
+    def update(self, incoming_stream, chunk_size=None, progress_callback=None):
+        """Update an existed file in the storage."""
+        raise NotImplementedError
+
     def save(self, incoming_stream, chunk_size=None, progress_callback=None):
         """Create a new file in the storage."""
         raise NotImplementedError
@@ -183,6 +187,23 @@ class PyFilesystemStorage(Storage):
         The caller is responsible for closing the file.
         """
         return opener.open(self.file.uri, mode='rb')
+
+    def update(self, incoming_stream, size=None, chunk_size=None,
+               progress_callback=None):
+        """Update a file in the file system."""
+        fs = opener.opendir(self.make_path(), create_dir=True)
+        fp = fs.open(self.filename, 'ab')
+        try:
+            bytes_written, checksum = self._write_stream(
+                    incoming_stream, fp, chunk_size=chunk_size,
+                    progress_callback=progress_callback)
+        finally:
+            fp.close()
+
+        uri = fs.getpathurl(self.filename, allow_none=True) or \
+            fs.getsyspath(self.filename, allow_none=True)
+
+        return uri, bytes_written, checksum
 
     def save(self, incoming_stream, size_limit=None, size=None,
              chunk_size=None, progress_callback=None):

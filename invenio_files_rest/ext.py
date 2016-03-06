@@ -31,6 +31,9 @@ from werkzeug.utils import cached_property, import_string
 
 from . import config
 from .cli import files as files_cmd
+from .storage import pyfs_storage_factory
+from .uploader import ng_file_upload
+from .views import blueprint
 
 
 class _FilesRESTState(object):
@@ -94,6 +97,12 @@ class _FilesRESTState(object):
         lowest limit will be used.
         """
         return import_string(self.app.config.get('FILES_REST_SIZE_LIMITERS'))
+
+    @cached_property
+    def upload_factory(self):
+        """Load default permission factory."""
+        imp = self.app.config["FILES_REST_UPLOAD_FACTORY"]
+        return import_string(imp) if imp else ng_file_upload
 
 
 class InvenioFilesREST(object):
