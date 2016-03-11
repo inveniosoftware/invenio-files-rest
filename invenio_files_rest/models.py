@@ -500,6 +500,7 @@ class FileInstance(db.Model, Timestamp):
             current_app.config['FILES_REST_DEFAULT_STORAGE_CLASS'] \
             if storage_class is None else \
             storage_class
+        return self
 
 
 class ObjectVersion(db.Model, Timestamp):
