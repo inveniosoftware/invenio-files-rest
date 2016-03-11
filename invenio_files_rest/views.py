@@ -26,7 +26,7 @@
 
 from __future__ import absolute_import, print_function
 
-from flask import Blueprint, abort, current_app, request, url_for
+from flask import Blueprint, abort, current_app, request
 from flask_login import current_user
 from invenio_db import db
 from invenio_rest import ContentNegotiatedMethodView
@@ -35,8 +35,9 @@ from webargs import fields
 from webargs.flaskparser import parser, use_kwargs
 from werkzeug.local import LocalProxy
 
+from .links import default_links_bucket_factory, default_links_object_factory
 from .models import Bucket, Location, ObjectVersion
-from .serializer import json_serializer
+from .serializers import json_v1_bucket_post, json_v1_buckets, json_v1_objects
 
 blueprint = Blueprint(
     'invenio_files_rest',
@@ -54,8 +55,12 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
     def __init__(self, serializers=None, *args, **kwargs):
         """Constructor."""
         super(BucketCollectionResource, self).__init__(
+            # TODO: Auto assignee method_serializers.
             serializers,
             *args,
+            method_serializers=dict(
+                POST={'application/json': json_v1_bucket_post},
+            ),
             **kwargs
         )
         self.post_args = {
@@ -64,6 +69,8 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
                 location='json'
             )
         }
+        # TODO: Auto add this with create_url_rules() see invenio-record-rest.
+        self.links_factory = default_links_bucket_factory
 
     def get(self, **kwargs):
         """List all the buckets.
@@ -108,17 +115,9 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
             :statuscode 400: invalid request
             :statuscode 403: access denied
         """
-        bucket_list = []
-        for bucket in Bucket.all():
-            # TODO: Implement serializer
-            bucket_list.append({
-                'size': bucket.size,
-                'url': url_for("invenio_files_rest.bucket_api",
-                               bucket_id=bucket.id, _external=True),
-                'uuid': str(bucket.id)
-                })
-        # FIXME: how to avoid returning a dict with key 'json'
-        return {'json': bucket_list}
+        bucket_list = list(Bucket.all())
+        return self.make_response(buckets=bucket_list,
+                                  links_factory=self.links_factory)
 
     def post(self, **kwargs):
         """Create bucket.
@@ -167,7 +166,6 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
         args = parser.parse(self.post_args, request)
         try:
             if args['location_name']:
-                # TODO: Check why query is used directly.
                 location = Location.get_by_name(args['location_name'])
             else:
                 # Get one of the active locations
@@ -187,14 +185,8 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
             current_app.logger.exception('Failed to create bucket.')
             abort(500, 'Failed to create bucket.')
 
-        # TODO: Implement serializer
-        return {'json':
-                {'size': bucket.size,
-                 'url': url_for("invenio_files_rest.bucket_api",
-                                bucket_id=bucket.id, _external=True),
-                 'uuid': str(bucket.id)
-                 }
-                }
+        return self.make_response(bucket=bucket,
+                                  links_factory=self.links_factory)
 
 
 class BucketResource(ContentNegotiatedMethodView):
@@ -212,6 +204,8 @@ class BucketResource(ContentNegotiatedMethodView):
                 location='query'
             )
         }
+        # TODO: Auto add this with create_url_rules() see invenio-record-rest.
+        self.links_factory = default_links_object_factory
 
     def get(self, bucket_id, **kwargs):
         """Get list of objects in the bucket.
@@ -262,24 +256,18 @@ class BucketResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 404: page not found
         """
-        # TODO: Implement serializer
-        def serialize(bucket):
-            return {'size': bucket.file.size,
-                    'checksum': bucket.file.checksum,
-                    'url': url_for('invenio_files_rest.object_api',
-                                   bucket_id=bucket.bucket_id,
-                                   key=bucket.key,
-                                   _external=True),
-                    'uuid': str(bucket.file.id)}
-
         args = parser.parse(self.get_args, request)
         if bucket_id and Bucket.get(bucket_id):
             object_list = []
             for obj in ObjectVersion.get_by_bucket(
                 bucket_id, versions=args.get('versions', False)
             ).all():
-                object_list.append(serialize(obj))
-            return {'json': object_list}
+                object_list.append(obj)
+
+            return self.make_response(bucket_id=bucket_id,
+                                      object_list=object_list,
+                                      links_factory=self.links_factory)
+
         abort(404, 'The specified bucket does not exist or has been deleted.')
 
     def delete(self, bucket_id, **kwargs):
@@ -637,20 +625,20 @@ class ObjectResource(ContentNegotiatedMethodView):
         if not bucket_id or not ObjectVersion.get(bucket_id, filename):
             abort(404, 'The object file does not exist or has been deleted.')
 
-
-serializers = {'application/json': json_serializer}
+serializer_buckets = {'application/json': json_v1_buckets}
+serializer_objects = {'application/json': json_v1_objects}
 
 bucket_collection_view = BucketCollectionResource.as_view(
     'bucket_collection_api',
-    serializers=serializers
+    serializers=serializer_buckets
 )
 bucket_view = BucketResource.as_view(
     'bucket_api',
-    serializers=serializers
+    serializers=serializer_objects
 )
 object_view = ObjectResource.as_view(
     'object_api',
-    serializers=serializers
+    serializers=None
 )
 
 blueprint.add_url_rule(

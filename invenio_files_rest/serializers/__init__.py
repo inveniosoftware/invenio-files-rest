@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015 CERN.
+# Copyright (C) 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -22,31 +22,16 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-"""REST API serializers."""
+"""Bucket serialization."""
 
-import json
+from __future__ import absolute_import, print_function
 
-from flask import Response
+from .json import JSONSerializer
+from .response import bucket_post_responsify, buckets_responsify, \
+    objects_responsify
+from .schemas.json import FileSchemaJSONV1
 
-
-def json_serializer(data=None, code=200, headers=None):
-    """Build a json flask response using the given data.
-
-    :returns: A flask response with json data.
-    :returns type: :py:class:`flask.Response`
-    """
-    if data is not None:
-        response = Response(
-            json.dumps(data['json']),
-            mimetype='application/json'
-        )
-    else:
-        response = Response(mimetype='application/json')
-
-    response.status_code = code
-    if headers is not None:
-        response.headers.extend(headers)
-
-    # ETag needed?
-    # response.set_etag(str(record.model.version_id))
-    return response
+json_v1 = JSONSerializer(FileSchemaJSONV1)
+json_v1_buckets = buckets_responsify(json_v1, 'application/json')
+json_v1_bucket_post = bucket_post_responsify(json_v1, 'application/json')
+json_v1_objects = objects_responsify(json_v1, 'application/json')
