@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015, 2016 CERN.
+# Copyright (C) 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -22,24 +22,12 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-"""Invenio Files Rest module configuration file."""
+"""Proxy definitions."""
 
-FILES_REST_STORAGE_CLASS_LIST = {
-    'S': 'Standard',
-    'A': 'Archive',
-}
-"""Storage class list defines the systems storage classes.
+from __future__ import absolute_import, print_function
 
-Storage classes are useful for e.g. defining the type of storage an object
-is located on (e.g. offline/online), so that the system knowns if it can serve
-the file and/or what is the reliability.
-"""
+from flask import current_app
+from werkzeug.local import LocalProxy
 
-FILES_REST_DEFAULT_STORAGE_CLASS = 'S'
-"""Default storage class."""
-
-FILES_REST_STORAGE_FACTORY = None
-"""Import path of factory used to create a storage instance."""
-
-FILES_REST_PERMISSION_FACTORY = None
-"""Import path of permission factory."""
+current_permission_factory = LocalProxy(
+    lambda: current_app.extensions['invenio-files-rest'].permission_factory)

@@ -29,7 +29,6 @@ from __future__ import absolute_import, print_function
 from werkzeug.utils import cached_property, import_string
 
 from . import config
-from .permissions import permission_factory
 from .storage import pyfs_storage_factory
 from .views import blueprint
 
@@ -50,8 +49,12 @@ class _FilesRESTState(object):
     @cached_property
     def permission_factory(self):
         """Load default permission factory."""
-        imp = self.app.config.get("FILES_REST_DEFAULT_PERMISSION_FACTORY")
-        return import_string(imp) if imp else permission_factory
+        imp = self.app.config.get("FILES_REST_PERMISSION_FACTORY")
+        if imp:
+            return import_string(imp)
+        else:
+            from invenio_files_rest.permissions import permission_factory
+            return permission_factory
 
 
 class InvenioFilesREST(object):

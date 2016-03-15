@@ -33,9 +33,9 @@ from invenio_rest import ContentNegotiatedMethodView
 from sqlalchemy.exc import SQLAlchemyError
 from webargs import fields
 from webargs.flaskparser import parser, use_kwargs
-from werkzeug.local import LocalProxy
 
 from .models import Bucket, Location, ObjectVersion
+from .proxies import current_permission_factory
 from .serializer import json_serializer
 
 blueprint = Blueprint(
@@ -43,9 +43,6 @@ blueprint = Blueprint(
     __name__,
     url_prefix='/files'
 )
-
-current_permission_factory = LocalProxy(
-    lambda: current_app.extensions['invenio-files-rest'].permission_factory)
 
 
 class BucketCollectionResource(ContentNegotiatedMethodView):
@@ -449,10 +446,12 @@ class ObjectResource(ContentNegotiatedMethodView):
         if bucket is None:
             abort(404, 'Bucket does not exist.')
 
-        if not current_user.is_authenticated:
+        permission = current_permission_factory(bucket, action='objects-read')
+
+        if permission is not None and not permission.can():
+            if current_user.is_authenticated:
+                abort(403)
             abort(401)
-        if not current_permission_factory(bucket, action='objects-read').can():
-            abort(403)
 
         obj = ObjectVersion.get(bucket_id, key, version_id=version_id)
         if obj is None:
@@ -521,11 +520,13 @@ class ObjectResource(ContentNegotiatedMethodView):
         if bucket is None:
             abort(404, 'Bucket does not exist.')
 
-        if not current_user.is_authenticated:
-            abort(401, 'Authentication required.')
-        perm = current_permission_factory(bucket, action='objects-update')
-        if not perm.can():
-            abort(403, 'Permission denied.')
+        permission = current_permission_factory(
+            bucket, action='objects-update')
+
+        if permission is not None and not permission.can():
+            if current_user.is_authenticated:
+                abort(403)
+            abort(401)
 
         # TODO: Check access permission on the bucket
         # TODO: Check quota on bucket using content length
@@ -539,7 +540,11 @@ class ObjectResource(ContentNegotiatedMethodView):
             obj.set_contents(uploaded_file, size=content_length)
             db.session.commit()
             # TODO: Fix response object to only include headers?
-            return {'json': obj.serialize()}
+            return {'json': {
+                'checksum': obj.file.checksum,
+                'size': obj.file.size,
+                'verisionId': str(obj.version_id),
+            }}
         except SQLAlchemyError:
             db.session.rollback()
             current_app.logger.exception('Failed to create object.')

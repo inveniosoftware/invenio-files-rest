@@ -57,5 +57,4 @@ _action2need_map = {
 
 def permission_factory(bucket, action='objects-read'):
     """Permission factory for the actions on Bucket and ObjectVersion items."""
-    Need = _action2need_map[action]
-    return DynamicPermission(Need(str(bucket.id)))
+    return DynamicPermission(_action2need_map[action](str(bucket.id)))
