@@ -45,6 +45,46 @@ blueprint = Blueprint(
 )
 
 
+def file_download_ui(pid, record, **kwargs):
+    """File download view for a given record.
+
+    Plug this method into your ``RECORDS_UI_ENDPOINTS`` configuration:
+
+    .. code-block:: python
+
+        RECORDS_UI_ENDPOINTS = dict(
+            recid=dict(
+                # ...
+                route='/records/<pid_value/files/<filename>',
+                view_imp='invenio_files_rest.views.file_download_ui',
+            )
+        )
+    """
+    # Extract file from record.
+    fileobj = None
+    filename = request.view_args.get('filename')
+
+    for f in record.get('files', []):
+        if filename and filename == f.get('filename'):
+            fileobj = f
+            break
+
+    if fileobj is None:
+        abort(404)
+
+    bucket_id = fileobj['bucket']
+    key = fileobj['filename']
+
+    return ObjectResource.send_object(
+        bucket_id, key,
+        expected_chksum=fileobj.get('checksum'),
+        logger_data=dict(
+            bucket_id=bucket_id,
+            pid_type=pid.pid_type,
+            pid_value=pid.pid_value,
+        ))
+
+
 class BucketCollectionResource(ContentNegotiatedMethodView):
     """"Bucket collection resource."""
 
@@ -400,6 +440,34 @@ class ObjectResource(ContentNegotiatedMethodView):
             **kwargs
         )
 
+    @classmethod
+    def send_object(cls, bucket_id, key, version_id=None, expected_chksum=None,
+                    logger_data=None):
+        """Send an object for a given bucket."""
+        bucket = Bucket.get(bucket_id)
+        if bucket is None:
+            abort(404, 'Bucket does not exist.')
+
+        permission = current_permission_factory(bucket, action='objects-read')
+
+        if permission is not None and not permission.can():
+            if current_user.is_authenticated:
+                abort(403, 'You do not have permissions to download the file.')
+            # TODO: Send user to login page. (not for REST API)
+            abort(401)
+
+        obj = ObjectVersion.get(bucket_id, key, version_id=version_id)
+        if obj is None:
+            abort(404, 'Object does not exist.')
+
+        # TODO: implement access control
+        # TODO: implement support for tokens
+        if expected_chksum and obj.file.checksum != expected_chksum:
+            current_app.logger.warning(
+                'File checksum mismatch detected.', extra=logger_data)
+
+        return obj.file.send_file()
+
     @use_kwargs(get_args)
     def get(self, bucket_id, key, version_id=None, **kwargs):
         """Get object.
@@ -437,27 +505,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 404: Object does not exist
         """
-        # TODO: Support partial range requests.
-        # TODO: Support for access token
-        # TODO: Exception if file is not found (deleted by hand or accident)
-
-        # Retrieve bucket.
-        bucket = Bucket.get(bucket_id)
-        if bucket is None:
-            abort(404, 'Bucket does not exist.')
-
-        permission = current_permission_factory(bucket, action='objects-read')
-
-        if permission is not None and not permission.can():
-            if current_user.is_authenticated:
-                abort(403)
-            abort(401)
-
-        obj = ObjectVersion.get(bucket_id, key, version_id=version_id)
-        if obj is None:
-            abort(404, 'Object does not exist.')
-
-        return obj.file.send_file()
+        return self.send_object(bucket_id, key, version_id=version_id)
 
     @use_kwargs(put_args)
     def put(self, bucket_id, key, content_length=None, content_md5=None):

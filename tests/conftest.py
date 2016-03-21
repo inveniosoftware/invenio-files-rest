@@ -54,8 +54,8 @@ from invenio_files_rest.permissions import objects_create, \
 from invenio_files_rest.views import blueprint
 
 
-@pytest.yield_fixture(scope='session', autouse=True)
-def app(request):
+@pytest.fixture(scope='session', autouse=True)
+def base_app():
     """Flask application fixture."""
     app_ = Flask('testapp')
     app_.config.update(
@@ -78,14 +78,21 @@ def app(request):
     InvenioDB(app_)
     Babel(app_)
     Menu(app_)
-    InvenioAccounts(app_)
-    InvenioAccess(app_)
-    app_.register_blueprint(accounts_blueprint)
-    InvenioFilesREST(app_)
-    app_.register_blueprint(blueprint)
 
-    with app_.app_context():
-        yield app_
+    return app_
+
+
+@pytest.yield_fixture(scope='session', autouse=True)
+def app(base_app):
+    """Flask application fixture."""
+    InvenioAccounts(base_app)
+    InvenioAccess(base_app)
+    base_app.register_blueprint(accounts_blueprint)
+    InvenioFilesREST(base_app)
+    base_app.register_blueprint(blueprint)
+
+    with base_app.app_context():
+        yield base_app
 
 
 @pytest.yield_fixture()

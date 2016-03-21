@@ -42,6 +42,7 @@ tests_require = [
     'invenio-accounts>=1.0.0a2',
     'invenio-admin>=1.0.0a3',
     'invenio-celery>=1.0.0a4',
+    'invenio-records-ui>=1.0.0a5',
     'isort>=4.2.2',
     'mock>=1.3.0',
     'pep257>=0.7.0',
