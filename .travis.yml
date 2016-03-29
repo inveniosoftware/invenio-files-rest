@@ -67,7 +67,7 @@ python:
   - "3.5"
 
 before_install:
-  - "travis_retry pip install --upgrade pip setuptools py"
+  - "travis_retry pip install --upgrade pip 'setuptools<20.5' py"
   - "travis_retry pip install twine wheel coveralls requirements-builder"
   - "requirements-builder --level=min setup.py > .travis-lowest-requirements.txt"
   - "requirements-builder --level=pypi setup.py > .travis-release-requirements.txt"
