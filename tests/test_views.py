@@ -27,8 +27,14 @@
 
 from __future__ import absolute_import, print_function
 
+import pytest
 from flask import json, url_for
-from six import BytesIO
+from invenio_db import db
+from six import BytesIO, b
+from test_helpers import CONSTANT_FILE_SIZE_LIMIT
+
+from invenio_files_rest import InvenioFilesREST
+from invenio_files_rest.views import blueprint
 
 
 def test_get_buckets(app, dummy_location):
@@ -184,27 +190,93 @@ def test_get_object_permissions(app, objects, bucket, users_data, permissions):
         assert resp.get_etag()[0] == obj.file.checksum
 
 
-def test_put_object(app, objects, bucket, users_data, permissions):
+@pytest.mark.parametrize('limiter, bucket_quota, file_size_limit', [
+    # use the default file size limiter
+    (None, 50, 50),
+    # internal quota is not used by the constant_file_size_limiter
+    ('test_helpers:constant_file_size_limiter', CONSTANT_FILE_SIZE_LIMIT + 2,
+     CONSTANT_FILE_SIZE_LIMIT),
+])
+def test_put_object(limiter, bucket_quota, file_size_limit, base_app, objects,
+                    bucket, users_data, permissions):
     """Test ObjectResource view PUT method."""
+    if limiter is not None:
+        base_app.config['FILES_REST_FILE_SIZE_LIMITER'] = limiter
+    InvenioFilesREST(base_app)
+    base_app.register_blueprint(blueprint)
+
     key = objects[0].key
+    u1_data = users_data[0]  # Privileged user
     u2_data = users_data[1]  # Unprivileged user
     login_url = url_for('security.login')
     object_url = "/files/{0}/{1}".format(bucket.id, key)
-    headers = {'Accept': '*/*'}
 
-    with app.test_client() as client:
+    with base_app.app_context():
+        bucket.quota_size = bucket_quota
+        db.session.merge(bucket)
+        db.session.commit()
+
+    with base_app.test_client() as client:
         # Get object that doesn't exist. Gets the "401 Unauthorized" before 404
         # Try to update the file under 'key' (with 'contents2')
-        data = {'file': (BytesIO(b'contents2'), 'file.dat')}
+        data_bytes = b'contents2'
+        headers = {'Accept': '*/*', 'Content-Length': str(len(data_bytes))}
+        data = {'file': (BytesIO(data_bytes), 'file.dat')}
         resp = client.put(object_url, data=data, headers=headers)
         assert resp.status_code == 401
 
         # Login with 'user2' (no permissions), try to PUT, receive 403
         client.post(login_url, data=u2_data)
-        data = {'file': (BytesIO(b'contents2'), 'file.dat')}
+        data = {'file': (BytesIO(data_bytes), 'file.dat')}
         resp = client.put(object_url, data=data, headers=headers)
         assert resp.status_code == 403
 
+        # FIXME: check that the file is not created
+
+    with base_app.test_client() as client:
+        # Login with 'user1' (has permissions)
+        client.post(login_url, data=u1_data)
+        # Test with an mismatching Content-Length
+        headers = {'Accept': '*/*', 'Content-Length': str(len(data_bytes) - 1)}
+        data = {'file': (BytesIO(data_bytes), 'mismatching1.dat')}
+        resp = client.put(object_url, data=data, headers=headers)
+        assert resp.status_code == 400
+
+        headers = {'Accept': '*/*', 'Content-Length': str(len(data_bytes) + 1)}
+        data = {'file': (BytesIO(data_bytes), 'mismatching2.dat')}
+        resp = client.put(object_url, data=data, headers=headers)
+        assert resp.status_code == 400
+
+        # FIXME: check that the file is not created
+
+        # Test exceeding the file size limit
+        data_bytes2 = b(''.join('a' for i in
+                                range(file_size_limit + 1)))
+        headers = {'Accept': '*/*', 'Content-Length': str(len(data_bytes2))}
+        data = {'file': (BytesIO(data_bytes2), 'exceeding.dat')}
+        resp = client.put(object_url, data=data, headers=headers)
+        assert resp.status_code == 400
+
+        # FIXME: check that the file is not created
+
+    # if the default limiter is used
+    if limiter is None:
+        # set the bucket quota to unlimited
+        with base_app.app_context():
+            bucket.quota_size = None
+            db.session.merge(bucket)
+            db.session.commit()
+        # Test again with the precedly exceeding size
+        with base_app.test_client() as client:
+            # Login with 'user1' (has permissions)
+            client.post(login_url, data=u1_data)
+            data_bytes2 = b(''.join('a' for i in
+                                    range(file_size_limit + 1)))
+            headers = {'Accept': '*/*',
+                       'Content-Length': str(len(data_bytes2))}
+            data = {'file': (BytesIO(data_bytes2), 'exceeding.dat')}
+            resp = client.put(object_url, data=data, headers=headers)
+            assert resp.status_code == 200
 
 # def test_get_object_get_access_denied_403(app, objects):
 #     """Test object download 403 access denied"""

@@ -73,6 +73,7 @@ def base_app():
         SECURITY_PASSWORD_SALT='TEST_SECURITY_PASSWORD_SALT',
         SECRET_KEY='TEST_SECRET_KEY',
     )
+
     FlaskCLI(app_)
     FlaskCeleryExt(app_)
     InvenioDB(app_)
@@ -153,10 +154,16 @@ def bucket(db, dummy_location):
 @pytest.yield_fixture()
 def objects(db, bucket):
     """File system location."""
+    data_bytes = b('license file')
     obj1 = ObjectVersion.create(
-        bucket, 'LICENSE', stream=BytesIO(b('license file')))
+        bucket, 'LICENSE', stream=BytesIO(data_bytes),
+        size=len(data_bytes)
+    )
+    data_bytes2 = b('readme file')
     obj2 = ObjectVersion.create(
-        bucket, 'README.rst', stream=BytesIO(b('readme file')))
+        bucket, 'README.rst', stream=BytesIO(data_bytes2),
+        size=len(data_bytes)
+    )
     db.session.commit()
 
     yield [obj1, obj2]

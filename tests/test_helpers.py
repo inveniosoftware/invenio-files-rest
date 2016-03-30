@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015, 2016 CERN.
+# Copyright (C) 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -22,38 +22,14 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
+"""Helpers for invenio files REST's tests."""
 
-root = true
+from __future__ import absolute_import, print_function
 
-[*]
-indent_style = space
-end_of_line = lf
-insert_final_newline = true
-trim_trailing_whitespace = true
-charset = utf-8
+CONSTANT_FILE_SIZE_LIMIT = 120
+"""File size limit provided by the constant_file_size_limiter."""
 
-# Python files
-[*.py]
-indent_size = 4
-# isort plugin configuration
-known_standard_library = mimetypes
-known_first_party = invenio_files_rest
-known_third_party = invenio_access, invenio_admin, invenio_accounts, invenio_db, invenio_records, invenio_rest
-multi_line_output = 2
-default_section = THIRDPARTY
 
-# RST files (used by sphinx)
-[*.rst]
-indent_size = 4
-
-# CSS, HTML, JS, JSON, YML
-[*.{css,html,js,json,yml}]
-indent_size = 2
-
-# Matches the exact files either package.json or .travis.yml
-[{package.json,.travis.yml}]
-indent_size = 2
-
-# Dockerfile
-[Dockerfile]
-indent_size = 4
+def constant_file_size_limiter(bucket):
+    """Provide always the same file size limit."""
+    return (CONSTANT_FILE_SIZE_LIMIT, 'Constant file size limit is exceeded')

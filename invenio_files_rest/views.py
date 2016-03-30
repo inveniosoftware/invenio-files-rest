@@ -33,7 +33,9 @@ from invenio_rest import ContentNegotiatedMethodView
 from sqlalchemy.exc import SQLAlchemyError
 from webargs import fields
 from webargs.flaskparser import parser, use_kwargs
+from werkzeug.local import LocalProxy
 
+from .errors import UnexpectedFileSizeError
 from .models import Bucket, Location, ObjectVersion
 from .proxies import current_permission_factory
 from .serializer import json_serializer
@@ -43,6 +45,9 @@ blueprint = Blueprint(
     __name__,
     url_prefix='/files'
 )
+
+current_files_rest = LocalProxy(
+    lambda: current_app.extensions['invenio-files-rest'])
 
 
 def file_download_ui(pid, record, **kwargs):
@@ -576,8 +581,13 @@ class ObjectResource(ContentNegotiatedMethodView):
                 abort(403)
             abort(401)
 
+        # check content size limit
+        size_limit, size_limit_reason = current_files_rest.file_size_limiter(
+            bucket=bucket)
+        if size_limit is not None and content_length > size_limit:
+            abort(400, size_limit_reason)
+
         # TODO: Check access permission on the bucket
-        # TODO: Check quota on bucket using content length
         # TODO: Support checking incoming MD5 header
         # TODO: Support setting content-type
         # TODO: Don't create a new file if content is identical.
@@ -597,6 +607,9 @@ class ObjectResource(ContentNegotiatedMethodView):
             db.session.rollback()
             current_app.logger.exception('Failed to create object.')
             abort(500, 'Failed to create object.')
+        except UnexpectedFileSizeError:
+            db.session.rollback()
+            abort(400, 'File size different than Content-Length')
 
     def delete(self, bucket_id, filename, **kwargs):
         """Set object file as deleted.

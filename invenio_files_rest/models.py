@@ -193,9 +193,11 @@ class Bucket(db.Model, Timestamp):
     """
 
     quota_size = db.Column(db.BigInteger, nullable=True)
-    """Quota size of bucket.
+    """Quota size of bucket. Used only by the file_size_limiter.
 
-    A ``None`` value means no quota.
+    Note, don't use this attribute directly. It MAY be used to store
+    the actual quota size for this bucket. Change the file_size_limiter if
+    you want to filter accepted files based on their size.
     """
 
     locked = db.Column(db.Boolean, default=False, nullable=False)
@@ -628,7 +630,10 @@ class ObjectVersion(db.Model, Timestamp):
         """Set a file instance."""
         if self.file_id is not None:
             raise FileInstanceAlreadySetError()
+
         self.file = fileinstance
+        self.bucket.size += self.file.size
+
         return self
 
     def restore(self):

@@ -35,6 +35,10 @@ class StorageError(FilesException):
     """Exception raised when a storage operation fails."""
 
 
+class UnexpectedFileSizeError(StorageError):
+    """Exception raised when a file does not match its expected size."""
+
+
 class FileInstanceAlreadySetError(FilesException):
     """Exception raised when file instance already set on object."""
 

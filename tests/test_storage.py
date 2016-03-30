@@ -34,7 +34,7 @@ import pytest
 from mock import patch
 from six import BytesIO, b
 
-from invenio_files_rest.errors import StorageError
+from invenio_files_rest.errors import StorageError, UnexpectedFileSizeError
 from invenio_files_rest.models import Bucket, FileInstance, ObjectVersion
 from invenio_files_rest.storage import PyFilesystemStorage, Storage
 
@@ -53,20 +53,32 @@ def test_pyfilesystemstorage(app, db, dummy_location):
     def callback(total, size):
         counter['size'] = size
 
+    def test_file_save(data, **kwargs):
+        stream = BytesIO(data)
+        loc, size, checksum = storage.save(stream, progress_callback=callback,
+                                           **kwargs)
+
+        # Verify checksum, size and location.
+        m = hashlib.md5()
+        m.update(data)
+        assert "md5:{0}".format(m.hexdigest()) == checksum
+
+        assert size == len(data)
+        assert loc == join(
+            dummy_location.uri,
+            str(obj.file.id),
+            "data")
+
     data = b("this is some content")
-    stream = BytesIO(data)
-    loc, size, checksum = storage.save(stream, progress_callback=callback)
-
-    # Verify checksum, size and location.
-    m = hashlib.md5()
-    m.update(data)
-    assert "md5:{0}".format(m.hexdigest()) == checksum
-
-    assert size == len(data)
-    assert loc == join(
-        dummy_location.uri,
-        str(obj.file.id),
-        "data")
+    # test without size
+    test_file_save(data)
+    # test with correct size
+    test_file_save(data, size=len(data))
+    # test with wrong sizes
+    with pytest.raises(UnexpectedFileSizeError):
+        test_file_save(data, size=len(data) - 1)
+    with pytest.raises(UnexpectedFileSizeError):
+        test_file_save(data, size=len(data) + 1)
 
 
 def test_pyfilesystemstorage_checksum(app, db, dummy_location):

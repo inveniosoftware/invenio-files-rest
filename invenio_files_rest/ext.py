@@ -56,6 +56,31 @@ class _FilesRESTState(object):
             from invenio_files_rest.permissions import permission_factory
             return permission_factory
 
+    @cached_property
+    def file_size_limiter(self):
+        r"""Load the file size limiter.
+
+        The file size limiter is a function used to get the maximum size a file
+        can have. This function can use anything to decide this maximum size,
+        example: bucket quota, user quota, custom limit.
+        Its prototype is:
+            py::function: limiter(bucket=None\
+                ) -> (size limit: int, reason: str)
+
+        The `reason` is the message displayed to the user when the limit is
+        exceeded.
+        The `size limit` and `reason` can be None if there is no limit.
+
+        This function is used by the REST API and any other file creation
+        input.
+        """
+        imp = self.app.config.get("FILES_REST_FILE_SIZE_LIMITER")
+        if imp:
+            return import_string(imp)
+        else:
+            from invenio_files_rest.helpers import file_size_limiter
+            return file_size_limiter
+
 
 class InvenioFilesREST(object):
     """Invenio-Files-REST extension."""

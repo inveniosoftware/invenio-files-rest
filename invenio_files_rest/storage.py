@@ -32,7 +32,7 @@ from os.path import join
 
 from fs.opener import opener
 
-from .errors import StorageError
+from .errors import StorageError, UnexpectedFileSizeError
 from .helpers import send_stream
 
 
@@ -115,7 +115,8 @@ class Storage(object):
             raise StorageError(
                 'Could not compute checksum of file: {}'.format(e))
 
-    def _write_stream(self, src, dst, chunk_size=None, progress_callback=None):
+    def _write_stream(self, src, dst, size=None, chunk_size=None,
+                      progress_callback=None):
         """Helper method to save stream from src to dest + compute checksum."""
         chunk_size = chunk_size or 1024 * 64
 
@@ -124,6 +125,8 @@ class Storage(object):
 
         while 1:
             chunk = src.read(chunk_size)
+            if size is not None and bytes_written > size:
+                raise UnexpectedFileSizeError('File is bigger than expected.')
             if not chunk:
                 if progress_callback:
                     progress_callback(bytes_written, bytes_written)
@@ -133,6 +136,10 @@ class Storage(object):
             m.update(chunk)
             if progress_callback:
                 progress_callback(None, bytes_written)
+
+        if size and bytes_written < size:
+            raise UnexpectedFileSizeError('File is smaller than '
+                                          'expected.')
 
         return bytes_written, "md5:{0}".format(m.hexdigest())
 
@@ -168,14 +175,16 @@ class PyFilesystemStorage(Storage):
         """
         return opener.open(self.file.uri, mode='rb')
 
-    def save(self, incoming_stream, chunk_size=None, progress_callback=None):
+    def save(self, incoming_stream, size=None, chunk_size=None,
+             progress_callback=None):
         """Save file in the file system."""
         fs = opener.opendir(self.file.uri or self.make_path(), create_dir=True)
         fp = fs.open(self.filename, 'wb')
         try:
             bytes_written, checksum = self._write_stream(
-                    incoming_stream, fp, chunk_size=chunk_size,
-                    progress_callback=progress_callback)
+                incoming_stream, fp, chunk_size=chunk_size,
+                progress_callback=progress_callback,
+                size=size)
         finally:
             fp.close()
 

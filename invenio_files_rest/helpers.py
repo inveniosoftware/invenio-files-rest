@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015 CERN.
+# Copyright (C) 2015, 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -79,3 +79,12 @@ def send_stream(stream, filename, size, mtime, mimetype=None, restricted=False,
         rv = rv.make_conditional(request)
 
     return rv
+
+
+def file_size_limiter(bucket):
+    """Retrieve the internal quota from the provided bucket."""
+    if bucket.quota_size:
+        return (bucket.quota_size - bucket.size,
+                'Bucket quota is {0} bytes. {1} bytes are currently '
+                'used.'.format(bucket.quota_size, bucket.size))
+    return (None, None)
