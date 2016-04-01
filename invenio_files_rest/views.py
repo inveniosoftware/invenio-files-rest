@@ -717,7 +717,7 @@ blueprint.add_url_rule(
     methods=['GET', 'PUT', 'DELETE', 'HEAD']
 )
 blueprint.add_url_rule(
-    '/<string:bucket_id>/<string:key>',
+    '/<string:bucket_id>/<path:key>',
     view_func=object_view,
     methods=['GET', 'PUT', 'DELETE', 'HEAD']
 )
