@@ -63,7 +63,7 @@ from sqlalchemy_utils.types import UUIDType
 
 from .errors import FileInstanceAlreadySetError, InvalidOperationError
 
-slug_pattern = re.compile("^[a-z][a-z0-9-]+$")
+slug_pattern = re.compile('^[a-z][a-z0-9-]+$')
 
 
 class Timestamp(object):
@@ -74,14 +74,14 @@ class Timestamp(object):
     """
 
     created = db.Column(
-        db.DateTime().with_variant(mysql.DATETIME(fsp=6), "mysql"),
+        db.DateTime().with_variant(mysql.DATETIME(fsp=6), 'mysql'),
         default=datetime.utcnow,
         nullable=False
     )
     """Creation timestamp."""
 
     updated = db.Column(
-        db.DateTime().with_variant(mysql.DATETIME(fsp=6), "mysql"),
+        db.DateTime().with_variant(mysql.DATETIME(fsp=6), 'mysql'),
         default=datetime.utcnow,
         nullable=False
     )
@@ -123,7 +123,7 @@ class Location(db.Model, Timestamp):
         """Validate name."""
         if not slug_pattern.match(name) or len(name) > 20:
             raise ValueError(
-                "Invalid location name (lower-case alphanumeric + danshes).")
+                'Invalid location name (lower-case alphanumeric + danshes).')
         return name
 
     @classmethod
@@ -229,7 +229,7 @@ class Bucket(db.Model, Timestamp):
         """
         if self.deleted:
             raise InvalidOperationError(
-                "Cannot make snapshot of a deleted bucket.")
+                'Cannot make snapshot of a deleted bucket.')
         with db.session.begin_nested():
             b = Bucket(
                 default_location=self.default_location,
@@ -382,7 +382,8 @@ class FileInstance(db.Model, Timestamp):
     )
     """Identifier of file."""
 
-    uri = db.Column(db.String(255), unique=True, nullable=True)
+    uri = db.Column(db.Text().with_variant(mysql.VARCHAR(255), 'mysql'),
+                    unique=True, nullable=True)
     """Location of file."""
 
     storage_class = db.Column(db.String(1), nullable=True)
@@ -409,6 +410,14 @@ class FileInstance(db.Model, Timestamp):
 
     last_check = db.Column(db.Boolean, default=True, nullable=False)
     """Result of last fixity check."""
+
+    @validates('uri')
+    def validate_uri(self, key, uri):
+        """Validate uri."""
+        if len(uri) > current_app.config['FILES_REST_FILE_URI_MAX_LEN']:
+            raise ValueError(
+                'FileInstance URI too long ({0}).'.format(len(uri)))
+        return uri
 
     @classmethod
     def get(cls, file_id):
@@ -465,7 +474,7 @@ class FileInstance(db.Model, Timestamp):
         :param stream: File-like stream.
         """
         if not self.writable:
-            raise ValueError("File instance is not writable.")
+            raise ValueError('File instance is not writable.')
         self.set_uri(
             *self.storage(**kwargs).save(
                 stream, chunk_size=chunk_size,
@@ -474,11 +483,11 @@ class FileInstance(db.Model, Timestamp):
     def copy_contents(self, fileinstance, progress_callback=None, **kwargs):
         """Copy this file instance into another file instance."""
         if not fileinstance.readable:
-            raise ValueError("Source file instance is not readable.")
+            raise ValueError('Source file instance is not readable.')
         if not self.writable:
-            raise ValueError("File instance is not writable.")
+            raise ValueError('File instance is not writable.')
         if not self.size == 0:
-            raise ValueError("File instance has data.")
+            raise ValueError('File instance has data.')
 
         self.set_uri(
             *self.storage(**kwargs).copy(
@@ -487,7 +496,7 @@ class FileInstance(db.Model, Timestamp):
     def send_file(self, **kwargs):
         """Send file to client."""
         if not self.readable:
-            raise ValueError("File instance is not readable.")
+            raise ValueError('File instance is not readable.')
         return self.storage(**kwargs).send_file()
 
     def set_uri(self, uri, size, checksum, readable=True, writable=False,
@@ -538,7 +547,7 @@ class ObjectVersion(db.Model, Timestamp):
     """Bucket identifier."""
 
     key = db.Column(
-        db.String(255),
+        db.Text().with_variant(mysql.VARCHAR(255), 'mysql'),
         primary_key=True, )
     """Key identifying the object."""
 
@@ -566,9 +575,17 @@ class ObjectVersion(db.Model, Timestamp):
     file = db.relationship(FileInstance, backref='objects')
     """Relationship to file instance."""
 
+    @validates('key')
+    def validate_key(self, key, key_):
+        """Validate key."""
+        if len(key_) > current_app.config['FILES_REST_OBJECT_KEY_MAX_LEN']:
+            raise ValueError(
+                'ObjectVersion key too long ({0}).'.format(len(key_)))
+        return key_
+
     def __repr__(self):
         """Return representation of location."""
-        return "{0}:{2}:{1}".format(
+        return '{0}:{2}:{1}'.format(
             self.bucket_id, self.key, self.version_id)
 
     @property
@@ -642,7 +659,7 @@ class ObjectVersion(db.Model, Timestamp):
         Raises an exception if the object is not the latest version.
         """
         if self.is_head:
-            raise InvalidOperationError("Cannot restore latest version.")
+            raise InvalidOperationError('Cannot restore latest version.')
         return self.copy()
 
     def copy(self, bucket=None, key=None):
@@ -664,7 +681,7 @@ class ObjectVersion(db.Model, Timestamp):
         :returns: The copied object version.
         """
         if self.is_deleted:
-            raise InvalidOperationError("Cannot copy a delete marker.")
+            raise InvalidOperationError('Cannot copy a delete marker.')
 
         # Get bucket
         if bucket is None:

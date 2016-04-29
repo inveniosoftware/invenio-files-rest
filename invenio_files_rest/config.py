@@ -43,3 +43,19 @@ FILES_REST_STORAGE_FACTORY = None
 
 FILES_REST_PERMISSION_FACTORY = None
 """Import path of permission factory."""
+
+FILES_REST_OBJECT_KEY_MAX_LEN = 255
+"""Maximum length of the ObjectVersion.key field.
+
+.. warning::
+   Setting this variable to anything higher than 255 is only supported
+   with PostgreSQL database.
+"""
+
+FILES_REST_FILE_URI_MAX_LEN = 255
+"""Maximum length of the FileInstance.uri field.
+
+.. warning::
+   Setting this variable to anything higher than 255 is only supported
+   with PostgreSQL database.
+"""

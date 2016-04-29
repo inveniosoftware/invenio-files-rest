@@ -518,6 +518,13 @@ def test_object_relink_all(app, db, dummy_location):
     assert ObjectVersion.query.filter_by(file_id=fnew.id).count() == 2
 
 
+def test_object_validation(app, db, dummy_location):
+    """Test validating the ObjectVersion."""
+    b1 = Bucket.create()
+    ObjectVersion.create(b1, 'x' * 255)  # Should not raise
+    pytest.raises(ValueError, ObjectVersion.create, b1, 'x' * 256)
+
+
 def test_bucket_tags(app, db, dummy_location):
     """Test bucket tags."""
     b = Bucket.create()
@@ -695,3 +702,10 @@ def test_fileinstance_send_file(app, db, dummy_location):
     with app.test_request_context():
         res = f.send_file()
         assert int(res.headers['Content-Length']) == len(data)
+
+
+def test_fileinstance_validation(app, db, dummy_location):
+    """Test validating the FileInstance."""
+    f = FileInstance.create()
+    f.set_uri('x' * 255, 1000, 1000)  # Should not raise
+    pytest.raises(ValueError, f.set_uri, 'x' * 256, 1000, 1000)

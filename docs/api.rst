@@ -70,3 +70,9 @@ Exceptions
 .. automodule:: invenio_files_rest.errors
    :members:
    :undoc-members:
+
+Configuration
+-------------
+.. automodule:: invenio_files_rest.config
+   :members:
+   :undoc-members:
