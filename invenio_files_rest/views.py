@@ -611,7 +611,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             db.session.rollback()
             abort(400, 'File size different than Content-Length')
 
-    def delete(self, bucket_id, filename, **kwargs):
+    def delete(self, bucket_id, key, **kwargs):
         """Set object file as deleted.
 
         .. http:head:: /files/(uuid:bucket_id)/(string:filename)
@@ -651,7 +651,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             :statuscode 500: exception while deleting
         """
         try:
-            if ObjectVersion.delete(bucket_id, filename):
+            if ObjectVersion.delete(bucket_id, key):
                 db.session.commit()
             else:
                 abort(
@@ -664,7 +664,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             current_app.logger.exception('Failed to delete object.')
             abort(500, 'Failed to delete object.')
 
-    def head(self, bucket_id, filename, **kwargs):
+    def head(self, bucket_id, key, **kwargs):
         """Check the existence of the object file.
 
         .. http:head:: /files/(uuid:bucket_id)/(string:filename)
@@ -700,7 +700,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 404: the file does not exist
         """
-        if not bucket_id or not ObjectVersion.get(bucket_id, filename):
+        if not bucket_id or not ObjectVersion.get(bucket_id, key):
             abort(404, 'The object file does not exist or has been deleted.')
 
 
