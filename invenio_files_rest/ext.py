@@ -29,6 +29,7 @@ from __future__ import absolute_import, print_function
 from werkzeug.utils import cached_property, import_string
 
 from . import config
+from .cli import files as files_cmd
 from .storage import pyfs_storage_factory
 from .views import blueprint
 
@@ -93,6 +94,8 @@ class InvenioFilesREST(object):
     def init_app(self, app):
         """Flask application initialization."""
         self.init_config(app)
+        if hasattr(app, 'cli'):
+            app.cli.add_command(files_cmd)
         app.register_blueprint(blueprint)
         app.extensions['invenio-files-rest'] = _FilesRESTState(app)
 

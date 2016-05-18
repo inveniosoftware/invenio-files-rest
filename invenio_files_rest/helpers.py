@@ -28,6 +28,7 @@ from __future__ import absolute_import, print_function
 
 import hashlib
 import mimetypes
+import os
 from time import time
 
 from flask import current_app, request
@@ -112,3 +113,37 @@ def compute_md5_checksum(src, chunk_size=None, progress_callback=None):
         if progress_callback:
             progress_callback(bytes_read)
     return "md5:{0}".format(m.hexdigest())
+
+
+def populate_from_path(bucket, source, checksum=True, key_prefix=''):
+    """Populate a ``bucket`` from all files in path."""
+    from .models import FileInstance, ObjectVersion
+
+    def create_file(key, path):
+        """Create new ``ObjectVersion`` from path or existing ``FileInstance``.
+
+        It checks MD5 checksum and size of existing ``FileInstance``s.
+        """
+        key = key_prefix + key
+
+        if checksum:
+            file_checksum = compute_md5_checksum(open(path, 'rb'),
+                                                 chunk_size=80960)
+            file_instance = FileInstance.query.filter_by(
+                checksum=file_checksum, size=os.path.getsize(path)
+            ).first()
+            if file_instance:
+                return ObjectVersion.create(
+                    bucket, key, _file_id=file_instance.id
+                )
+        return ObjectVersion.create(bucket, key, stream=open(path, 'rb'))
+
+    if os.path.isfile(source):
+        yield create_file(os.path.basename(source), source)
+    else:
+        for root, dirs, files in os.walk(source, topdown=False):
+            for name in files:
+                filename = os.path.join(root, name)
+                assert filename.startswith(source)
+                parts = [p for p in filename[len(source):].split(os.sep) if p]
+                yield create_file('/'.join(parts), os.path.join(root, name))
