@@ -565,6 +565,12 @@ class ObjectVersion(db.Model, Timestamp):
     A null value in this column defines that the object has been deleted.
     """
 
+    mimetype = db.Column(
+        db.String(255),
+        index=True,
+        nullable=True, )
+    """MIME type of the object."""
+
     is_head = db.Column(db.Boolean, nullable=False, default=True)
     """Defines if object is the latest version."""
 
@@ -695,7 +701,8 @@ class ObjectVersion(db.Model, Timestamp):
         return obj
 
     @classmethod
-    def create(cls, bucket, key, _file_id=None, stream=None, **kwargs):
+    def create(cls, bucket, key, _file_id=None, stream=None, mimetype=None,
+               **kwargs):
         """Create a new object in a bucket.
 
         The created object is by default created as a delete marker. You must
@@ -706,6 +713,7 @@ class ObjectVersion(db.Model, Timestamp):
         :param _file_id: For internal use.
         :param stream: File-like stream object. Used to set content of object
             immediately after being created.
+        :param mimetype: MIME type of the file object if it is known.
         :param kwargs: Keyword arguments passed to ``Object.set_contents()``.
         """
         bucket = bucket if isinstance(bucket, Bucket) else Bucket.get(bucket)
@@ -723,6 +731,7 @@ class ObjectVersion(db.Model, Timestamp):
                 key=key,
                 version_id=uuid.uuid4(),
                 is_head=True,
+                mimetype=mimetype,
             )
             if _file_id:
                 obj.file_id = _file_id

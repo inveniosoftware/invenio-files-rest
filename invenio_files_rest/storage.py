@@ -193,7 +193,7 @@ class PyFilesystemStorage(Storage):
 
         return uri, bytes_written, checksum
 
-    def send_file(self, restricted=False):
+    def send_file(self, restricted=False, mimetype=None):
         """Send file to the client."""
         try:
             fs, path = opener.parse(self.file.uri)
@@ -201,6 +201,7 @@ class PyFilesystemStorage(Storage):
             return send_stream(
                 fp, path, self.file.size,
                 time.mktime(self.file.updated.timetuple()),
+                mimetype=mimetype,
                 restricted=restricted, etag=self.file.checksum,
                 content_md5=self.file.checksum)
         except Exception as e:

@@ -30,3 +30,4 @@ Files download/upload REST API similar to S3 for Invenio.
 - Jose Benito Gonzalez Lopez <jose.benito.gonzalez@cern.ch>
 - Lars Holm Nielsen <lars.holm.nielsen@cern.ch>
 - Nicolas Harraudeau <nicolas.harraudeau@cern.ch>
+- Jiri Kuncar <jiri.kuncar@cern.ch>

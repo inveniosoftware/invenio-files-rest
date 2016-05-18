@@ -471,7 +471,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             current_app.logger.warning(
                 'File checksum mismatch detected.', extra=logger_data)
 
-        return obj.file.send_file()
+        return obj.file.send_file(mimetype=obj.mimetype)
 
     @use_kwargs(get_args)
     def get(self, bucket_id, key, version_id=None, **kwargs):
