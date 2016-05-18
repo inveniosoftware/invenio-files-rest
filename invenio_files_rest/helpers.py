@@ -26,6 +26,7 @@
 
 from __future__ import absolute_import, print_function
 
+import hashlib
 import mimetypes
 from time import time
 
@@ -88,3 +89,26 @@ def file_size_limiter(bucket):
                 'Bucket quota is {0} bytes. {1} bytes are currently '
                 'used.'.format(bucket.quota_size, bucket.size))
     return (None, None)
+
+
+def compute_md5_checksum(src, chunk_size=None, progress_callback=None):
+    """Helper method to compute checksum from a stream.
+
+    :param src: File-like object.
+    :param chunk_size: Read at most size bytes from the file.
+    :param progress_callback: Function accepting one argument with number
+        of bytes read.
+    """
+    bytes_read = 0
+    m = hashlib.md5()
+    while 1:
+        chunk = src.read(chunk_size)
+        if not chunk:
+            if progress_callback:
+                progress_callback(bytes_read)
+            break
+        m.update(chunk)
+        bytes_read += len(chunk)
+        if progress_callback:
+            progress_callback(bytes_read)
+    return "md5:{0}".format(m.hexdigest())

@@ -28,12 +28,13 @@ from __future__ import absolute_import, print_function
 
 import hashlib
 import time
+from functools import partial
 from os.path import join
 
 from fs.opener import opener
 
 from .errors import StorageError, UnexpectedFileSizeError
-from .helpers import send_stream
+from .helpers import compute_md5_checksum, send_stream
 
 
 def pyfs_storage_factory(fileinstance, objectversion=None, location=None,
@@ -95,22 +96,14 @@ class Storage(object):
         Naive implementation that can be overwritten by subclasses in order to
         provide more efficient implementation.
         """
-        bytes_read = 0
         total_size = self.file.size
+        if progress_callback:
+            progress_callback = partial(progress_callback, total_size)
 
         try:
-            m = hashlib.md5()
-            while 1:
-                chunk = src.read(chunk_size)
-                if not chunk:
-                    if progress_callback:
-                        progress_callback(total_size, total_size)
-                    break
-                m.update(chunk)
-                bytes_read += len(chunk)
-                if progress_callback:
-                    progress_callback(total_size, bytes_read)
-            return "md5:{0}".format(m.hexdigest())
+            return compute_md5_checksum(
+                src, chunk_size=chunk_size, progress_callback=progress_callback
+            )
         except Exception as e:
             raise StorageError(
                 'Could not compute checksum of file: {}'.format(e))
