@@ -28,7 +28,6 @@ import os
 import sys
 
 from setuptools import find_packages, setup
-from setuptools.command.test import test as TestCommand  # noqa
 
 readme = open('README.rst').read()
 history = open('CHANGES.rst').read()
@@ -45,7 +44,7 @@ tests_require = [
     'invenio-records-ui>=1.0.0a5',
     'isort>=4.2.2',
     'mock>=1.3.0',
-    'pep257>=0.7.0',
+    'pydocstyle>=1.0.0',
     'pytest-cache>=1.0',
     'pytest-cov>=1.8.0',
     'pytest-pep8>=1.0.6',
@@ -88,41 +87,11 @@ install_requires = [
     'WTForms>=2.0',
 ]
 
+setup_requires = [
+        'pytest-runner>=2.7',
+        ]
+
 packages = find_packages()
-
-
-class PyTest(TestCommand):
-    """PyTest Test."""
-
-    user_options = [('pytest-args=', 'a', "Arguments to pass to py.test")]
-
-    def initialize_options(self):
-        """Init pytest."""
-        TestCommand.initialize_options(self)
-        self.pytest_args = []
-        try:
-            from ConfigParser import ConfigParser
-        except ImportError:
-            from configparser import ConfigParser
-        config = ConfigParser()
-        config.read('pytest.ini')
-        self.pytest_args = config.get('pytest', 'addopts').split(' ')
-
-    def finalize_options(self):
-        """Finalize pytest."""
-        TestCommand.finalize_options(self)
-        if hasattr(self, '_test_args'):
-            self.test_suite = ''
-        else:
-            self.test_args = []
-            self.test_suite = True
-
-    def run_tests(self):
-        """Run tests."""
-        # import here, cause outside the eggs aren't loaded
-        import pytest
-        errno = pytest.main(self.pytest_args)
-        sys.exit(errno)
 
 # Get the version string. Cannot be done with import!
 g = {}
@@ -135,7 +104,7 @@ setup(
     version=version,
     description=__doc__,
     long_description=readme + '\n\n' + history,
-    keywords='invenio TODO',
+    keywords='invenio files REST',
     license='GPLv2',
     author='CERN',
     author_email='info@invenio-software.org',
@@ -185,6 +154,7 @@ setup(
     },
     extras_require=extras_require,
     install_requires=install_requires,
+    setup_requires=setup_requires,
     tests_require=tests_require,
     classifiers=[
         'Environment :: Web Environment',
@@ -202,5 +172,4 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Development Status :: 1 - Planning',
     ],
-    cmdclass={'test': PyTest},
 )
