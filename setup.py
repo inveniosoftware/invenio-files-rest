@@ -25,7 +25,6 @@
 """Files download/upload REST API similar to S3 for Invenio."""
 
 import os
-import sys
 
 from setuptools import find_packages, setup
 
@@ -42,6 +41,7 @@ tests_require = [
     'invenio-admin>=1.0.0a3',
     'invenio-celery>=1.0.0a4',
     'invenio-records-ui>=1.0.0a5',
+    'invenio-records-files>=1.0.0a3',
     'isort>=4.2.2',
     'mock>=1.3.0',
     'pydocstyle>=1.0.0',
@@ -88,8 +88,8 @@ install_requires = [
 ]
 
 setup_requires = [
-        'pytest-runner>=2.7',
-        ]
+    'pytest-runner>=2.7',
+]
 
 packages = find_packages()
 

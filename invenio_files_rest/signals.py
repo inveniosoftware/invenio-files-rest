@@ -30,7 +30,7 @@ from blinker import Namespace
 
 _signals = Namespace()
 
-file_download = _signals.signal('file-download')
+file_downloaded = _signals.signal('file-downloaded')
 """File downloaded signal.
 
 Sent when a file is downloaded.

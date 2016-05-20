@@ -41,6 +41,7 @@ from .errors import UnexpectedFileSizeError
 from .models import Bucket, Location, ObjectVersion
 from .proxies import current_permission_factory
 from .serializer import json_serializer
+from .signals import file_downloaded
 
 blueprint = Blueprint(
     'invenio_files_rest',
@@ -64,29 +65,28 @@ def file_download_ui(pid, record, **kwargs):
                 # ...
                 route='/records/<pid_value/files/<filename>',
                 view_imp='invenio_files_rest.views.file_download_ui',
+                record_class='invenio_records_files.api:Record',
             )
         )
     """
     # Extract file from record.
-    fileobj = None
-    filename = request.view_args.get('filename')
-
-    for f in record.get('files', []):
-        if filename and filename == f.get('filename'):
-            fileobj = f
-            break
-
-    if fileobj is None:
+    fileobj = current_files_rest.record_file_factory(
+        pid, record, request.view_args.get('filename'))
+    if not fileobj:
         abort(404)
 
-    bucket_id = fileobj['bucket']
-    key = fileobj['filename']
+    # Check if file defines an expected checksum.
+    try:
+        expected_chksum = fileobj['checksum']
+    except KeyError:
+        expected_chksum = None
 
+    # Send file.
     return ObjectResource.send_object(
-        bucket_id, key,
-        expected_chksum=fileobj.get('checksum'),
+        fileobj.bucket_id, fileobj.key,
+        expected_chksum=expected_chksum,
         logger_data=dict(
-            bucket_id=bucket_id,
+            bucket_id=fileobj.bucket_id,
             pid_type=pid.pid_type,
             pid_value=pid.pid_value,
         ))
@@ -160,7 +160,7 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
                 'url': url_for("invenio_files_rest.bucket_api",
                                bucket_id=bucket.id, _external=True),
                 'uuid': str(bucket.id)
-                })
+            })
         # FIXME: how to avoid returning a dict with key 'json'
         return {'json': bucket_list}
 
@@ -467,13 +467,12 @@ class ObjectResource(ContentNegotiatedMethodView):
         if obj is None:
             abort(404, 'Object does not exist.')
 
-        # TODO: implement access control
-        # TODO: implement support for tokens
         if expected_chksum and obj.file.checksum != expected_chksum:
             current_app.logger.warning(
                 'File checksum mismatch detected.', extra=logger_data)
 
         mimetype = obj.mimetype or mimetypes.guess_type(obj.key)[0]
+        file_downloaded.send(current_app._get_current_object(), obj=obj)
         return obj.file.send_file(mimetype=mimetype)
 
     @use_kwargs(get_args)
@@ -600,6 +599,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             obj = ObjectVersion.create(bucket, key)
             obj.set_contents(uploaded_file, size=content_length)
             db.session.commit()
+
             # TODO: Fix response object to only include headers?
             return {'json': {
                 'checksum': obj.file.checksum,

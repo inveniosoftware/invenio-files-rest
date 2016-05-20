@@ -33,7 +33,7 @@ from flask import url_for
 from invenio_pidstore import InvenioPIDStore
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_records import InvenioRecords
-from invenio_records.api import Record
+from invenio_records_files.api import Record, RecordsBuckets
 from invenio_records_ui import InvenioRecordsUI
 
 
@@ -51,6 +51,7 @@ def test_file_download_ui(base_app, objects, db):
                 pid_type='recid',
                 route='/records/<pid_value>/files/<filename>',
                 view_imp='invenio_files_rest.views.file_download_ui',
+                record_class='invenio_records_files.api:Record',
             ),
         )
     ))
@@ -66,14 +67,15 @@ def test_file_download_ui(base_app, objects, db):
         PersistentIdentifier.create(
             'recid', '1', object_type='rec', object_uuid=rec_uuid,
             status=PIDStatus.REGISTERED)
-        Record.create({
+        record = Record.create({
             'title': 'Registered',
             'recid': 1,
-            'files': [
-                {'filename': obj1.key, 'bucket': str(obj1.bucket_id),
+            '_files': [
+                {'key': obj1.key, 'bucket': str(obj1.bucket_id),
                  'checksum': 'invalid'},
             ]
         }, id_=rec_uuid)
+        record.model.records_buckets = RecordsBuckets(bucket=obj1.bucket)
         db.session.commit()
 
         main_url = url_for('invenio_records_ui.recid', pid_value='1')

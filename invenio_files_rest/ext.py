@@ -26,6 +26,7 @@
 
 from __future__ import absolute_import, print_function
 
+from pkg_resources import DistributionNotFound, get_distribution
 from werkzeug.utils import cached_property, import_string
 
 from . import config
@@ -40,6 +41,20 @@ class _FilesRESTState(object):
     def __init__(self, app):
         """Initialize state."""
         self.app = app
+
+    @cached_property
+    def record_file_factory(self):
+        """Load default storage factory."""
+        imp = self.app.config.get("FILES_REST_RECORD_FILE_FACOTRY")
+        if imp:
+            import_string(imp)
+        else:
+            try:
+                get_distribution('invenio-records-files')
+                from invenio_records_files.utils import record_file_factory
+                return record_file_factory
+            except DistributionNotFound:
+                return lambda pid, record, filename: None
 
     @cached_property
     def storage_factory(self):

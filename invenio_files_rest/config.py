@@ -59,3 +59,6 @@ FILES_REST_FILE_URI_MAX_LEN = 255
    Setting this variable to anything higher than 255 is only supported
    with PostgreSQL database.
 """
+
+FILES_REST_RECORD_FILE_FACOTRY = None
+"""Import path of factory used to extract file from record."""
