@@ -493,11 +493,11 @@ class FileInstance(db.Model, Timestamp):
             *self.storage(**kwargs).copy(
                 fileinstance, progress_callback=progress_callback))
 
-    def send_file(self, **kwargs):
+    def send_file(self, mimetype=None, **kwargs):
         """Send file to client."""
         if not self.readable:
             raise ValueError('File instance is not readable.')
-        return self.storage(**kwargs).send_file()
+        return self.storage(**kwargs).send_file(mimetype=mimetype)
 
     def set_uri(self, uri, size, checksum, readable=True, writable=False,
                 storage_class=None):

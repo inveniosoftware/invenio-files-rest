@@ -26,6 +26,8 @@
 
 from __future__ import absolute_import, print_function
 
+import mimetypes
+
 from flask import Blueprint, abort, current_app, request, url_for
 from flask_login import current_user
 from invenio_db import db
@@ -471,7 +473,8 @@ class ObjectResource(ContentNegotiatedMethodView):
             current_app.logger.warning(
                 'File checksum mismatch detected.', extra=logger_data)
 
-        return obj.file.send_file(mimetype=obj.mimetype)
+        mimetype = obj.mimetype or mimetypes.guess_type(obj.key)[0]
+        return obj.file.send_file(mimetype=mimetype)
 
     @use_kwargs(get_args)
     def get(self, bucket_id, key, version_id=None, **kwargs):

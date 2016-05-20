@@ -50,6 +50,8 @@ def send_stream(stream, filename, size, mtime, mimetype=None, restricted=False,
     headers = Headers()
     if as_attachment:
         headers.add('Content-Disposition', 'attachment', filename=filename)
+    else:
+        headers.add('Content-Disposition', 'inline')
     headers['Content-Length'] = size
     headers['Content-MD5'] = content_md5
 
