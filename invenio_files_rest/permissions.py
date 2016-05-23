@@ -51,7 +51,7 @@ objects_delete_all = ObjectsDelete(None)
 _action2need_map = {
     'objects-read': ObjectsRead,
     'objects-update': ObjectsUpdate,
-    'objects-delete': ObjectsRead,
+    'objects-delete': ObjectsDelete,
 }
 
 

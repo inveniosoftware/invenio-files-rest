@@ -38,10 +38,20 @@ the file and/or what is the reliability.
 FILES_REST_DEFAULT_STORAGE_CLASS = 'S'
 """Default storage class."""
 
-FILES_REST_STORAGE_FACTORY = None
+FILES_REST_DEFAULT_QUOTA_SIZE = None
+"""Default quota size for a bucket in bytes."""
+
+FILES_REST_DEFAULT_MAX_FILE_SIZE = None
+"""Default maximum file size for a bucket in bytes."""
+
+FILES_REST_SIZE_LIMITERS = 'invenio_files_rest.limiters.file_size_limiters'
+"""Import path of file size limiters factory."""
+
+FILES_REST_STORAGE_FACTORY = 'invenio_files_rest.storage.pyfs_storage_factory'
 """Import path of factory used to create a storage instance."""
 
-FILES_REST_PERMISSION_FACTORY = None
+FILES_REST_PERMISSION_FACTORY = \
+    'invenio_files_rest.permissions.permission_factory'
 """Import path of permission factory."""
 
 FILES_REST_OBJECT_KEY_MAX_LEN = 255

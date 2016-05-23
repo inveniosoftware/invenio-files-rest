@@ -1,6 +1,6 @@
 ..
     This file is part of Invenio.
-    Copyright (C) 2015 CERN.
+    Copyright (C) 2015, 2016 CERN.
 
     Invenio is free software; you can redistribute it
     and/or modify it under the terms of the GNU General Public License as
@@ -27,7 +27,8 @@ Authors
 
 Files download/upload REST API similar to S3 for Invenio.
 
+- Jiri Kuncar <jiri.kuncar@cern.ch>
 - Jose Benito Gonzalez Lopez <jose.benito.gonzalez@cern.ch>
 - Lars Holm Nielsen <lars.holm.nielsen@cern.ch>
 - Nicolas Harraudeau <nicolas.harraudeau@cern.ch>
-- Jiri Kuncar <jiri.kuncar@cern.ch>
+- Sami Hiltunen <sami.mikael.hiltunen@cern.ch>

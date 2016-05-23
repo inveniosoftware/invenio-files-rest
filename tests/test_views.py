@@ -27,11 +27,12 @@
 
 from __future__ import absolute_import, print_function
 
+from struct import pack
+
 import pytest
 from flask import json, url_for
 from invenio_db import db
 from six import BytesIO, b
-from test_helpers import CONSTANT_FILE_SIZE_LIMIT
 
 from invenio_files_rest import InvenioFilesREST
 from invenio_files_rest.views import blueprint
@@ -190,18 +191,13 @@ def test_get_object_permissions(app, objects, bucket, users_data, permissions):
         assert resp.get_etag()[0] == obj.file.checksum
 
 
-@pytest.mark.parametrize('limiter, bucket_quota, file_size_limit', [
-    # use the default file size limiter
-    (None, 50, 50),
-    # internal quota is not used by the constant_file_size_limiter
-    ('test_helpers:constant_file_size_limiter', CONSTANT_FILE_SIZE_LIMIT + 2,
-     CONSTANT_FILE_SIZE_LIMIT),
+@pytest.mark.parametrize('bucket_quota, file_size_limit', [
+    (50, 50),
+    (122, 120),
 ])
-def test_put_object(limiter, bucket_quota, file_size_limit, base_app, objects,
+def test_put_object(bucket_quota, file_size_limit, base_app, objects,
                     bucket, users_data, permissions):
     """Test ObjectResource view PUT method."""
-    if limiter is not None:
-        base_app.config['FILES_REST_FILE_SIZE_LIMITER'] = limiter
     InvenioFilesREST(base_app)
     base_app.register_blueprint(blueprint)
 
@@ -220,7 +216,7 @@ def test_put_object(limiter, bucket_quota, file_size_limit, base_app, objects,
         # Get object that doesn't exist. Gets the "401 Unauthorized" before 404
         # Try to update the file under 'key' (with 'contents2')
         data_bytes = b'contents2'
-        headers = {'Accept': '*/*', 'Content-Length': str(len(data_bytes))}
+        headers = {'Accept': '*/*'}
         data = {'file': (BytesIO(data_bytes), 'file.dat')}
         resp = client.put(object_url, data=data, headers=headers)
         assert resp.status_code == 401
@@ -231,52 +227,64 @@ def test_put_object(limiter, bucket_quota, file_size_limit, base_app, objects,
         resp = client.put(object_url, data=data, headers=headers)
         assert resp.status_code == 403
 
-        # FIXME: check that the file is not created
+        # Login with 'user1', try to put without file in the request
+        client.post(login_url, data=u1_data)
+        resp = client.put(object_url, data={}, headers=headers)
+        assert resp.status_code == 400
+        assert 'File is missing from the request.' in resp.get_data(
+            as_text=True)
+
+        # Try with a non existing bucket
+        resp = client.put(
+            '/files/00000000-0000-0000-0000-000000000000/f.pdf',
+            data={'file': (BytesIO(data_bytes), 'file.dat')},
+            headers=headers
+        )
+        assert resp.status_code == 404
+        assert 'Bucket does not exist.' in resp.get_data(as_text=True)
+
+
+@pytest.mark.parametrize(
+    'quota_size, max_file_size, file_size, expected', [
+        (None, None, 100, (200, '')),
+        (50, None, 100, (400, 'Bucket quota exceeded.')),
+        (100, None, 100, (200, '')),
+        (150, None, 100, (200, '')),
+        (None, 50, 100, (400, 'Maximum file size exceeded.')),
+        (None, 100, 100, (200, '')),
+        (None, 150, 100, (200, '')),
+    ])
+def test_file_size_errors(quota_size, max_file_size, file_size, expected,
+                          base_app, users_data, permissions, bucket):
+    """Test that file size errors are properly raised."""
+    InvenioFilesREST(base_app)
+    base_app.register_blueprint(blueprint)
+    key = 'file.dat'
+    user = users_data[0]
+    login_url = url_for('security.login')
+    object_url = "/files/{0}/{1}".format(bucket.id, key)
+
+    with base_app.app_context():
+        bucket.quota_size = quota_size
+        bucket.max_file_size = max_file_size
+        db.session.merge(bucket)
+        db.session.commit()
 
     with base_app.test_client() as client:
         # Login with 'user1' (has permissions)
-        client.post(login_url, data=u1_data)
-        # Test with an mismatching Content-Length
-        headers = {'Accept': '*/*', 'Content-Length': str(len(data_bytes) - 1)}
-        data = {'file': (BytesIO(data_bytes), 'mismatching1.dat')}
+        client.post(login_url, data=user)
+
+        content = pack(
+            ''.join('c' for i in range(file_size)),
+            *[b'v' for i in range(file_size)])
+        headers = {
+            'Accept': '*/*',
+        }
+        data = {'file': (BytesIO(content), key)}
         resp = client.put(object_url, data=data, headers=headers)
-        assert resp.status_code == 400
+        assert resp.status_code == expected[0]
+        assert expected[1] in resp.get_data(as_text=True)
 
-        headers = {'Accept': '*/*', 'Content-Length': str(len(data_bytes) + 1)}
-        data = {'file': (BytesIO(data_bytes), 'mismatching2.dat')}
-        resp = client.put(object_url, data=data, headers=headers)
-        assert resp.status_code == 400
-
-        # FIXME: check that the file is not created
-
-        # Test exceeding the file size limit
-        data_bytes2 = b(''.join('a' for i in
-                                range(file_size_limit + 1)))
-        headers = {'Accept': '*/*', 'Content-Length': str(len(data_bytes2))}
-        data = {'file': (BytesIO(data_bytes2), 'exceeding.dat')}
-        resp = client.put(object_url, data=data, headers=headers)
-        assert resp.status_code == 400
-
-        # FIXME: check that the file is not created
-
-    # if the default limiter is used
-    if limiter is None:
-        # set the bucket quota to unlimited
-        with base_app.app_context():
-            bucket.quota_size = None
-            db.session.merge(bucket)
-            db.session.commit()
-        # Test again with the precedly exceeding size
-        with base_app.test_client() as client:
-            # Login with 'user1' (has permissions)
-            client.post(login_url, data=u1_data)
-            data_bytes2 = b(''.join('a' for i in
-                                    range(file_size_limit + 1)))
-            headers = {'Accept': '*/*',
-                       'Content-Length': str(len(data_bytes2))}
-            data = {'file': (BytesIO(data_bytes2), 'exceeding.dat')}
-            resp = client.put(object_url, data=data, headers=headers)
-            assert resp.status_code == 200
 
 # def test_get_object_get_access_denied_403(app, objects):
 #     """Test object download 403 access denied"""

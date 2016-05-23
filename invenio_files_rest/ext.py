@@ -31,7 +31,6 @@ from werkzeug.utils import cached_property, import_string
 
 from . import config
 from .cli import files as files_cmd
-from .storage import pyfs_storage_factory
 
 
 class _FilesRESTState(object):
@@ -58,43 +57,30 @@ class _FilesRESTState(object):
     @cached_property
     def storage_factory(self):
         """Load default storage factory."""
-        imp = self.app.config.get("FILES_REST_STORAGE_FACTORY")
-        return import_string(imp) if imp else pyfs_storage_factory
+        return import_string(self.app.config.get('FILES_REST_STORAGE_FACTORY'))
 
     @cached_property
     def permission_factory(self):
         """Load default permission factory."""
-        imp = self.app.config.get("FILES_REST_PERMISSION_FACTORY")
-        if imp:
-            return import_string(imp)
-        else:
-            from invenio_files_rest.permissions import permission_factory
-            return permission_factory
+        return import_string(
+            self.app.config.get('FILES_REST_PERMISSION_FACTORY'))
 
     @cached_property
-    def file_size_limiter(self):
+    def file_size_limiters(self):
         r"""Load the file size limiter.
 
-        The file size limiter is a function used to get the maximum size a file
-        can have. This function can use anything to decide this maximum size,
-        example: bucket quota, user quota, custom limit.
+        The file size limiter is a function used to get the file size limiters.
+        This function can use anything to limit the file size, for example:
+        bucket quota, user quota, custom limit.
         Its prototype is:
+
             py::function: limiter(bucket=None\
-                ) -> (size limit: int, reason: str)
+                ) -> [FileSizeLimit, FileSizeLimit, ...]
 
-        The `reason` is the message displayed to the user when the limit is
-        exceeded.
-        The `size limit` and `reason` can be None if there is no limit.
-
-        This function is used by the REST API and any other file creation
-        input.
+        An empty list should be returned if there should be no limit. The
+        lowest limit will be used.
         """
-        imp = self.app.config.get("FILES_REST_FILE_SIZE_LIMITER")
-        if imp:
-            return import_string(imp)
-        else:
-            from invenio_files_rest.helpers import file_size_limiter
-            return file_size_limiter
+        return import_string(self.app.config.get('FILES_REST_SIZE_LIMITERS'))
 
 
 class InvenioFilesREST(object):

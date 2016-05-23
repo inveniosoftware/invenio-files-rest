@@ -62,6 +62,8 @@ from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy_utils.types import UUIDType
 
 from .errors import FileInstanceAlreadySetError, InvalidOperationError
+from .limiters import FileSizeLimit
+from .proxies import current_files_rest
 
 slug_pattern = re.compile('^[a-z][a-z0-9-]+$')
 
@@ -192,13 +194,19 @@ class Bucket(db.Model, Timestamp):
     inside the bucket.
     """
 
-    quota_size = db.Column(db.BigInteger, nullable=True)
-    """Quota size of bucket. Used only by the file_size_limiter.
+    quota_size = db.Column(
+        db.BigInteger,
+        nullable=True,
+        default=lambda: current_app.config['FILES_REST_DEFAULT_QUOTA_SIZE']
+    )
+    """Quota size of bucket."""
 
-    Note, don't use this attribute directly. It MAY be used to store
-    the actual quota size for this bucket. Change the file_size_limiter if
-    you want to filter accepted files based on their size.
-    """
+    max_file_size = db.Column(
+        db.BigInteger,
+        nullable=True,
+        default=lambda: current_app.config['FILES_REST_DEFAULT_MAX_FILE_SIZE']
+    )
+    """Maximum size of a single file in the bucket."""
 
     locked = db.Column(db.Boolean, default=False, nullable=False)
     """Is bucket locked?"""
@@ -212,6 +220,12 @@ class Bucket(db.Model, Timestamp):
     def __repr__(self):
         """Return representation of location."""
         return str(self.id)
+
+    @property
+    def quota_left(self):
+        """Get how much space is left in the bucket."""
+        if self.quota_size:
+            return max(self.quota_size - self.size, 0)
 
     @validates('default_storage_class')
     def validate_storage_class(self, key, default_storage_class):
@@ -453,8 +467,7 @@ class FileInstance(db.Model, Timestamp):
 
         :returns: Storage interface.
         """
-        return current_app.extensions['invenio-files-rest'].storage_factory(
-            fileinstance=self, **kwargs)
+        return current_files_rest.storage_factory(fileinstance=self, **kwargs)
 
     def verify_checksum(self, progress_callback=None, **kwargs):
         """Verify checksum of file instance."""
@@ -465,7 +478,7 @@ class FileInstance(db.Model, Timestamp):
             self.last_check_at = datetime.utcnow()
         return self.last_check
 
-    def set_contents(self, stream, chunk_size=None,
+    def set_contents(self, stream, chunk_size=None, size=None, size_limit=None,
                      progress_callback=None, **kwargs):
         """Save contents of stream to this file.
 
@@ -477,8 +490,8 @@ class FileInstance(db.Model, Timestamp):
             raise ValueError('File instance is not writable.')
         self.set_uri(
             *self.storage(**kwargs).save(
-                stream, chunk_size=chunk_size,
-                progress_callback=progress_callback))
+                stream, chunk_size=chunk_size, size=size,
+                size_limit=size_limit, progress_callback=progress_callback))
 
     def copy_contents(self, fileinstance, progress_callback=None, **kwargs):
         """Copy this file instance into another file instance."""
@@ -599,7 +612,7 @@ class ObjectVersion(db.Model, Timestamp):
         """Determine if object version is a delete marker."""
         return self.file_id is None
 
-    def set_contents(self, stream, size=None, chunk_size=None,
+    def set_contents(self, stream, size_limit=None, size=None, chunk_size=None,
                      progress_callback=None):
         """Save contents of stream to file instance.
 
@@ -614,9 +627,17 @@ class ObjectVersion(db.Model, Timestamp):
         if self.file_id is not None:
             raise FileInstanceAlreadySetError()
 
+        if size_limit is None:
+            limits = [
+                lim for lim in current_files_rest.file_size_limiters(
+                    self.bucket)
+                if lim.limit is not None
+            ]
+            size_limit = min(limits) if limits else None
+
         self.file = FileInstance.create()
         self.file.set_contents(
-            stream, size=size, chunk_size=chunk_size,
+            stream, size_limit=size_limit, size=size, chunk_size=chunk_size,
             progress_callback=progress_callback, objectversion=self)
 
         self.bucket.size += self.file.size
@@ -753,18 +774,18 @@ class ObjectVersion(db.Model, Timestamp):
         """
         bucket_id = bucket.id if isinstance(bucket, Bucket) else bucket
 
-        args = [
+        filters = [
             cls.bucket_id == bucket_id,
             cls.key == key,
         ]
 
         if version_id:
-            args.append(cls.version_id == version_id)
+            filters.append(cls.version_id == version_id)
         else:
-            args.append(cls.is_head.is_(True))
-            args.append(cls.file_id.isnot(None))
+            filters.append(cls.is_head.is_(True))
+            filters.append(cls.file_id.isnot(None))
 
-        return cls.query.filter(*args).one_or_none()
+        return cls.query.filter(*filters).one_or_none()
 
     @classmethod
     def get_versions(cls, bucket, key):
@@ -775,12 +796,12 @@ class ObjectVersion(db.Model, Timestamp):
         """
         bucket_id = bucket.id if isinstance(bucket, Bucket) else bucket
 
-        args = [
+        filters = [
             cls.bucket_id == bucket_id,
             cls.key == key,
         ]
 
-        return cls.query.filter(*args).order_by(cls.key, cls.created.desc())
+        return cls.query.filter(*filters).order_by(cls.key, cls.created.desc())
 
     @classmethod
     def delete(cls, bucket, key):
@@ -803,15 +824,15 @@ class ObjectVersion(db.Model, Timestamp):
         """Return query that fetches all the objects in a bucket."""
         bucket_id = bucket.id if isinstance(bucket, Bucket) else bucket
 
-        args = [
+        filters = [
             cls.bucket_id == bucket_id,
         ]
 
         if not versions:
-            args.append(cls.file_id.isnot(None))
-            args.append(cls.is_head.is_(True))
+            filters.append(cls.file_id.isnot(None))
+            filters.append(cls.is_head.is_(True))
 
-        return cls.query.filter(*args).order_by(cls.key, cls.created.desc())
+        return cls.query.filter(*filters).order_by(cls.key, cls.created.desc())
 
     @classmethod
     def relink_all(cls, old_file, new_file):

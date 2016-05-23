@@ -162,7 +162,7 @@ def objects(db, bucket):
     data_bytes2 = b('readme file')
     obj2 = ObjectVersion.create(
         bucket, 'README.rst', stream=BytesIO(data_bytes2),
-        size=len(data_bytes)
+        size=len(data_bytes2)
     )
     db.session.commit()
 

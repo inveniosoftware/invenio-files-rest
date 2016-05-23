@@ -26,6 +26,8 @@
 
 from __future__ import absolute_import, print_function
 
+from invenio_rest.errors import RESTException
+
 
 class FilesException(Exception):
     """Base exception for all errors ."""
@@ -44,4 +46,10 @@ class FileInstanceAlreadySetError(FilesException):
 
 
 class InvalidOperationError(FilesException):
-    """Exception raise when an invalid operation is performed."""
+    """Exception raised when an invalid operation is performed."""
+
+
+class FileSizeError(RESTException):
+    """Exception raised when a file larger than allowed."""
+
+    code = 400

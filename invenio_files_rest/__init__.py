@@ -28,5 +28,6 @@ from __future__ import absolute_import, print_function
 
 from .ext import InvenioFilesREST
 from .version import __version__
+from .views import current_files_rest
 
-__all__ = ('__version__', 'InvenioFilesREST')
+__all__ = ('__version__', 'current_files_rest', 'InvenioFilesREST', )

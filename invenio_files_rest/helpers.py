@@ -85,15 +85,6 @@ def send_stream(stream, filename, size, mtime, mimetype=None, restricted=False,
     return rv
 
 
-def file_size_limiter(bucket):
-    """Retrieve the internal quota from the provided bucket."""
-    if bucket.quota_size:
-        return (bucket.quota_size - bucket.size,
-                'Bucket quota is {0} bytes. {1} bytes are currently '
-                'used.'.format(bucket.quota_size, bucket.size))
-    return (None, None)
-
-
 def compute_md5_checksum(src, chunk_size=None, progress_callback=None):
     """Helper method to compute checksum from a stream.
 

@@ -22,14 +22,31 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-"""Helpers for invenio files REST's tests."""
+
+"""Test limiters."""
 
 from __future__ import absolute_import, print_function
 
-CONSTANT_FILE_SIZE_LIMIT = 120
-"""File size limit provided by the constant_file_size_limiter."""
+import pytest
+
+from invenio_files_rest.limiters import FileSizeLimit
 
 
-def constant_file_size_limiter(bucket):
-    """Provide always the same file size limit."""
-    return (CONSTANT_FILE_SIZE_LIMIT, 'Constant file size limit is exceeded')
+def test_file_size_limit_comparisons():
+    """Test FileSizeLimit comparison operators."""
+    bigger = FileSizeLimit(100, 'big limit')
+    smaller = FileSizeLimit(50, 'small limit')
+
+    assert bigger > smaller
+    assert smaller < bigger
+    assert bigger == bigger
+    assert bigger == 100
+    assert bigger > 50
+    assert bigger < 150
+
+    with pytest.raises(NotImplementedError):
+        bigger > 90.25
+    with pytest.raises(NotImplementedError):
+        bigger < 90.25
+    with pytest.raises(NotImplementedError):
+        bigger == 90.25

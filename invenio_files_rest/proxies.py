@@ -31,3 +31,6 @@ from werkzeug.local import LocalProxy
 
 current_permission_factory = LocalProxy(
     lambda: current_app.extensions['invenio-files-rest'].permission_factory)
+
+current_files_rest = LocalProxy(
+    lambda: current_app.extensions['invenio-files-rest'])

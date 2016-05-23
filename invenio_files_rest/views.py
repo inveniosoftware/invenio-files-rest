@@ -37,9 +37,9 @@ from webargs import fields
 from webargs.flaskparser import parser, use_kwargs
 from werkzeug.local import LocalProxy
 
-from .errors import UnexpectedFileSizeError
+from .errors import FileSizeError, UnexpectedFileSizeError
 from .models import Bucket, Location, ObjectVersion
-from .proxies import current_permission_factory
+from .proxies import current_files_rest, current_permission_factory
 from .serializer import json_serializer
 from .signals import file_downloaded
 
@@ -48,9 +48,6 @@ blueprint = Blueprint(
     __name__,
     url_prefix='/files'
 )
-
-current_files_rest = LocalProxy(
-    lambda: current_app.extensions['invenio-files-rest'])
 
 
 def file_download_ui(pid, record, **kwargs):
@@ -429,10 +426,6 @@ class ObjectResource(ContentNegotiatedMethodView):
     """GET query arguments."""
 
     put_args = dict(
-        content_length=fields.Int(
-            load_from='Content-Length',
-            location='headers',
-            required=True),
         content_md5=fields.Str(
             load_from='Content-MD5',
             location='headers', ),
@@ -515,7 +508,7 @@ class ObjectResource(ContentNegotiatedMethodView):
         return self.send_object(bucket_id, key, version_id=version_id)
 
     @use_kwargs(put_args)
-    def put(self, bucket_id, key, content_length=None, content_md5=None):
+    def put(self, bucket_id, key, content_md5=None):
         """Upload object file.
 
         .. http:put:: /files/(uuid:bucket_id)
@@ -566,9 +559,9 @@ class ObjectResource(ContentNegotiatedMethodView):
             :statuscode 500: failed request
         """
         # TODO: Check key is a valid key.
-        uploaded_file = request.files['file']
+        uploaded_file = request.files.get('file')
         if not uploaded_file:
-            abort(400, 'File missing in request.')
+            abort(400, 'File is missing from the request.')
 
         # Retrieve bucket.
         bucket = Bucket.get(bucket_id)
@@ -583,36 +576,25 @@ class ObjectResource(ContentNegotiatedMethodView):
                 abort(403)
             abort(401)
 
-        # check content size limit
-        size_limit, size_limit_reason = current_files_rest.file_size_limiter(
-            bucket=bucket)
-        if size_limit is not None and content_length > size_limit:
-            abort(400, size_limit_reason)
-
         # TODO: Check access permission on the bucket
         # TODO: Support checking incoming MD5 header
         # TODO: Support setting content-type
         # TODO: Don't create a new file if content is identical.
 
-        try:
-            # TODO: Pass storage class to get_or_create
+        # TODO: Pass storage class to get_or_create
+        with db.session.begin_nested():
             obj = ObjectVersion.create(bucket, key)
-            obj.set_contents(uploaded_file, size=content_length)
-            db.session.commit()
+            obj.set_contents(uploaded_file)
+        db.session.commit()
 
-            # TODO: Fix response object to only include headers?
-            return {'json': {
+        # TODO: Fix response object to only include headers?
+        return {
+            'json': {
                 'checksum': obj.file.checksum,
                 'size': obj.file.size,
-                'verisionId': str(obj.version_id),
-            }}
-        except SQLAlchemyError:
-            db.session.rollback()
-            current_app.logger.exception('Failed to create object.')
-            abort(500, 'Failed to create object.')
-        except UnexpectedFileSizeError:
-            db.session.rollback()
-            abort(400, 'File size different than Content-Length')
+                'versionId': str(obj.version_id),
+            }
+        }
 
     def delete(self, bucket_id, key, **kwargs):
         """Set object file as deleted.
