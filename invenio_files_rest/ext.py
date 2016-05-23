@@ -32,7 +32,6 @@ from werkzeug.utils import cached_property, import_string
 from . import config
 from .cli import files as files_cmd
 from .storage import pyfs_storage_factory
-from .views import blueprint
 
 
 class _FilesRESTState(object):
@@ -111,7 +110,6 @@ class InvenioFilesREST(object):
         self.init_config(app)
         if hasattr(app, 'cli'):
             app.cli.add_command(files_cmd)
-        app.register_blueprint(blueprint)
         app.extensions['invenio-files-rest'] = _FilesRESTState(app)
 
     def init_config(self, app):
