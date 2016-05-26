@@ -75,7 +75,7 @@ def test_file_download_ui(base_app, objects, db):
                  'checksum': 'invalid'},
             ]
         }, id_=rec_uuid)
-        record.model.records_buckets = RecordsBuckets(bucket=obj1.bucket)
+        RecordsBuckets.create(record=record.model, bucket=obj1.bucket)
         db.session.commit()
 
         main_url = url_for('invenio_records_ui.recid', pid_value='1')
