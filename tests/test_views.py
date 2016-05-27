@@ -27,6 +27,7 @@
 
 from __future__ import absolute_import, print_function
 
+import uuid
 from struct import pack
 
 import pytest
@@ -35,37 +36,71 @@ from invenio_db import db
 from six import BytesIO, b
 
 from invenio_files_rest import InvenioFilesREST
+from invenio_files_rest.models import Bucket, Location
 from invenio_files_rest.views import blueprint
 
 
-def test_get_buckets(app, dummy_location):
+@pytest.mark.parametrize('buckets', [
+    [],
+    [
+        {
+            'uuid': '11111111-1111-1111-1111-111111111111',
+            'size': 512,
+            'url': 'http://invenio.org/files/'
+                   '11111111-1111-1111-1111-111111111111',
+        },
+        {
+            'uuid': '00000000-0000-0000-0000-000000000000',
+            'size': 0,
+            'url': 'http://invenio.org/files/'
+                   '00000000-0000-0000-0000-000000000000',
+        }
+    ]
+])
+def test_get_buckets(app, buckets, dummy_location):
     """Test get buckets."""
+    for bucket in buckets:
+        db.session.add(
+            Bucket(id=bucket['uuid'], size=bucket['size'],
+                   default_location=Location.get_default().id))
+    db.session.commit()
+
+    headers = {'Content-Type': 'application/json', 'Accept': '*/*'}
+
     with app.test_client() as client:
-        resp = client.get(
+        resp = client.get('/files', headers=headers)
+        assert resp.status_code == 200
+        resp_json = json.loads(resp.data)
+        assert len(resp_json) == len(buckets)
+        for bucket in resp_json:
+            assert bucket in buckets
+
+
+def test_post_bucket(app, dummy_location):
+    """Test post a bucket."""
+    headers = {'Content-Type': 'application/json', 'Accept': '*/*'}
+    expected_keys = ['uuid', 'url', 'size']
+
+    with app.test_client() as client:
+        resp = client.post(
             '/files',
-            headers={'Content-Type': 'application/json', 'Accept': '*/*'}
+            headers=headers
         )
         assert resp.status_code == 200
+        data = json.loads(resp.data)
+        for key in expected_keys:
+            assert key in data
 
         # With location_name
         resp = client.post(
             '/files',
             data=json.dumps({'location_name': dummy_location.name}),
-            headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-        )
-        assert resp.status_code == 200
-
-
-def test_post_bucket(app, dummy_location):
-    """Test post a bucket."""
-    with app.test_client() as client:
-        resp = client.post(
-            '/files',
-            headers={'Content-Type': 'application/json', 'Accept': '*/*'}
+            headers=headers,
         )
         assert resp.status_code == 200
         data = json.loads(resp.data)
-        assert 'url' in data
+        for key in expected_keys:
+            assert key in data
 
 
 # def test_head_bucket(app, db):
@@ -277,9 +312,7 @@ def test_file_size_errors(quota_size, max_file_size, file_size, expected,
         content = pack(
             ''.join('c' for i in range(file_size)),
             *[b'v' for i in range(file_size)])
-        headers = {
-            'Accept': '*/*',
-        }
+        headers = {'Accept': '*/*'}
         data = {'file': (BytesIO(content), key)}
         resp = client.put(object_url, data=data, headers=headers)
         assert resp.status_code == expected[0]

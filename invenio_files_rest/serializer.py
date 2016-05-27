@@ -26,7 +26,7 @@
 
 import json
 
-from flask import Response
+from flask import Response, url_for
 
 
 def json_serializer(data=None, code=200, headers=None):
@@ -50,3 +50,25 @@ def json_serializer(data=None, code=200, headers=None):
     # ETag needed?
     # response.set_etag(str(record.model.version_id))
     return response
+
+
+def bucket_collection_serializer(data=None, code=200, headers=None):
+    """Serialize BucketCollectionView responses."""
+    def serialize(bucket):
+        return {
+            'size': bucket.size,
+            'url': url_for('invenio_files_rest.bucket_api',
+                           bucket_id=bucket.id, _external=True),
+            'uuid': str(bucket.id),
+        }
+
+    if hasattr(data, '__iter__'):
+        response = [serialize(bucket) for bucket in data]
+    else:
+        response = serialize(data)
+
+    return json_serializer(
+        data={'json': response},
+        code=code,
+        headers=headers
+    )
