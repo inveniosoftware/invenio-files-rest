@@ -40,7 +40,7 @@ from werkzeug.local import LocalProxy
 from .errors import FileSizeError, UnexpectedFileSizeError
 from .models import Bucket, Location, ObjectVersion
 from .proxies import current_files_rest, current_permission_factory
-from .serializer import json_serializer
+from .serializer import bucket_collection_serializer, json_serializer
 from .signals import file_downloaded
 
 blueprint = Blueprint(
@@ -149,17 +149,8 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
             :statuscode 400: invalid request
             :statuscode 403: access denied
         """
-        bucket_list = []
-        for bucket in Bucket.all():
-            # TODO: Implement serializer
-            bucket_list.append({
-                'size': bucket.size,
-                'url': url_for("invenio_files_rest.bucket_api",
-                               bucket_id=bucket.id, _external=True),
-                'uuid': str(bucket.id)
-            })
-        # FIXME: how to avoid returning a dict with key 'json'
-        return {'json': bucket_list}
+        # TODO: Only get buckets that user has permission to.
+        return self.make_response(Bucket.all())
 
     def post(self, **kwargs):
         """Create bucket.
@@ -206,36 +197,16 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
             :statuscode 500: failed request
         """
         args = parser.parse(self.post_args, request)
-        try:
-            if args['location_name']:
-                # TODO: Check why query is used directly.
-                location = Location.get_by_name(args['location_name'])
-            else:
-                # Get one of the active locations
-                location = Location.get_default()
-            if not location:
-                abort(400, 'Invalid location.')
-            bucket = Bucket(
-                default_storage_class=current_app.config[
+        with db.session.begin_nested():
+            bucket = Bucket.create(
+                storage_class=current_app.config[
                     'FILES_REST_DEFAULT_STORAGE_CLASS'
                 ],
-                default_location=location.id
+                location=args['location_name']
             )
-            db.session.add(bucket)
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            current_app.logger.exception('Failed to create bucket.')
-            abort(500, 'Failed to create bucket.')
+        db.session.commit()
 
-        # TODO: Implement serializer
-        return {'json':
-                {'size': bucket.size,
-                 'url': url_for("invenio_files_rest.bucket_api",
-                                bucket_id=bucket.id, _external=True),
-                 'uuid': str(bucket.id)
-                 }
-                }
+        return self.make_response(bucket)
 
 
 class BucketResource(ContentNegotiatedMethodView):
@@ -360,19 +331,14 @@ class BucketResource(ContentNegotiatedMethodView):
             :statuscode 404: page not found
             :statuscode 500: exception while deleting
         """
-        try:
-            if Bucket.delete(bucket_id):
-                db.session.commit()
-            else:
+        with db.session.begin_nested():
+            if not Bucket.delete(bucket_id):
                 abort(
                     404,
                     'The specified bucket does not exist or has already been '
                     'deleted.'
                 )
-        except SQLAlchemyError:
-            db.session.rollback()
-            current_app.logger.exception('Failed to delete bucket.')
-            abort(500, 'Failed to delete bucket.')
+        db.session.commit()
 
     def head(self, bucket_id=None, **kwargs):
         """Check the existence of the bucket.
@@ -692,7 +658,9 @@ serializers = {'application/json': json_serializer}
 
 bucket_collection_view = BucketCollectionResource.as_view(
     'bucket_collection_api',
-    serializers=serializers
+    serializers={
+        'application/json': bucket_collection_serializer
+    }
 )
 bucket_view = BucketResource.as_view(
     'bucket_api',
