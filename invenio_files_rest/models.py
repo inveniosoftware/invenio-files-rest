@@ -755,7 +755,10 @@ class ObjectVersion(db.Model, Timestamp):
                 mimetype=mimetype,
             )
             if _file_id:
-                obj.file_id = _file_id
+                file_ = _file_id if isinstance(_file_id, FileInstance) else \
+                    FileInstance.get(_file_id)
+                obj.file = file_
+                bucket.size += file_.size
             db.session.add(obj)
         if stream:
             obj.set_contents(stream, **kwargs)

@@ -202,6 +202,18 @@ def test_object_create(app, db, dummy_location):
         obj3
 
 
+def test_object_create_with_fileid(app, db, dummy_location):
+    """Test object creation."""
+    with db.session.begin_nested():
+        b = Bucket.create()
+        obj = ObjectVersion.create(b, 'test', stream=BytesIO(b'test'))
+
+    assert b.size == 4
+
+    ObjectVersion.create(b, 'test', _file_id=obj.file)
+    assert b.size == 8
+
+
 def test_object_multibucket(app, db, dummy_location):
     """Test object creation in multiple buckets."""
     with db.session.begin_nested():
