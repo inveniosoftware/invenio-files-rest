@@ -384,6 +384,7 @@ def test_object_snapshot(app, db, dummy_location):
     assert b1.locked is False
     assert b3.locked is True
 
+    assert b1.size == b3.size
     assert Bucket.query.count() == 3
     assert ObjectVersion.query.count() == 12
     assert FileInstance.query.count() == 7
