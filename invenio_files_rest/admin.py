@@ -61,7 +61,7 @@ class LocationModelView(ModelView):
 
     filter_converter = FilterConverter()
     can_create = True
-    can_edit = True
+    can_edit = False
     can_delete = True
     can_view_details = True
     column_formatters = dict(
@@ -79,7 +79,7 @@ class LocationModelView(ModelView):
     column_searchable_list = ('uri', 'name')
     column_default_sort = 'name'
     form_base_class = Form
-    form_columns = ('name', 'uri', 'default', )
+    form_columns = ('name', 'uri', 'default')
     form_args = dict(
         name=dict(validators=[require_slug])
     )
@@ -101,12 +101,13 @@ class BucketModelView(ModelView):
             'objectversion.index_view', flt0_0=o.id, flt1_29=1, sort=1)),
     )
     column_details_list = (
-        'id', 'location', 'default_storage_class', 'deleted', 'locked',
-        'created', 'updated', 'objects', 'object_versions'
+        'id', 'location', 'default_storage_class', 'deleted', 'locked', 'size',
+        'quota_size', 'max_file_size', 'created', 'updated', 'objects',
+        'object_versions',
     )
     column_list = (
         'id', 'location', 'default_storage_class', 'deleted', 'locked', 'size',
-        'created', 'updated', 'objects',
+        'quota_size', 'created', 'updated', 'objects',
     )
     column_labels = dict(
         id=_('UUID'),
@@ -120,7 +121,10 @@ class BucketModelView(ModelView):
     )
     column_default_sort = ('updated', True)
     form_base_class = Form
-    form_columns = ('location', 'default_storage_class', 'locked', 'deleted', )
+    form_columns = (
+        'default_storage_class', 'locked', 'deleted', 'quota_size',
+        'max_file_size'
+    )
     form_choices = dict(
         default_storage_class=LazyChoices(lambda: current_app.config[
             'FILES_REST_STORAGE_CLASS_LIST'].items()))
