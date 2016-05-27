@@ -249,6 +249,7 @@ class Bucket(db.Model, Timestamp):
                 default_location=self.default_location,
                 default_storage_class=self.default_storage_class,
                 quota_size=self.quota_size,
+                size=self.size,
                 locked=True if lock else self.locked,
             )
             db.session.add(b)
