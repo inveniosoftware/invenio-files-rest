@@ -58,8 +58,9 @@ def test_migrate_file(app, db, dummy_location, extra_location, bucket,
 
     # Test pre-condition
     old_uri = obj.file.uri
-    assert join(bucket.location.uri, str(obj.file.id), 'data') == old_uri
     assert exists(old_uri)
+    assert old_uri == join(dummy_location.uri, str(obj.file.id)[0:2],
+                           str(obj.file.id)[2:], 'data')
     assert FileInstance.query.count() == 2
 
     # Migrate file

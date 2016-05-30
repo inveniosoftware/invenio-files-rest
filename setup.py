@@ -53,7 +53,7 @@ tests_require = [
 
 extras_require = {
     'docs': [
-        'Sphinx>=1.3',
+        'Sphinx>=1.4',
         'sphinxcontrib-httpdomain>=1.4.0',
     ],
     'postgresql': [

@@ -28,6 +28,7 @@ from __future__ import absolute_import, print_function
 
 import errno
 import hashlib
+import uuid
 from os.path import getsize, join
 
 import pytest
@@ -64,10 +65,8 @@ def test_pyfilesystemstorage(app, db, dummy_location):
         assert "md5:{0}".format(m.hexdigest()) == checksum
 
         assert size == len(data)
-        assert loc == join(
-            dummy_location.uri,
-            str(obj.file.id),
-            "data")
+        assert loc == join(dummy_location.uri, str(obj.file.id)[0:2],
+                           str(obj.file.id)[2:], 'data')
 
     data = b("this is some content")
     # test without size
@@ -161,3 +160,32 @@ def test_storage_interface():
     pytest.raises(NotImplementedError, s.send_file)
     pytest.raises(NotImplementedError, s.save, None)
     pytest.raises(NotImplementedError, s.compute_checksum, None)
+
+
+def test_pyfilesystemstorage_make_path():
+    """Test path for files."""
+    fi = FileInstance.create()
+    fi.id = uuid.uuid5(uuid.NAMESPACE_DNS, 'Testing-')
+    fs = PyFilesystemStorage(fi, base_uri='Base')
+    assert 'Base/45/629316-6e69-5006-82ba-1ee2f18df5b2' == fs.make_path()
+    assert 'Base/4/5629316-6e69-5006-82ba-1ee2f18df5b2' == fs.make_path(1, 1)
+    assert 'Base/4/5/6/29316-6e69-5006-82ba-1ee2f18df5b2' == fs.make_path(3, 1)
+    assert 'Base/456/29316-6e69-5006-82ba-1ee2f18df5b2' == fs.make_path(1, 3)
+
+    # If length 0, it should take the default value.
+    assert 'Base/45/629316-6e69-5006-82ba-1ee2f18df5b2' == fs.make_path(1, 0)
+
+    # If dimensions are 0, it should take the default value.
+    assert 'Base/4/5629316-6e69-5006-82ba-1ee2f18df5b2' == fs.make_path(0, 1)
+
+    # Length of each partition is too long.
+    with pytest.raises(AssertionError):
+        fs.make_path(1, 50)
+
+    # Number of partitions is too high.
+    with pytest.raises(AssertionError):
+        fs.make_path(50, 1)
+
+    # Both values produce the exception.
+    with pytest.raises(AssertionError):
+        fs.make_path(50, 50)

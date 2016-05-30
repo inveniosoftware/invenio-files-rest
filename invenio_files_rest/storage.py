@@ -31,6 +31,7 @@ import time
 from functools import partial
 from os.path import join
 
+from flask import current_app
 from fs.opener import opener
 
 from .errors import FileSizeError, StorageError, UnexpectedFileSizeError
@@ -158,10 +159,23 @@ class PyFilesystemStorage(Storage):
         self.filename = filename
         super(PyFilesystemStorage, self).__init__(fileinstance)
 
-    def make_path(self):
+    def make_path(self, path_dimensions=None, split_length=None):
         """Generate a path as base location for file instance."""
         assert self.base_uri
-        return join(self.base_uri, str(self.file.id))
+
+        path_dimensions = path_dimensions or current_app.config[
+            'FILES_REST_STORAGE_PATH_DIMENSIONS']
+        split_length = split_length or current_app.config[
+            'FILES_REST_STORAGE_PATH_SPLIT_LENGTH']
+
+        filename = str(self.file.id)
+        assert len(filename) > (path_dimensions * split_length)
+        uri_parts = []
+        for i in range(path_dimensions):
+            uri_parts.append(filename[0:split_length])
+            filename = filename[split_length:]
+        uri_parts.append(filename)
+        return join(self.base_uri, *uri_parts)
 
     def open(self):
         """Open file.

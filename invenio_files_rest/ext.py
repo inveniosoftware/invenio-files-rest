@@ -43,7 +43,7 @@ class _FilesRESTState(object):
     @cached_property
     def record_file_factory(self):
         """Load default storage factory."""
-        imp = self.app.config.get("FILES_REST_RECORD_FILE_FACOTRY")
+        imp = self.app.config.get("FILES_REST_RECORD_FILE_FACTORY")
         if imp:
             import_string(imp)
         else:
