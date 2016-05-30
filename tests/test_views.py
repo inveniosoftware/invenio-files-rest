@@ -115,7 +115,7 @@ def test_head_non_existing_bucket(app, db, client, headers):
     assert not resp.data
 
 
-def test_delete_bucket(app, client, headers, bucket):
+def test_delete_bucket(app, client, headers, bucket, objects):
     """Test deleting a bucket."""
     resp = client.delete(
         url_for('invenio_files_rest.bucket_api', bucket_id=bucket.id),
