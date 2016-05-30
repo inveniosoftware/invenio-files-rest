@@ -146,7 +146,7 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
         """
         # TODO: Only get buckets that user has permission to.
-        return self.make_response(Bucket.all())
+        return Bucket.all()
 
     @use_kwargs(post_args)
     def post(self, location_name):
@@ -203,7 +203,7 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
             )
         db.session.commit()
 
-        return self.make_response(bucket)
+        return bucket
 
 
 class BucketResource(ContentNegotiatedMethodView):
@@ -274,14 +274,12 @@ class BucketResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 404: page not found
         """
+        # TODO: Permission checking
         if not Bucket.exists(bucket_id):
             abort(
                 404, 'The specified bucket does not exist or has been deleted.'
             )
-        return self.make_response(ObjectVersion.get_by_bucket(
-                bucket_id, versions=versions
-            )
-        )
+        return ObjectVersion.get_by_bucket(bucket_id, versions=versions)
 
     def delete(self, bucket_id, **kwargs):
         """Set bucket, and all files inside it, as deleted.
@@ -320,6 +318,7 @@ class BucketResource(ContentNegotiatedMethodView):
             :statuscode 404: page not found
             :statuscode 500: exception while deleting
         """
+        # TODO: Permission checking
         with db.session.begin_nested():
             if not Bucket.delete(bucket_id):
                 abort(
@@ -366,7 +365,8 @@ class BucketResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 404: the bucket does not exist
         """
-        if not bucket_id or not Bucket.get(bucket_id):
+        # TODO: permission checking
+        if not Bucket.exists(bucket_id):
             abort(404, 'This bucket does not exist or has been deleted.')
 
 

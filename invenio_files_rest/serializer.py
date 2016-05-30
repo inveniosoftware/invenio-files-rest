@@ -25,6 +25,7 @@
 """REST API serializers."""
 
 import json
+from functools import wraps
 
 from flask import Response, url_for
 
@@ -52,6 +53,16 @@ def json_serializer(data=None, code=200, headers=None):
     return response
 
 
+def empty_if_none(f):
+    """Wrap a serialize to handle when data is None."""
+    @wraps(f)
+    def decorator(data=None, code=200, headers=None):
+        data = data if not data else f(data, code, headers)
+        return json_serializer({'json': data}, code, headers)
+    return decorator
+
+
+@empty_if_none
 def bucket_collection_serializer(data=None, code=200, headers=None):
     """Serialize BucketCollectionResource responses."""
     def serialize(bucket):
@@ -62,18 +73,12 @@ def bucket_collection_serializer(data=None, code=200, headers=None):
             'uuid': str(bucket.id),
         }
 
-    if hasattr(data, '__iter__'):
-        response = [serialize(bucket) for bucket in data]
-    else:
-        response = serialize(data)
-
-    return json_serializer(
-        data={'json': response},
-        code=code,
-        headers=headers
-    )
+    return [serialize(bucket) for bucket in data] \
+        if hasattr(data, '__iter__') \
+        else serialize(data)
 
 
+@empty_if_none
 def bucket_serializer(data=None, code=200, headers=None):
     """Serialize BucketResource responses."""
     def serialize(obj):
@@ -87,9 +92,4 @@ def bucket_serializer(data=None, code=200, headers=None):
             'uuid': str(obj.file.id),
         }
 
-    response = [serialize(obj) for obj in data]
-    return json_serializer(
-        data={'json': response},
-        code=code,
-        headers=headers,
-    )
+    return [serialize(obj) for obj in data]
