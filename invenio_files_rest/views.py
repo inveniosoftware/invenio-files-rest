@@ -76,7 +76,7 @@ def file_download_ui(pid, record, **kwargs):
     # Send file.
     return ObjectResource.send_object(
         fileobj.bucket_id, fileobj.key,
-        expected_chksum=fileobj.get('checksum', None),
+        expected_chksum=fileobj.get('checksum'),
         logger_data=dict(
             bucket_id=fileobj.bucket_id,
             pid_type=pid.pid_type,
@@ -634,7 +634,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 404: the file does not exist
         """
-        if not bucket_id or not ObjectVersion.get(bucket_id, key):
+        if not ObjectVersion.exists(bucket_id, key):
             abort(404, 'The object file does not exist or has been deleted.')
 
 

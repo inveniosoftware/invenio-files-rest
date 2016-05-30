@@ -807,6 +807,21 @@ class ObjectVersion(db.Model, Timestamp):
         return obj
 
     @classmethod
+    def exists(cls, bucket_id, key):
+        """Check if the given object exists in the Bucket.
+
+        :param bucket_id: Bucket identifier.
+        :param object_id: ObjectVersion identifier.
+        :returns: Boolean.
+        """
+        return db.session.query(
+            exists().where(
+                cls.bucket_id == bucket_id and
+                cls.key == key and
+                cls.file_id is not None
+            )).scalar()
+
+    @classmethod
     def get(cls, bucket, key, version_id=None):
         """Fetch a specific object.
 
