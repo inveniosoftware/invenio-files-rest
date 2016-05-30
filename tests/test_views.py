@@ -357,6 +357,57 @@ def test_get_objects_with_versions(app, client, headers, bucket, versions):
         assert obj in resp_json
 
 
+def test_get_object_from_non_existent_bucket(app, db, client):
+    """Test getting an object from a non-existent bucket."""
+    resp = client.get(url_for(
+        'invenio_files_rest.object_api',
+        bucket_id=uuid.uuid4(),
+        key='non-existent.pdf',
+    ))
+    assert resp.status_code == 404
+
+
+def test_delete_object(app, client, bucket, objects):
+    """Test deleting an object."""
+    for obj in objects:
+        resp = client.delete(url_for(
+            'invenio_files_rest.object_api',
+            bucket_id=bucket.id,
+            key=obj.key,
+        ))
+        assert resp.status_code == 200
+
+
+def test_delete_non_existent_object(app, client, bucket):
+    """Test deleting a non existent object."""
+    resp = client.delete(url_for(
+        'invenio_files_rest.object_api',
+        bucket_id=bucket.id,
+        key='non-existent.pdf',
+    ))
+    assert resp.status_code == 404
+
+
+def test_head_object(app, client, bucket, objects):
+    """Test checking for existence of an object."""
+    for obj in objects:
+        resp = client.head(url_for(
+            'invenio_files_rest.object_api',
+            bucket_id=bucket.id,
+            key=obj.key,
+        ))
+        assert resp.status_code == 200
+
+
+def test_head_object_non_existing(app, client, bucket):
+    """Test checking for existence of a non-existing object."""
+    resp = client.head(url_for(
+        'invenio_files_rest.object_api',
+        bucket_id=bucket.id,
+        key='non-existing.pdf',
+    ))
+    assert resp.status_code == 404
+
 # def test_get_objects_old(app, db, dummy_location):
 #     """Test get all objects in a bucket."""
 #     with app.test_client() as client:
