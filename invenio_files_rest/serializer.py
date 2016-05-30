@@ -53,7 +53,7 @@ def json_serializer(data=None, code=200, headers=None):
 
 
 def bucket_collection_serializer(data=None, code=200, headers=None):
-    """Serialize BucketCollectionView responses."""
+    """Serialize BucketCollectionResource responses."""
     def serialize(bucket):
         return {
             'size': bucket.size,
@@ -71,4 +71,25 @@ def bucket_collection_serializer(data=None, code=200, headers=None):
         data={'json': response},
         code=code,
         headers=headers
+    )
+
+
+def bucket_serializer(data=None, code=200, headers=None):
+    """Serialize BucketResource responses."""
+    def serialize(obj):
+        return {
+            'checksum': obj.file.checksum,
+            'size': obj.file.size,
+            'url': url_for('invenio_files_rest.object_api',
+                           bucket_id=obj.bucket.id,
+                           key=obj.key,
+                           _external=True),
+            'uuid': str(obj.file.id),
+        }
+
+    response = [serialize(obj) for obj in data]
+    return json_serializer(
+        data={'json': response},
+        code=code,
+        headers=headers,
     )

@@ -108,6 +108,13 @@ def db(app):
 
 
 @pytest.yield_fixture()
+def client(app):
+    """Get test client."""
+    with app.test_client() as client:
+        yield client
+
+
+@pytest.yield_fixture()
 def dummy_location(db):
     """File system location."""
     tmppath = tempfile.mkdtemp()
@@ -154,19 +161,37 @@ def bucket(db, dummy_location):
 @pytest.yield_fixture()
 def objects(db, bucket):
     """File system location."""
-    data_bytes = b('license file')
-    obj1 = ObjectVersion.create(
-        bucket, 'LICENSE', stream=BytesIO(data_bytes),
-        size=len(data_bytes)
-    )
-    data_bytes2 = b('readme file')
-    obj2 = ObjectVersion.create(
-        bucket, 'README.rst', stream=BytesIO(data_bytes2),
-        size=len(data_bytes2)
-    )
+    # Create older versions first
+    for key, content in [
+            ('LICENSE', b'old license'),
+            ('README.rst', b'old readme')]:
+        ObjectVersion.create(
+            bucket, key, stream=BytesIO(content), size=len(content)
+        )
+
+    # Create new versions
+    objs = []
+    for key, content in [
+            ('LICENSE', b'license file'),
+            ('README.rst', b'readme file')]:
+        objs.append(
+            ObjectVersion.create(
+                bucket, key, stream=BytesIO(content), size=len(content)
+            )
+        )
     db.session.commit()
 
-    yield [obj1, obj2]
+    yield objs
+
+
+@pytest.yield_fixture()
+def versions(objects):
+    """Get objects with all their versions."""
+    versions = []
+    for obj in objects:
+        versions.extend(ObjectVersion.get_versions(obj.bucket, obj.key))
+
+    yield versions
 
 
 @pytest.fixture()
@@ -185,6 +210,15 @@ def users(db, users_data):
         create_test_user(active=True, **users_data[0]),
         create_test_user(active=True, **users_data[1]),
     ]
+
+
+@pytest.fixture()
+def headers():
+    """Standard Invenio REST API headers."""
+    return {
+        'Content-Type': 'application/json',
+        'Accept': '*/*',
+    }
 
 
 @pytest.yield_fixture()
