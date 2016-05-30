@@ -40,40 +40,32 @@ from invenio_files_rest.models import Bucket, Location
 from invenio_files_rest.views import blueprint
 
 
-@pytest.mark.parametrize('buckets', [
-    [],
-    [
-        {
-            'uuid': '11111111-1111-1111-1111-111111111111',
-            'size': 512,
-            'url': 'http://invenio.org/files/'
-                   '11111111-1111-1111-1111-111111111111',
-        },
-        {
-            'uuid': '00000000-0000-0000-0000-000000000000',
-            'size': 0,
-            'url': 'http://invenio.org/files/'
-                   '00000000-0000-0000-0000-000000000000',
-        }
-    ]
-])
-def test_get_buckets(app, buckets, dummy_location):
+def test_get_buckets_with_no_buckets(app, db, client, headers):
+    """Test get buckets without any created."""
+    resp = client.get(
+        url_for('invenio_files_rest.bucket_collection_api'),
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    resp_json = json.loads(resp.data)
+    assert json.loads(resp.data) == []
+
+
+def test_get_buckets(app, client, headers, bucket):
     """Test get buckets."""
-    for bucket in buckets:
-        db.session.add(
-            Bucket(id=bucket['uuid'], size=bucket['size'],
-                   default_location=Location.get_default().id))
-    db.session.commit()
+    expected = [{
+        'uuid': str(bucket.id),
+        'url': url_for('invenio_files_rest.bucket_api', bucket_id=bucket.id),
+        'size': bucket.size,
+    }]
 
-    headers = {'Content-Type': 'application/json', 'Accept': '*/*'}
+    resp = client.get(
+        url_for('invenio_files_rest.bucket_collection_api'),
+        headers=headers,
+    )
 
-    with app.test_client() as client:
-        resp = client.get('/files', headers=headers)
-        assert resp.status_code == 200
-        resp_json = json.loads(resp.data)
-        assert len(resp_json) == len(buckets)
-        for bucket in resp_json:
-            assert bucket in buckets
+    assert resp.status_code == 200
+    assert json.loads(resp.data) == expected
 
 
 def test_post_bucket(app, dummy_location):
@@ -329,16 +321,83 @@ def test_file_size_errors(quota_size, max_file_size, file_size, expected,
 #             )
 #             assert resp.status_code == 403
 
-# def test_get_objects(app, db):
+def test_get_objects_non_existent_bucket(app, db, client, headers):
+    """Test getting objects from a non-existing bucket."""
+    resp = client.get(
+        url_for(
+            'invenio_files_rest.bucket_api', bucket_id=uuid.uuid4()
+        ),
+        headers=headers
+    )
+    assert resp.status_code == 404
+
+
+def test_get_objects_from_empty_bucket(app, db, client, headers, bucket):
+    """Test getting objects from an empty bucket"""
+    resp = client.get(
+        url_for(
+            'invenio_files_rest.bucket_api', bucket_id=bucket.id
+        ),
+        headers=headers
+    )
+    assert resp.status_code == 200
+    assert json.loads(resp.data) == []
+
+
+def test_get_objects_in_bucket(app, db, client, headers, bucket, objects):
+    """Test getting objects from bucket."""
+    expected = [
+        {
+            'uuid': str(obj.file.id),
+            'checksum': obj.file.checksum,
+            'url': url_for('invenio_files_rest.object_api',
+                           bucket_id=bucket.id,
+                           key=obj.key,
+                           _external=True),
+            'size': obj.file.size,
+        } for obj in objects
+    ]
+
+    resp = client.get(
+        url_for('invenio_files_rest.bucket_api', bucket_id=bucket.id),
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    resp_json = json.loads(resp.data)
+    assert len(resp_json) == len(expected)
+    for obj in expected:
+        assert obj in resp_json
+
+
+def test_get_objects_with_versions(app, db, client, headers, bucket, versions):
+    """Test getting objects with all their versions."""
+    expected = [
+        {
+            'uuid': str(obj.file.id),
+            'checksum': obj.file.checksum,
+            'url': url_for('invenio_files_rest.object_api',
+                           bucket_id=bucket.id,
+                           key=obj.key,
+                           _external=True),
+            'size': obj.file.size,
+        } for obj in versions
+    ]
+
+    resp = client.get(
+        url_for('invenio_files_rest.bucket_api', bucket_id=bucket.id),
+        query_string=dict(versions=True),
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    resp_json = json.loads(resp.data)
+    assert len(resp_json) == len(expected)
+    for obj in expected:
+        assert obj in resp_json
+
+
+# def test_get_objects_old(app, db, dummy_location):
 #     """Test get all objects in a bucket."""
 #     with app.test_client() as client:
-#         # Get a non-existant bucket
-#         bucket_id = uuid.uuid4()
-#         resp = client.get(
-#             "files/{}".format(bucket_id),
-#             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-#         )
-#         assert resp.status_code == 404
 #         # Create a bucket
 #         resp = client.post(
 #             '/files',

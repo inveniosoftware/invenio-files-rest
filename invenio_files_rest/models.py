@@ -61,6 +61,7 @@ from sqlalchemy.dialects import mysql
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import validates
 from sqlalchemy.orm.exc import MultipleResultsFound
+from sqlalchemy.sql import exists
 from sqlalchemy_utils.types import UUIDType
 
 from .errors import FileInstanceAlreadySetError, InvalidOperationError
@@ -297,6 +298,18 @@ class Bucket(db.Model, Timestamp):
             id=bucket_id,
             deleted=False
         ).one_or_none()
+
+    @classmethod
+    def exists(cls, bucket_id):
+        """Check if the given bucket exists.
+
+        :param bucket_id: Bucket identifier.
+        :returns: Boolean.
+        """
+        return db.session.query(
+            exists().where(
+                cls.id == bucket_id and cls.deleted is False
+            )).scalar()
 
     @classmethod
     def all(cls):
