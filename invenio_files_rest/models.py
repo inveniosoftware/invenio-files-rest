@@ -323,11 +323,14 @@ class Bucket(db.Model, Timestamp):
         """Delete a bucket.
 
         Does not actually delete the Bucket, just marks it as deleted.
-
+        Deleting a bucket also marks the contained objects as deleted.
         """
         bucket = cls.get(bucket_id)
         if not bucket or bucket.deleted:
             return False
+
+        for obj in ObjectVersion.query.filter_by(bucket_id=bucket_id):
+            ObjectVersion.delete(bucket_id, obj.key)
 
         bucket.deleted = True
         return True
