@@ -40,7 +40,7 @@ from invenio_files_rest.models import Bucket, Location
 from invenio_files_rest.views import blueprint
 
 
-def test_get_buckets_with_no_buckets(app, db, client, headers):
+def test_get_buckets_when_none_exist(app, db, client, headers):
     """Test get buckets without any created."""
     resp = client.get(
         url_for('invenio_files_rest.bucket_collection_api'),
@@ -95,80 +95,42 @@ def test_post_bucket(app, dummy_location):
             assert key in data
 
 
-# def test_head_bucket(app, db):
-#     """Test that checks if a bucket exists."""
-#     with app.test_client() as client:
-#         # Create bucket
-#         resp = client.post(
-#             '/files',
-#             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-#         )
-#         assert resp.status_code == 200
-#         data = json.loads(resp.data)
-#         assert 'url' in data
-#         i = data['url'].index('/files')
-#         bucket_url = data['url'][i:]
-#         resp = client.head(
-#             bucket_url,
-#             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-#         )
-#         assert resp.status_code == 200
+def test_head_bucket(app, client, headers, bucket):
+    """Test checking existence of bucket."""
+    resp = client.head(
+        url_for('invenio_files_rest.bucket_api', bucket_id=bucket.id),
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    assert not resp.data
 
 
-# def test_delete_bucket(app, db, dummy_location):
-#     """Test deleting a bucket."""
-#     with app.test_client() as client:
-#         # Create bucket
-#         resp = client.post(
-#             '/files',
-#             data=json.dumps({'location_name': dummy_location.name}),
-#             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-#         )
-#         assert resp.status_code == 200
-#         data = json.loads(resp.data)
-#         assert 'url' in data
-#         i = data['url'].index('/files')
-#         bucket_url = data['url'][i:]
+def test_head_non_existing_bucket(app, db, client, headers):
+    """Test checking for a non-existent bucket."""
+    resp = client.head(
+        url_for('invenio_files_rest.bucket_api', bucket_id=uuid.uuid4()),
+        headers=headers,
+    )
+    assert resp.status_code == 404
+    assert not resp.data
 
-#         # Upload file to bucket
-#         with open('LICENSE', 'rb') as f:
-#             resp = client.put(
-#                 bucket_url,
-#                 data={'file': (f, 'LICENSE')},
-#                 headers={'Accept': '*/*'}
-#             )
-#         assert resp.status_code == 200
-#         data = json.loads(resp.data)
-#         i = data['url'].index('/files')
-#         object_url = data['url'][i:]
 
-#         # Delete bucket
-#         resp = client.delete(
-#             bucket_url,
-#             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-#         )
-#         assert resp.status_code == 200
+def test_delete_bucket(app, client, headers, bucket):
+    """Test deleting a bucket."""
+    resp = client.delete(
+        url_for('invenio_files_rest.bucket_api', bucket_id=bucket.id),
+        headers=headers,
+    )
+    assert resp.status_code == 200
 
-#         resp = client.head(
-#             bucket_url,
-#             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-#         )
-#         assert resp.status_code == 404
 
-#         resp = client.head(
-#             object_url,
-#             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-#         )
-#         assert resp.status_code == 404
-
-#         # Delete a non-existant bucket
-#         resp = client.delete(
-#             bucket_url,
-#             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-#         )
-#         assert resp.status_code == 404
-
-# def test_get_object_list(app, dummy_objects):
+def test_delete_non_existent_bucket(app, db, client, headers):
+    """Test deleting a non-existent bucket."""
+    resp = client.delete(
+        url_for('invenio_files_rest.bucket_api', bucket_id=uuid.uuid4()),
+        headers=headers
+    )
+    assert resp.status_code == 404
 
 
 def test_get_object_permissions(app, objects, bucket, users_data, permissions):
@@ -332,7 +294,7 @@ def test_get_objects_non_existent_bucket(app, db, client, headers):
     assert resp.status_code == 404
 
 
-def test_get_objects_from_empty_bucket(app, db, client, headers, bucket):
+def test_get_objects_from_empty_bucket(app, client, headers, bucket):
     """Test getting objects from an empty bucket"""
     resp = client.get(
         url_for(
@@ -344,7 +306,7 @@ def test_get_objects_from_empty_bucket(app, db, client, headers, bucket):
     assert json.loads(resp.data) == []
 
 
-def test_get_objects_in_bucket(app, db, client, headers, bucket, objects):
+def test_get_objects_in_bucket(app, client, headers, bucket, objects):
     """Test getting objects from bucket."""
     expected = [
         {
@@ -369,7 +331,7 @@ def test_get_objects_in_bucket(app, db, client, headers, bucket, objects):
         assert obj in resp_json
 
 
-def test_get_objects_with_versions(app, db, client, headers, bucket, versions):
+def test_get_objects_with_versions(app, client, headers, bucket, versions):
     """Test getting objects with all their versions."""
     expected = [
         {

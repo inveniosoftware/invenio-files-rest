@@ -318,6 +318,20 @@ class Bucket(db.Model, Timestamp):
             deleted=False
         )
 
+    @classmethod
+    def delete(cls, bucket_id):
+        """Delete a bucket.
+
+        Does not actually delete the Bucket, just marks it as deleted.
+
+        """
+        bucket = cls.get(bucket_id)
+        if not bucket or bucket.deleted:
+            return False
+
+        bucket.deleted = True
+        return True
+
 
 class BucketTag(db.Model):
     """Model for storing tags associated to buckets.
