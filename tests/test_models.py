@@ -473,6 +473,22 @@ def test_object_set_file(app, db, dummy_location):
     assert pytest.raises(FileInstanceAlreadySetError, obj.set_file, f)
 
 
+def test_object_mimetype(app, db, dummy_location):
+    """Test object set file."""
+    b = Bucket.create()
+    db.session.commit()
+    obj1 = ObjectVersion.create(b, "test.pdf", stream=BytesIO(b'pdfdata'))
+    obj2 = ObjectVersion.create(b, "README", stream=BytesIO(b'pdfdata'))
+
+    assert obj1.mimetype == "application/pdf"
+    assert obj2.mimetype == "application/octet-stream"
+
+    # Override computed MIME type.
+    obj2.mimetype = "text/plain"
+    db.session.commit()
+    assert ObjectVersion.get(b, "README").mimetype == "text/plain"
+
+
 def test_object_restore(app, db, dummy_location):
     """Restore object."""
     f1 = FileInstance(uri="f1", size=1, checksum="mychecksum")

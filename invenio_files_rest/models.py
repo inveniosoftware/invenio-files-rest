@@ -49,6 +49,7 @@ model.
 
 from __future__ import absolute_import, print_function
 
+import mimetypes
 import re
 import uuid
 from datetime import datetime
@@ -57,12 +58,12 @@ import six
 from flask import current_app
 from invenio_db import db
 from sqlalchemy.dialects import mysql
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import validates
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy_utils.types import UUIDType
 
 from .errors import FileInstanceAlreadySetError, InvalidOperationError
-from .limiters import FileSizeLimit
 from .proxies import current_files_rest
 
 slug_pattern = re.compile('^[a-z][a-z0-9-]+$')
@@ -578,7 +579,7 @@ class ObjectVersion(db.Model, Timestamp):
     A null value in this column defines that the object has been deleted.
     """
 
-    mimetype = db.Column(
+    _mimetype = db.Column(
         db.String(255),
         index=True,
         nullable=True, )
@@ -606,6 +607,20 @@ class ObjectVersion(db.Model, Timestamp):
         """Return representation of location."""
         return '{0}:{2}:{1}'.format(
             self.bucket_id, self.key, self.version_id)
+
+    @hybrid_property
+    def mimetype(self):
+        """Get MIME type of object."""
+        if self._mimetype:
+            m = self._mimetype
+        elif self.key:
+            m = mimetypes.guess_type(self.key)[0]
+        return m or 'application/octet-stream'
+
+    @mimetype.setter
+    def mimetype(self, value):
+        """Setter for MIME type."""
+        self._mimetype = value
 
     @property
     def is_deleted(self):
