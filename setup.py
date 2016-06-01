@@ -143,7 +143,6 @@ setup(
             'invenio_files_rest.permissions:bucket_update_all',
             'bucket_delete_all = '
             'invenio_files_rest.permissions:bucket_delete_all',
-            'objects_create = invenio_files_rest.permissions:objects_create',
             'objects_read_all = '
             'invenio_files_rest.permissions:objects_read_all',
             'objects_update_all = '

@@ -60,10 +60,23 @@ class _FilesRESTState(object):
         return import_string(self.app.config.get('FILES_REST_STORAGE_FACTORY'))
 
     @cached_property
-    def permission_factory(self):
+    def bucket_collection_permission_factory(self):
+        """Load default permission factory for Buckets collections."""
+        return import_string(
+            self.app.config.get(
+                'FILES_REST_BUCKET_COLLECTION_PERMISSION_FACTORY'))
+
+    @cached_property
+    def bucket_permission_factory(self):
+        """"Load default permission factory for Buckets."""
+        return import_string(
+            self.app.config.get('FILES_REST_BUCKET_PERMISSION_FACTORY'))
+
+    @cached_property
+    def object_permission_factory(self):
         """Load default permission factory."""
         return import_string(
-            self.app.config.get('FILES_REST_PERMISSION_FACTORY'))
+            self.app.config.get('FILES_REST_OBJECT_PERMISSION_FACTORY'))
 
     @cached_property
     def file_size_limiters(self):
