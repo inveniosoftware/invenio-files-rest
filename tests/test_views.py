@@ -34,9 +34,10 @@ import pytest
 from flask import json, url_for
 from invenio_db import db
 from six import BytesIO, b
+from testutils import login_user
 
 from invenio_files_rest import InvenioFilesREST
-from invenio_files_rest.models import Bucket, Location
+from invenio_files_rest.models import Bucket, Location, ObjectVersion
 from invenio_files_rest.views import blueprint
 
 
@@ -51,264 +52,396 @@ def test_get_buckets_when_none_exist(app, db, client, headers):
     assert json.loads(resp.data) == []
 
 
-def test_get_buckets(app, client, headers, bucket):
+@pytest.mark.parametrize('user, expected', [
+    (None, 401),
+    ('auth', 403),
+    ('bucket-collection', 200),
+    ('bucket', 403),
+    ('objects', 403),
+    ('all', 200),
+    ('superuser', 200)
+])
+def test_get_buckets(app, client, headers, bucket, permissions,
+                     user, expected):
     """Test get buckets."""
-    expected = [{
+    expected_body = [{
         'uuid': str(bucket.id),
-        'url': url_for('invenio_files_rest.bucket_api', bucket_id=bucket.id),
+        'url': url_for(
+            'invenio_files_rest.bucket_api',
+            bucket_id=bucket.id,
+            _external=True),
         'size': bucket.size,
     }]
+
+    login_user(client, permissions[user])
 
     resp = client.get(
         url_for('invenio_files_rest.bucket_collection_api'),
         headers=headers,
     )
 
-    assert resp.status_code == 200
-    assert json.loads(resp.data) == expected
+    assert resp.status_code == expected
+    if resp.status_code == 200:
+        assert json.loads(resp.data) == expected_body
 
 
-def test_post_bucket(app, dummy_location):
+@pytest.mark.parametrize('user, expected', [
+    (None, 401),
+    ('auth', 403),
+    ('bucket-collection', 200),
+    ('bucket', 403),
+    ('objects', 403),
+    ('all', 200),
+    ('superuser', 200)
+])
+def test_post_bucket(app, client, headers, dummy_location, permissions,
+                     user, expected):
     """Test post a bucket."""
-    headers = {'Content-Type': 'application/json', 'Accept': '*/*'}
     expected_keys = ['uuid', 'url', 'size']
+    params = [{}, {'location_name': dummy_location.name}]
 
-    with app.test_client() as client:
+    login_user(client, permissions[user])
+
+    for data in params:
         resp = client.post(
-            '/files',
+            url_for('invenio_files_rest.bucket_collection_api'),
+            data=data,
             headers=headers
         )
-        assert resp.status_code == 200
-        data = json.loads(resp.data)
-        for key in expected_keys:
-            assert key in data
-
-        # With location_name
-        resp = client.post(
-            '/files',
-            data=json.dumps({'location_name': dummy_location.name}),
-            headers=headers,
-        )
-        assert resp.status_code == 200
-        data = json.loads(resp.data)
-        for key in expected_keys:
-            assert key in data
+        assert resp.status_code == expected
+        if resp.status_code == 200:
+            resp_json = json.loads(resp.data)
+            for key in expected_keys:
+                assert key in resp_json
+            assert Bucket.get(resp_json['uuid'])
 
 
-def test_head_bucket(app, client, headers, bucket):
+@pytest.mark.parametrize('user, expected', [
+    (None, 401),
+    ('auth', 403),
+    ('bucket-collection', 403),
+    ('bucket', 200),
+    ('objects', 403),
+    ('all', 200),
+    ('superuser', 200)
+])
+def test_head_bucket(app, client, headers, bucket, permissions,
+                     user, expected):
     """Test checking existence of bucket."""
+    login_user(client, permissions[user])
+
     resp = client.head(
         url_for('invenio_files_rest.bucket_api', bucket_id=bucket.id),
         headers=headers,
     )
-    assert resp.status_code == 200
+
+    assert resp.status_code == expected
     assert not resp.data
 
 
-def test_head_non_existing_bucket(app, db, client, headers):
+@pytest.mark.parametrize('user, expected', [
+    (None, 404),
+    ('auth', 404),
+    ('bucket-collection', 404),
+    ('bucket', 404),
+    ('objects', 404),
+    ('all', 404),
+    ('superuser', 404)
+])
+def test_head_non_existing_bucket(app, db, client, headers, permissions,
+                                  user, expected):
     """Test checking for a non-existent bucket."""
+    login_user(client, permissions[user])
+
     resp = client.head(
         url_for('invenio_files_rest.bucket_api', bucket_id=uuid.uuid4()),
         headers=headers,
     )
-    assert resp.status_code == 404
+    assert resp.status_code == expected
     assert not resp.data
 
 
-def test_delete_bucket(app, client, headers, bucket, objects):
+@pytest.mark.parametrize('user, expected', [
+    (None, 401),
+    ('auth', 403),
+    ('bucket-collection', 403),
+    ('bucket', 200),
+    ('objects', 403),
+    ('all', 200),
+    ('superuser', 200)
+])
+def test_delete_bucket(app, client, headers, bucket, objects, permissions,
+                       user, expected):
     """Test deleting a bucket."""
+    login_user(client, permissions[user])
     resp = client.delete(
         url_for('invenio_files_rest.bucket_api', bucket_id=bucket.id),
         headers=headers,
     )
-    assert resp.status_code == 200
+    assert resp.status_code == expected
+    if resp.status_code == 200:
+        assert not Bucket.exists(bucket.id)
+    else:
+        assert Bucket.exists(bucket.id)
 
 
-def test_delete_non_existent_bucket(app, db, client, headers):
+@pytest.mark.parametrize('user, expected', [
+    (None, 404),
+    ('auth', 404),
+    ('bucket-collection', 404),
+    ('bucket', 404),
+    ('objects', 404),
+    ('all', 404),
+    ('superuser', 404)
+])
+def test_delete_non_existent_bucket(app, db, client, headers, permissions,
+                                    user, expected):
     """Test deleting a non-existent bucket."""
+    login_user(client, permissions[user])
     resp = client.delete(
         url_for('invenio_files_rest.bucket_api', bucket_id=uuid.uuid4()),
         headers=headers
     )
-    assert resp.status_code == 404
+    assert resp.status_code == expected
 
 
-def test_get_object_permissions(app, objects, bucket, users_data, permissions):
-    """Test ObjectResource view GET method."""
-    # Bucket and object
-    obj = objects[0]
-    key = obj.key
-
-    # Users
-    u1_data = users_data[0]  # Privileged user
-    u2_data = users_data[1]  # Unprivileged user
-
-    # URLs
-    login_url = url_for('security.login')
-    object_url = "/files/{0}/{1}".format(bucket.id, key)
-    object_url_invalid = "/files/{0}/{1}".format(bucket.id, key + "XYZ")
-
-    headers = {'Content-Type': 'application/json', 'Accept': '*/*'}
-
-    with app.test_client() as client:
-        # Get object that doesn't exist. Gets the "401 Unauthorized" before 404
-        resp = client.get(object_url_invalid, headers=headers)
-        assert resp.status_code == 401
-        # Get 404 after login
-        client.post(login_url, data=u1_data)
-        resp = client.get(object_url_invalid, headers=headers)
-        assert resp.status_code == 404
-
-    with app.test_client() as client:
-        # Request the object anonymously, get "401 Unauthorized"
-        resp = client.get(object_url, headers=headers)
-        assert resp.status_code == 401
-
-        # Request the object with user2 (no permissions), get "403 Forbidden"
-        client.post(login_url, data=u2_data)  # Login with user2
-        resp = client.get(object_url, headers=headers)
-        assert resp.status_code == 403
-
-    with app.test_client() as client:
-        # Login with privileged user and get object
-        client.post(login_url, data=u1_data)
-        resp = client.get(object_url, headers=headers)
-        assert resp.status_code == 200
-
-        # Check headers
-        assert resp.content_md5 == obj.file.checksum
-        assert resp.get_etag()[0] == obj.file.checksum
-
-
-@pytest.mark.parametrize('bucket_quota, file_size_limit', [
-    (50, 50),
-    (122, 120),
+@pytest.mark.parametrize('user, expected', [
+    (None, 401),
+    ('auth', 403),
+    ('bucket-collection', 403),
+    ('bucket', 404),
+    ('objects', 403),
+    ('all', 404),
+    ('superuser', 404)
 ])
-def test_put_object(bucket_quota, file_size_limit, base_app, objects,
-                    bucket, users_data, permissions):
-    """Test ObjectResource view PUT method."""
-    InvenioFilesREST(base_app)
-    base_app.register_blueprint(blueprint)
+def test_get_object_non_existing(app, client, headers, bucket, permissions,
+                                 user, expected):
+    """Test getting a non-existing object."""
+    login_user(client, permissions[user])
 
-    key = objects[0].key
-    u1_data = users_data[0]  # Privileged user
-    u2_data = users_data[1]  # Unprivileged user
-    login_url = url_for('security.login')
-    object_url = "/files/{0}/{1}".format(bucket.id, key)
+    resp = client.get(
+        url_for(
+            'invenio_files_rest.object_api',
+            bucket_id=bucket.id,
+            key='non-existing.pdf',
+        ),
+        headers=headers,
+    )
+    assert resp.status_code == expected
 
-    with base_app.app_context():
-        bucket.quota_size = bucket_quota
-        db.session.merge(bucket)
-        db.session.commit()
 
-    with base_app.test_client() as client:
-        # Get object that doesn't exist. Gets the "401 Unauthorized" before 404
-        # Try to update the file under 'key' (with 'contents2')
-        data_bytes = b'contents2'
-        headers = {'Accept': '*/*'}
-        data = {'file': (BytesIO(data_bytes), 'file.dat')}
-        resp = client.put(object_url, data=data, headers=headers)
-        assert resp.status_code == 401
+@pytest.mark.parametrize('user, expected', [
+    (None, 401),
+    ('auth', 403),
+    ('bucket-collection', 403),
+    ('bucket', 200),
+    ('objects', 200),
+    ('all', 200),
+    ('superuser', 200)
+])
+def test_get_object(app, client, headers, bucket, objects, permissions,
+                    user, expected):
+    """Test getting an object."""
+    login_user(client, permissions[user])
 
-        # Login with 'user2' (no permissions), try to PUT, receive 403
-        client.post(login_url, data=u2_data)
-        data = {'file': (BytesIO(data_bytes), 'file.dat')}
-        resp = client.put(object_url, data=data, headers=headers)
-        assert resp.status_code == 403
+    for obj in objects:
+        resp = client.get(
+            url_for(
+                'invenio_files_rest.object_api',
+                bucket_id=bucket.id,
+                key=obj.key,
+            ),
+            headers=headers,
+        )
+        assert resp.status_code == expected
+        if resp.status_code == 200:
+            assert resp.content_md5 == obj.file.checksum
+            assert resp.get_etag()[0] == obj.file.checksum
 
-        # Login with 'user1', try to put without file in the request
-        client.post(login_url, data=u1_data)
-        resp = client.put(object_url, data={}, headers=headers)
-        assert resp.status_code == 400
+
+@pytest.mark.parametrize('user, expected', [
+    (None, 401),
+    ('auth', 403),
+    ('bucket-collection', 403),
+    ('bucket', 200),
+    ('objects', 403),
+    ('all', 200),
+    ('superuser', 200)
+])
+def test_post_object(app, client, permissions, bucket, user, expected):
+    """Test ObjectResource view POST method."""
+    key = 'file.pdf'
+
+    login_user(client, permissions[user])
+
+    resp = client.post(
+        url_for('invenio_files_rest.object_api', bucket_id=bucket.id, key=key),
+        data={'file': (BytesIO(b'content_data'), key)},
+        headers={'Accept': '*/*'},
+    )
+    assert resp.status_code == expected
+
+
+@pytest.mark.parametrize('user, expected', [
+    (None, 401),
+    ('auth', 403),
+    ('bucket-collection', 403),
+    ('bucket', 400),
+    ('objects', 403),
+    ('all', 400),
+    ('superuser', 400)
+])
+def test_post_object_missing_file(app, client, permissions, bucket,
+                                  user, expected):
+    """Test post object with file not included in the request."""
+    key = 'file.pdf'
+
+    login_user(client, permissions[user])
+
+    resp = client.post(
+        url_for('invenio_files_rest.object_api', bucket_id=bucket.id, key=key),
+        data={},
+        headers={'Accept': '*/*'},
+    )
+    assert resp.status_code == expected
+    if resp.status_code == 400:
         assert 'File is missing from the request.' in resp.get_data(
             as_text=True)
 
-        # Try with a non existing bucket
+
+@pytest.mark.parametrize('user, expected', [
+    (None, 401),
+    ('auth', 403),
+    ('bucket-collection', 403),
+    ('bucket', 200),
+    ('objects', 200),
+    ('all', 200),
+    ('superuser', 200)
+])
+def test_put_object(app, client, bucket, objects, permissions,
+                    user, expected):
+    """Test updating an object."""
+    login_user(client, permissions[user])
+
+    for obj in objects:
         resp = client.put(
-            '/files/00000000-0000-0000-0000-000000000000/f.pdf',
-            data={'file': (BytesIO(data_bytes), 'file.dat')},
-            headers=headers
+            url_for(
+                'invenio_files_rest.object_api',
+                bucket_id=bucket.id,
+                key=obj.key,
+            ),
+            data={'file': (BytesIO(b'updated_content'), obj.key)}
         )
-        assert resp.status_code == 404
-        assert 'Bucket does not exist.' in resp.get_data(as_text=True)
+        assert resp.status_code == expected
 
 
-@pytest.mark.parametrize(
-    'quota_size, max_file_size, file_size, expected', [
-        (None, None, 100, (200, '')),
-        (50, None, 100, (400, 'Bucket quota exceeded.')),
-        (100, None, 100, (200, '')),
-        (150, None, 100, (200, '')),
-        (None, 50, 100, (400, 'Maximum file size exceeded.')),
-        (None, 100, 100, (200, '')),
-        (None, 150, 100, (200, '')),
-    ])
-def test_file_size_errors(quota_size, max_file_size, file_size, expected,
-                          base_app, users_data, permissions, bucket):
+@pytest.mark.parametrize('quota_size, max_file_size, expected', [
+    (None, None, (200, '')),
+    (50, None, (400, 'Bucket quota exceeded.')),
+    (100, None, (200, '')),
+    (150, None, (200, '')),
+    (None, 50, (400, 'Maximum file size exceeded.')),
+    (None, 100, (200, '')),
+    (None, 150, (200, '')),
+])
+def test_file_size_errors(app, client, bucket, permissions,
+                          quota_size, max_file_size, expected):
     """Test that file size errors are properly raised."""
-    InvenioFilesREST(base_app)
-    base_app.register_blueprint(blueprint)
+    # Empty the bucket fixture
+    ObjectVersion.query.delete()
+    bucket.size = 0
+    # Set new quota
+    bucket.quota_size = quota_size
+    bucket.max_file_size = max_file_size
+    db.session.commit()
+
     key = 'file.dat'
-    user = users_data[0]
-    login_url = url_for('security.login')
-    object_url = "/files/{0}/{1}".format(bucket.id, key)
+    file_size = 100
+    content = pack(
+        ''.join('c' for i in range(file_size)),
+        *[b'v' for i in range(file_size)]
+    )
 
-    with base_app.app_context():
-        bucket.quota_size = quota_size
-        bucket.max_file_size = max_file_size
-        db.session.merge(bucket)
-        db.session.commit()
-
-    with base_app.test_client() as client:
-        # Login with 'user1' (has permissions)
-        client.post(login_url, data=user)
-
-        content = pack(
-            ''.join('c' for i in range(file_size)),
-            *[b'v' for i in range(file_size)])
-        headers = {'Accept': '*/*'}
-        data = {'file': (BytesIO(content), key)}
-        resp = client.put(object_url, data=data, headers=headers)
-        assert resp.status_code == expected[0]
-        assert expected[1] in resp.get_data(as_text=True)
+    login_user(client, permissions['bucket'])
+    resp = client.post(
+        url_for('invenio_files_rest.object_api', bucket_id=bucket.id, key=key),
+        data={
+            'file': (BytesIO(content), key),
+        },
+        headers={'Accept': '*/*'},
+    )
+    assert resp.status_code == expected[0]
+    assert expected[1] in resp.get_data(as_text=True)
 
 
-# def test_get_object_get_access_denied_403(app, objects):
-#     """Test object download 403 access denied"""
-#     with app.test_client() as client:
-#         for obj in objects:
-#             resp = client.get(
-#                 "/files/{}/{}".format(obj.bucket_id, obj.key),
-#                 headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-#             )
-#             assert resp.status_code == 403
-
-def test_get_objects_non_existent_bucket(app, db, client, headers):
+@pytest.mark.parametrize('user, expected', [
+    (None, 404),
+    ('auth', 404),
+    ('bucket-collection', 404),
+    ('bucket', 404),
+    ('objects', 404),
+    ('all', 404),
+    ('superuser', 404)
+])
+def test_get_objects_non_existent_bucket(app, db, client, headers, permissions,
+                                         user, expected):
     """Test getting objects from a non-existing bucket."""
+    login_user(client, permissions[user])
+
     resp = client.get(
         url_for(
             'invenio_files_rest.bucket_api', bucket_id=uuid.uuid4()
         ),
         headers=headers
     )
-    assert resp.status_code == 404
+    assert resp.status_code == expected
 
 
-def test_get_objects_from_empty_bucket(app, client, headers, bucket):
+@pytest.mark.parametrize('user, expected', [
+    (None, 401),
+    ('auth', 403),
+    ('bucket-collection', 403),
+    ('bucket', 200),
+    ('objects', 403),
+    ('all', 200),
+    ('superuser', 200)
+])
+def test_get_objects_from_empty_bucket(app, client, headers, bucket, objects,
+                                       permissions, user, expected):
     """Test getting objects from an empty bucket"""
+    # Delete the objects created in the fixtures to have an empty bucket with
+    # permissions set up.
+    for obj in objects:
+        ObjectVersion.delete(obj.bucket_id, obj.key)
+    db.session.commit()
+
+    login_user(client, permissions[user])
+
     resp = client.get(
         url_for(
             'invenio_files_rest.bucket_api', bucket_id=bucket.id
         ),
         headers=headers
     )
-    assert resp.status_code == 200
-    assert json.loads(resp.data) == []
+
+    assert resp.status_code == expected
+    if resp.status_code == 200:
+        assert json.loads(resp.data) == []
 
 
-def test_get_objects_in_bucket(app, client, headers, bucket, objects):
+@pytest.mark.parametrize('user, expected', [
+    (None, 401),
+    ('auth', 403),
+    ('bucket-collection', 403),
+    ('bucket', 200),
+    ('objects', 403),
+    ('all', 200),
+    ('superuser', 200)
+])
+def test_get_objects_in_bucket(app, client, headers, bucket, objects,
+                               permissions, user, expected):
     """Test getting objects from bucket."""
-    expected = [
+    expected_body = [
         {
             'uuid': str(obj.file.id),
             'checksum': obj.file.checksum,
@@ -320,20 +453,35 @@ def test_get_objects_in_bucket(app, client, headers, bucket, objects):
         } for obj in objects
     ]
 
+    login_user(client, permissions[user])
+
     resp = client.get(
         url_for('invenio_files_rest.bucket_api', bucket_id=bucket.id),
         headers=headers,
     )
-    assert resp.status_code == 200
-    resp_json = json.loads(resp.data)
-    assert len(resp_json) == len(expected)
-    for obj in expected:
-        assert obj in resp_json
+    assert resp.status_code == expected
+    if resp.status_code == 200:
+        resp_json = json.loads(resp.data)
+        assert len(resp_json) == len(expected_body)
+        for obj in expected_body:
+            assert obj in resp_json
 
 
-def test_get_objects_with_versions(app, client, headers, bucket, versions):
+@pytest.mark.parametrize('user, expected', [
+    (None, 401),
+    ('auth', 403),
+    ('bucket-collection', 403),
+    ('bucket', 200),
+    ('objects', 403),
+    ('all', 200),
+    ('superuser', 200)
+])
+def test_get_objects_with_versions(app, client, headers, bucket, versions,
+                                   permissions, user, expected):
     """Test getting objects with all their versions."""
-    expected = [
+    login_user(client, permissions[user])
+
+    expected_body = [
         {
             'uuid': str(obj.file.id),
             'checksum': obj.file.checksum,
@@ -350,124 +498,131 @@ def test_get_objects_with_versions(app, client, headers, bucket, versions):
         query_string=dict(versions=True),
         headers=headers,
     )
-    assert resp.status_code == 200
-    resp_json = json.loads(resp.data)
-    assert len(resp_json) == len(expected)
-    for obj in expected:
-        assert obj in resp_json
+    assert resp.status_code == expected
+    if resp.status_code == 200:
+        resp_json = json.loads(resp.data)
+        assert len(resp_json) == len(expected_body)
+        for obj in expected_body:
+            assert obj in resp_json
 
 
-def test_get_object_from_non_existent_bucket(app, db, client):
+@pytest.mark.parametrize('user, expected', [
+    (None, 404),
+    ('auth', 404),
+    ('bucket-collection', 404),
+    ('bucket', 404),
+    ('objects', 404),
+    ('all', 404),
+    ('superuser', 404)
+])
+def test_get_object_from_non_existent_bucket(app, db, client, permissions,
+                                             user, expected):
     """Test getting an object from a non-existent bucket."""
+    login_user(client, permissions[user])
+
     resp = client.get(url_for(
         'invenio_files_rest.object_api',
         bucket_id=uuid.uuid4(),
         key='non-existent.pdf',
     ))
-    assert resp.status_code == 404
+    assert resp.status_code == expected
 
 
-def test_delete_object(app, client, bucket, objects):
+@pytest.mark.parametrize('user, expected', [
+    (None, 401),
+    ('auth', 403),
+    ('bucket-collection', 403),
+    ('bucket', 200),
+    ('objects', 200),
+    ('all', 200),
+    ('superuser', 200)
+])
+def test_delete_object(app, client, bucket, objects, permissions,
+                       user, expected):
     """Test deleting an object."""
+    login_user(client, permissions[user])
+
     for obj in objects:
         resp = client.delete(url_for(
             'invenio_files_rest.object_api',
             bucket_id=bucket.id,
             key=obj.key,
         ))
-        assert resp.status_code == 200
+        assert resp.status_code == expected
+        if resp.status_code == 200:
+            assert not ObjectVersion.exists(bucket.id, obj.key)
+        else:
+            assert ObjectVersion.exists(bucket.id, obj.key)
 
 
-def test_delete_non_existent_object(app, client, bucket):
+@pytest.mark.parametrize('user, expected', [
+    (None, 401),
+    ('auth', 403),
+    ('bucket-collection', 403),
+    ('bucket', 404),
+    ('objects', 403),
+    ('all', 404),
+    ('superuser', 404)
+])
+def test_delete_non_existent_object(app, client, bucket, permissions,
+                                    user, expected):
     """Test deleting a non existent object."""
+    login_user(client, permissions[user])
+
     resp = client.delete(url_for(
         'invenio_files_rest.object_api',
         bucket_id=bucket.id,
         key='non-existent.pdf',
     ))
-    assert resp.status_code == 404
+    assert resp.status_code == expected
 
 
-def test_head_object(app, client, bucket, objects):
+@pytest.mark.parametrize('user, expected', [
+    (None, 401),
+    ('auth', 403),
+    ('bucket-collection', 403),
+    ('bucket', 200),
+    ('objects', 200),
+    ('all', 200),
+    ('superuser', 200)
+])
+def test_head_object(app, client, bucket, objects, permissions,
+                     user, expected):
     """Test checking for existence of an object."""
+    login_user(client, permissions[user])
+
     for obj in objects:
         resp = client.head(url_for(
             'invenio_files_rest.object_api',
             bucket_id=bucket.id,
             key=obj.key,
         ))
-        assert resp.status_code == 200
+        assert resp.status_code == expected
 
 
-def test_head_object_non_existing(app, client, bucket):
+@pytest.mark.parametrize('user, expected', [
+    (None, 401),
+    ('auth', 403),
+    ('bucket-collection', 403),
+    ('bucket', 404),
+    ('objects', 403),
+    ('all', 404),
+    ('superuser', 404)
+])
+def test_head_object_non_existing(app, client, bucket, permissions,
+                                  user, expected):
     """Test checking for existence of a non-existing object."""
+    login_user(client, permissions[user])
+
     resp = client.head(url_for(
         'invenio_files_rest.object_api',
         bucket_id=bucket.id,
         key='non-existing.pdf',
     ))
-    assert resp.status_code == 404
+    assert resp.status_code == expected
 
 # def test_get_objects_old(app, db, dummy_location):
 #     """Test get all objects in a bucket."""
-#     with app.test_client() as client:
-#         # Create a bucket
-#         resp = client.post(
-#             '/files',
-#             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-#         )
-#         assert resp.status_code == 200
-#         data = json.loads(resp.data)
-#         assert 'url' in data
-#         i = data['url'].index('/files')
-#         bucket_url = data['url'][i:]
-#         resp = client.get(
-#             bucket_url,
-#             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-#         )
-#         assert resp.status_code == 200
-#         data = json.loads(resp.data)
-#         assert len(data) == 0
-#         # Upload file to bucket
-#         with open('LICENSE', 'rb') as f:
-#             resp = client.put(
-#                 bucket_url,
-#                 data={'file': (f, 'LICENSE')},
-#                 headers={'Accept': '*/*'}
-#             )
-#         assert resp.status_code == 200
-#         data = json.loads(resp.data)
-#         ini_version_id = data['version_id']
-#         resp = client.get(
-#             bucket_url,
-#             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-#         )
-#         assert resp.status_code == 200
-#         data = json.loads(resp.data)
-#         assert len(data) == 1
-#         # Upload a new version of the file to bucket
-#         with open('LICENSE', 'rb') as f:
-#             resp = client.put(
-#                 bucket_url,
-#                 data={'file': (f, 'LICENSE')},
-#                 headers={'Accept': '*/*'}
-#             )
-#         assert resp.status_code == 200
-#         resp = client.get(
-#             bucket_url,
-#             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-#         )
-#         assert resp.status_code == 200
-#         data = json.loads(resp.data)
-#         assert len(data) == 1
-#         # Get all versions included
-#         resp = client.get(
-#             "{}?versions=1".format(bucket_url),
-#             headers={'Content-Type': 'application/json', 'Accept': '*/*'}
-#         )
-#         assert resp.status_code == 200
-#         data = json.loads(resp.data)
-#         assert len(data) == 2
 #         # Get old version of the file
 #         resp = client.get(
 #             "{}/LICENSE?version_id={}".format(bucket_url, ini_version_id),

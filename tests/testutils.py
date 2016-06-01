@@ -22,22 +22,15 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-"""Proxy definitions."""
+"""Files download/upload REST API similar to S3 for Invenio."""
 
 from __future__ import absolute_import, print_function
 
-from flask import current_app
-from werkzeug.local import LocalProxy
+from invenio_accounts.models import User
 
 
-current_files_rest = LocalProxy(
-    lambda: current_app.extensions['invenio-files-rest'])
-
-current_bucket_collection_permission_factory = LocalProxy(
-    lambda: current_files_rest.bucket_collection_permission_factory)
-
-current_bucket_permission_factory = LocalProxy(
-    lambda: current_files_rest.bucket_permission_factory)
-
-current_object_permission_factory = LocalProxy(
-    lambda: current_files_rest.object_permission_factory)
+def login_user(client, user):
+    """"Log in a specified user."""
+    with client.session_transaction() as sess:
+        sess['user_id'] = user.id if user else None
+        sess['_fresh'] = True

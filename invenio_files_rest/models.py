@@ -306,10 +306,7 @@ class Bucket(db.Model, Timestamp):
         :param bucket_id: Bucket identifier.
         :returns: Boolean.
         """
-        return db.session.query(
-            exists().where(
-                cls.id == bucket_id and cls.deleted is False
-            )).scalar()
+        return cls.get(bucket_id) is not None
 
     @classmethod
     def all(cls):
@@ -323,14 +320,10 @@ class Bucket(db.Model, Timestamp):
         """Delete a bucket.
 
         Does not actually delete the Bucket, just marks it as deleted.
-        Deleting a bucket also marks the contained objects as deleted.
         """
         bucket = cls.get(bucket_id)
         if not bucket or bucket.deleted:
             return False
-
-        for obj in ObjectVersion.query.filter_by(bucket_id=bucket_id):
-            ObjectVersion.delete(bucket_id, obj.key)
 
         bucket.deleted = True
         return True
@@ -817,12 +810,7 @@ class ObjectVersion(db.Model, Timestamp):
         :param object_id: ObjectVersion identifier.
         :returns: Boolean.
         """
-        return db.session.query(
-            exists().where(
-                cls.bucket_id == bucket_id and
-                cls.key == key and
-                cls.file_id is not None
-            )).scalar()
+        return cls.get(bucket_id, key) is not None
 
     @classmethod
     def get(cls, bucket, key, version_id=None):

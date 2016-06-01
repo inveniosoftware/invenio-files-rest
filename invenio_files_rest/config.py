@@ -50,8 +50,14 @@ FILES_REST_SIZE_LIMITERS = 'invenio_files_rest.limiters.file_size_limiters'
 FILES_REST_STORAGE_FACTORY = 'invenio_files_rest.storage.pyfs_storage_factory'
 """Import path of factory used to create a storage instance."""
 
-FILES_REST_PERMISSION_FACTORY = \
-    'invenio_files_rest.permissions.permission_factory'
+FILES_REST_BUCKET_COLLECTION_PERMISSION_FACTORY = \
+    'invenio_files_rest.permissions.bucket_collection_permission_factory'
+
+FILES_REST_BUCKET_PERMISSION_FACTORY = \
+    'invenio_files_rest.permissions.bucket_permission_factory'
+
+FILES_REST_OBJECT_PERMISSION_FACTORY = \
+    'invenio_files_rest.permissions.object_permission_factory'
 """Import path of permission factory."""
 
 FILES_REST_OBJECT_KEY_MAX_LEN = 255

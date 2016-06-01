@@ -39,6 +39,7 @@ from flask_cli import FlaskCLI
 from flask_menu import Menu
 from invenio_access import InvenioAccess
 from invenio_access.models import ActionUsers
+from invenio_access.permissions import superuser_access
 from invenio_accounts import InvenioAccounts
 from invenio_accounts.testutils import create_test_user
 from invenio_accounts.views import blueprint as accounts_blueprint
@@ -49,8 +50,10 @@ from sqlalchemy_utils.functions import create_database, database_exists
 
 from invenio_files_rest import InvenioFilesREST
 from invenio_files_rest.models import Bucket, Location, ObjectVersion
-from invenio_files_rest.permissions import objects_create, \
-    objects_delete_all, objects_read_all, objects_update_all
+from invenio_files_rest.permissions import bucket_collection_create, \
+    bucket_collection_read_all, bucket_create, bucket_delete_all, \
+    bucket_read_all, bucket_update_all, objects_delete_all, objects_read_all, \
+    objects_update_all
 from invenio_files_rest.views import blueprint
 
 
@@ -222,17 +225,60 @@ def headers():
 
 
 @pytest.yield_fixture()
-def permissions(db, users, bucket):
-    """Bucket permissions."""
-    # Give permissions to user 'user1', but not to 'user2'
-    perms = [objects_create, objects_read_all, objects_update_all,
-             objects_delete_all]
+def permissions(db, bucket, objects):
+    """Permissions for users."""
+    users = {
+        None: None,
+    }
 
-    for perm in perms:
-        au = ActionUsers(action=perm.value,
-                         argument=str(bucket.id),
-                         user=users[0])
-        db.session.add(au)
+    for user in [
+            'auth', 'bucket-collection', 'bucket',
+            'objects', 'all', 'superuser']:
+        users[user] = create_test_user(
+            email='{0}@invenio-software.org'.format(user),
+            password='pass1',
+            active=True
+        )
+
+    bucket_collection_perms = [
+        bucket_collection_read_all, bucket_collection_create
+    ]
+
+    bucket_perms = [
+        bucket_read_all, bucket_create, bucket_update_all, bucket_delete_all
+    ]
+
+    objects_perms = [
+        objects_read_all, objects_update_all,
+        objects_delete_all
+    ]
+
+    for perm in bucket_collection_perms:
+        db.session.add(ActionUsers(action=perm.value,
+                                   user=users['bucket-collection']))
+        db.session.add(ActionUsers(action=perm.value,
+                                   user=users['all']))
+    for perm in bucket_perms:
+        db.session.add(ActionUsers(action=perm.value,
+                                   argument=str(bucket.id),
+                                   user=users['bucket']))
+        db.session.add(ActionUsers(action=perm.value,
+                                   argument=str(bucket.id),
+                                   user=users['all']))
+    for perm in objects_perms:
+        for obj in objects:
+            db.session.add(ActionUsers(action=perm.value,
+                                       argument='{0}:{1}'.format(
+                                            str(bucket.id), obj.key),
+                                       user=users['objects']))
+            db.session.add(ActionUsers(action=perm.value,
+                                       argument='{0}:{1}'.format(
+                                            str(bucket.id), obj.key),
+                                       user=users['all']))
+
+    db.session.add(
+        ActionUsers(action=superuser_access.value, user=users['superuser']))
+
     db.session.commit()
 
-    yield None
+    yield users
