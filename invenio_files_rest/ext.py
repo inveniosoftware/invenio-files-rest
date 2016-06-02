@@ -45,7 +45,7 @@ class _FilesRESTState(object):
         """Load default storage factory."""
         imp = self.app.config.get("FILES_REST_RECORD_FILE_FACTORY")
         if imp:
-            import_string(imp)
+            return import_string(imp)
         else:
             try:
                 get_distribution('invenio-records-files')
