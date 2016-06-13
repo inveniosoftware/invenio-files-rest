@@ -93,3 +93,13 @@ def bucket_serializer(data=None, code=200, headers=None):
         }
 
     return [serialize(obj) for obj in data]
+
+
+@empty_if_none
+def object_serializer(data=None, code=200, headers=None):
+    """Serialize ObjectResource response."""
+    return {
+        'checksum': data.file.checksum,
+        'size': data.file.size,
+        'versionId': str(data.version_id),
+    }

@@ -56,10 +56,6 @@ def test_get_buckets_when_none_exist(app, db, client, headers):
     (None, 401),
     ('auth', 403),
     ('bucket-collection', 200),
-    ('bucket', 403),
-    ('objects', 403),
-    ('all', 200),
-    ('superuser', 200)
 ])
 def test_get_buckets(app, client, headers, bucket, permissions,
                      user, expected):
@@ -89,10 +85,6 @@ def test_get_buckets(app, client, headers, bucket, permissions,
     (None, 401),
     ('auth', 403),
     ('bucket-collection', 200),
-    ('bucket', 403),
-    ('objects', 403),
-    ('all', 200),
-    ('superuser', 200)
 ])
 def test_post_bucket(app, client, headers, dummy_location, permissions,
                      user, expected):
@@ -119,11 +111,7 @@ def test_post_bucket(app, client, headers, dummy_location, permissions,
 @pytest.mark.parametrize('user, expected', [
     (None, 401),
     ('auth', 403),
-    ('bucket-collection', 403),
     ('bucket', 200),
-    ('objects', 403),
-    ('all', 200),
-    ('superuser', 200)
 ])
 def test_head_bucket(app, client, headers, bucket, permissions,
                      user, expected):
@@ -142,11 +130,7 @@ def test_head_bucket(app, client, headers, bucket, permissions,
 @pytest.mark.parametrize('user, expected', [
     (None, 404),
     ('auth', 404),
-    ('bucket-collection', 404),
     ('bucket', 404),
-    ('objects', 404),
-    ('all', 404),
-    ('superuser', 404)
 ])
 def test_head_non_existing_bucket(app, db, client, headers, permissions,
                                   user, expected):
@@ -164,11 +148,7 @@ def test_head_non_existing_bucket(app, db, client, headers, permissions,
 @pytest.mark.parametrize('user, expected', [
     (None, 401),
     ('auth', 403),
-    ('bucket-collection', 403),
     ('bucket', 200),
-    ('objects', 403),
-    ('all', 200),
-    ('superuser', 200)
 ])
 def test_delete_bucket(app, client, headers, bucket, objects, permissions,
                        user, expected):
@@ -188,11 +168,7 @@ def test_delete_bucket(app, client, headers, bucket, objects, permissions,
 @pytest.mark.parametrize('user, expected', [
     (None, 404),
     ('auth', 404),
-    ('bucket-collection', 404),
     ('bucket', 404),
-    ('objects', 404),
-    ('all', 404),
-    ('superuser', 404)
 ])
 def test_delete_non_existent_bucket(app, db, client, headers, permissions,
                                     user, expected):
@@ -208,11 +184,8 @@ def test_delete_non_existent_bucket(app, db, client, headers, permissions,
 @pytest.mark.parametrize('user, expected', [
     (None, 401),
     ('auth', 403),
-    ('bucket-collection', 403),
     ('bucket', 404),
     ('objects', 403),
-    ('all', 404),
-    ('superuser', 404)
 ])
 def test_get_object_non_existing(app, client, headers, bucket, permissions,
                                  user, expected):
@@ -233,11 +206,8 @@ def test_get_object_non_existing(app, client, headers, bucket, permissions,
 @pytest.mark.parametrize('user, expected', [
     (None, 401),
     ('auth', 403),
-    ('bucket-collection', 403),
     ('bucket', 200),
     ('objects', 200),
-    ('all', 200),
-    ('superuser', 200)
 ])
 def test_get_object(app, client, headers, bucket, objects, permissions,
                     user, expected):
@@ -262,11 +232,7 @@ def test_get_object(app, client, headers, bucket, objects, permissions,
 @pytest.mark.parametrize('user, expected', [
     (None, 401),
     ('auth', 403),
-    ('bucket-collection', 403),
     ('bucket', 200),
-    ('objects', 403),
-    ('all', 200),
-    ('superuser', 200)
 ])
 def test_post_object(app, client, permissions, bucket, user, expected):
     """Test ObjectResource view POST method."""
@@ -285,11 +251,7 @@ def test_post_object(app, client, permissions, bucket, user, expected):
 @pytest.mark.parametrize('user, expected', [
     (None, 401),
     ('auth', 403),
-    ('bucket-collection', 403),
     ('bucket', 400),
-    ('objects', 403),
-    ('all', 400),
-    ('superuser', 400)
 ])
 def test_post_object_missing_file(app, client, permissions, bucket,
                                   user, expected):
@@ -312,11 +274,8 @@ def test_post_object_missing_file(app, client, permissions, bucket,
 @pytest.mark.parametrize('user, expected', [
     (None, 401),
     ('auth', 403),
-    ('bucket-collection', 403),
     ('bucket', 200),
     ('objects', 200),
-    ('all', 200),
-    ('superuser', 200)
 ])
 def test_put_object(app, client, bucket, objects, permissions,
                     user, expected):
@@ -377,11 +336,7 @@ def test_file_size_errors(app, client, bucket, permissions,
 @pytest.mark.parametrize('user, expected', [
     (None, 404),
     ('auth', 404),
-    ('bucket-collection', 404),
     ('bucket', 404),
-    ('objects', 404),
-    ('all', 404),
-    ('superuser', 404)
 ])
 def test_get_objects_non_existent_bucket(app, db, client, headers, permissions,
                                          user, expected):
@@ -400,11 +355,7 @@ def test_get_objects_non_existent_bucket(app, db, client, headers, permissions,
 @pytest.mark.parametrize('user, expected', [
     (None, 401),
     ('auth', 403),
-    ('bucket-collection', 403),
     ('bucket', 200),
-    ('objects', 403),
-    ('all', 200),
-    ('superuser', 200)
 ])
 def test_get_objects_from_empty_bucket(app, client, headers, bucket, objects,
                                        permissions, user, expected):
@@ -432,11 +383,7 @@ def test_get_objects_from_empty_bucket(app, client, headers, bucket, objects,
 @pytest.mark.parametrize('user, expected', [
     (None, 401),
     ('auth', 403),
-    ('bucket-collection', 403),
     ('bucket', 200),
-    ('objects', 403),
-    ('all', 200),
-    ('superuser', 200)
 ])
 def test_get_objects_in_bucket(app, client, headers, bucket, objects,
                                permissions, user, expected):
@@ -470,11 +417,7 @@ def test_get_objects_in_bucket(app, client, headers, bucket, objects,
 @pytest.mark.parametrize('user, expected', [
     (None, 401),
     ('auth', 403),
-    ('bucket-collection', 403),
     ('bucket', 200),
-    ('objects', 403),
-    ('all', 200),
-    ('superuser', 200)
 ])
 def test_get_objects_with_versions(app, client, headers, bucket, versions,
                                    permissions, user, expected):
@@ -509,11 +452,7 @@ def test_get_objects_with_versions(app, client, headers, bucket, versions,
 @pytest.mark.parametrize('user, expected', [
     (None, 404),
     ('auth', 404),
-    ('bucket-collection', 404),
-    ('bucket', 404),
     ('objects', 404),
-    ('all', 404),
-    ('superuser', 404)
 ])
 def test_get_object_from_non_existent_bucket(app, db, client, permissions,
                                              user, expected):
@@ -530,12 +469,7 @@ def test_get_object_from_non_existent_bucket(app, db, client, permissions,
 
 @pytest.mark.parametrize('user, expected', [
     (None, 401),
-    ('auth', 403),
-    ('bucket-collection', 403),
     ('bucket', 200),
-    ('objects', 200),
-    ('all', 200),
-    ('superuser', 200)
 ])
 def test_delete_object(app, client, bucket, objects, permissions,
                        user, expected):
@@ -558,11 +492,7 @@ def test_delete_object(app, client, bucket, objects, permissions,
 @pytest.mark.parametrize('user, expected', [
     (None, 401),
     ('auth', 403),
-    ('bucket-collection', 403),
     ('bucket', 404),
-    ('objects', 403),
-    ('all', 404),
-    ('superuser', 404)
 ])
 def test_delete_non_existent_object(app, client, bucket, permissions,
                                     user, expected):
@@ -580,11 +510,8 @@ def test_delete_non_existent_object(app, client, bucket, permissions,
 @pytest.mark.parametrize('user, expected', [
     (None, 401),
     ('auth', 403),
-    ('bucket-collection', 403),
     ('bucket', 200),
     ('objects', 200),
-    ('all', 200),
-    ('superuser', 200)
 ])
 def test_head_object(app, client, bucket, objects, permissions,
                      user, expected):
@@ -603,11 +530,7 @@ def test_head_object(app, client, bucket, objects, permissions,
 @pytest.mark.parametrize('user, expected', [
     (None, 401),
     ('auth', 403),
-    ('bucket-collection', 403),
     ('bucket', 404),
-    ('objects', 403),
-    ('all', 404),
-    ('superuser', 404)
 ])
 def test_head_object_non_existing(app, client, bucket, permissions,
                                   user, expected):

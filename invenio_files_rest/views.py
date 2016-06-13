@@ -45,7 +45,7 @@ from .proxies import current_bucket_collection_permission_factory, \
     current_bucket_permission_factory, current_files_rest, \
     current_object_permission_factory
 from .serializer import bucket_collection_serializer, bucket_serializer, \
-    json_serializer
+    json_serializer, object_serializer
 from .signals import file_downloaded
 
 blueprint = Blueprint(
@@ -564,13 +564,7 @@ class ObjectResource(ContentNegotiatedMethodView):
         db.session.commit()
 
         # TODO: Fix response object to only include headers?
-        return {
-            'json': {
-                'checksum': obj.file.checksum,
-                'size': obj.file.size,
-                'versionId': str(obj.version_id),
-            }
-        }
+        return obj
 
     @use_kwargs(put_args)
     @pass_bucket
@@ -637,13 +631,7 @@ class ObjectResource(ContentNegotiatedMethodView):
         db.session.commit()
 
         # TODO: Fix response object to only include headers?
-        return {
-            'json': {
-                'checksum': obj.file.checksum,
-                'size': obj.file.size,
-                'versionId': str(obj.version_id),
-            }
-        }
+        return obj
 
     @pass_bucket
     @pass_object
@@ -755,7 +743,9 @@ bucket_view = BucketResource.as_view(
 )
 object_view = ObjectResource.as_view(
     'object_api',
-    serializers=serializers
+    serializers={
+        'application/json': object_serializer,
+    }
 )
 
 blueprint.add_url_rule(

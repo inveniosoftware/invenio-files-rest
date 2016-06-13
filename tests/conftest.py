@@ -62,10 +62,6 @@ def base_app():
     """Flask application fixture."""
     app_ = Flask('testapp')
     app_.config.update(
-        # CELERY_ALWAYS_EAGER=True,
-        # CELERY_RESULT_BACKEND="cache",
-        # CELERY_CACHE_BACKEND="memory",
-        # CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
         TESTING=True,
         SQLALCHEMY_TRACK_MODIFICATIONS=True,
         SQLALCHEMY_DATABASE_URI=os.environ.get(
