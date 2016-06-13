@@ -137,7 +137,8 @@ setup(
             '= invenio_files_rest.admin:fileinstance_adminview',
         ],
         'invenio_access.actions': [
-            'bucket_create = invenio_files_rest.permissions:bucket_create',
+            'bucket_create_object = '
+            'invenio_files_rest.permissions:bucket_create_object',
             'bucket_read_all = invenio_files_rest.permissions:bucket_read_all',
             'bucket_update_all = '
             'invenio_files_rest.permissions:bucket_update_all',

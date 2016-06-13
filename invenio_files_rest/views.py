@@ -28,7 +28,7 @@ from __future__ import absolute_import, print_function
 
 import mimetypes
 from collections import namedtuple
-from functools import wraps
+from functools import partial, wraps
 
 from flask import Blueprint, abort, current_app, request, url_for
 from flask_login import current_user
@@ -90,12 +90,12 @@ def pass_file(f):
     return decorate
 
 
-def need_bucket_collection_permission(action):
+def need_permissions(factory, action):
     """"Get permission for buckets or abort."""
     def decorator_builder(f):
         @wraps(f)
         def decorate(*args, **kwargs):
-            permission = current_bucket_collection_permission_factory(action)
+            permission = factory(kwargs, action)
             if permission is not None and not permission.can():
                 if current_user.is_authenticated:
                     abort(403,
@@ -106,39 +106,28 @@ def need_bucket_collection_permission(action):
     return decorator_builder
 
 
-def need_bucket_permission(action):
-    """Get permission for a bucket or abort."""
-    def decorator_builder(f):
-        @wraps(f)
-        def decorate(*args, **kwargs):
-            permission = current_bucket_permission_factory(
-                kwargs['bucket'], action=action
-            )
-            if permission is not None and not permission.can():
-                if current_user.is_authenticated:
-                    abort(403,
-                          'You do not have a permission for this action.')
-                abort(401)
-            return f(*args, **kwargs)
-        return decorate
-    return decorator_builder
+need_bucket_collection_permission = partial(
+    need_permissions,
+    lambda kwargs, action: current_bucket_collection_permission_factory(action)
+)
 
 
-def need_objects_permission(action):
-    """Get permission for objects or abort."""
-    def decorator_builder(f):
-        @wraps(f)
-        def decorate(*args, **kwargs):
-            permission = current_object_permission_factory(
-                kwargs['bucket'], kwargs['obj'].key, action=action
-            )
-            if permission is not None and not permission.can():
-                if current_user.is_authenticated:
-                    abort(403, 'You do not have permission for this action')
-                abort(401)
-            return f(*args, **kwargs)
-        return decorate
-    return decorator_builder
+need_bucket_permission = partial(
+    need_permissions,
+    lambda kwargs, action: current_bucket_permission_factory(
+        kwargs['bucket'], action=action
+    )
+)
+
+
+need_objects_permission = partial(
+    need_permissions,
+    lambda kwargs, action: current_object_permission_factory(
+        kwargs['bucket'],
+        kwargs['obj'].key,
+        action=action
+    )
+)
 
 
 def file_download_ui(pid, record, **kwargs):
@@ -240,7 +229,7 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
         return Bucket.all()
 
     @use_kwargs(post_args)
-    @need_bucket_collection_permission('bucket-collection-create')
+    @need_bucket_collection_permission('bucket-collection-bucket-create')
     def post(self, location_name):
         """Create bucket.
 
@@ -549,7 +538,7 @@ class ObjectResource(ContentNegotiatedMethodView):
 
     @use_kwargs(post_args)
     @pass_bucket
-    @need_bucket_permission('bucket-create')
+    @need_bucket_permission('bucket-create-object')
     @pass_file
     def post(self, key, uploaded_file=None, bucket=None, content_md5=None):
         """Upload a new object."""
