@@ -50,10 +50,10 @@ from sqlalchemy_utils.functions import create_database, database_exists
 
 from invenio_files_rest import InvenioFilesREST
 from invenio_files_rest.models import Bucket, Location, ObjectVersion
-from invenio_files_rest.permissions import bucket_collection_create, \
-    bucket_collection_read_all, bucket_create, bucket_delete_all, \
-    bucket_read_all, bucket_update_all, objects_delete_all, objects_read_all, \
-    objects_update_all
+from invenio_files_rest.permissions import bucket_collection_bucket_create, \
+    bucket_collection_read_all, bucket_create_object, bucket_delete_all, \
+    bucket_read_all, bucket_update_all, objects_delete_all, \
+    objects_read_all, objects_update_all
 from invenio_files_rest.views import blueprint
 
 
@@ -237,11 +237,12 @@ def permissions(db, bucket, objects):
         )
 
     bucket_collection_perms = [
-        bucket_collection_read_all, bucket_collection_create
+        bucket_collection_read_all, bucket_collection_bucket_create
     ]
 
     bucket_perms = [
-        bucket_read_all, bucket_create, bucket_update_all, bucket_delete_all
+        bucket_read_all, bucket_create_object, bucket_update_all,
+        bucket_delete_all
     ]
 
     objects_perms = [

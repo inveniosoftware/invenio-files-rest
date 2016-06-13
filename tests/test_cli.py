@@ -28,8 +28,8 @@
 from __future__ import absolute_import, print_function
 
 import os
-import pkg_resources
 
+import pkg_resources
 from click.testing import CliRunner
 from flask_cli import ScriptInfo
 

@@ -30,14 +30,16 @@ from flask_principal import ActionNeed
 from invenio_access.permissions import DynamicPermission, \
     ParameterizedActionNeed
 
-
 BucketCollectionRead = partial(
     ParameterizedActionNeed, 'files-rest-bucket-collection-read')
-BucketCollectionCreate = partial(
-    ParameterizedActionNeed, 'files-rest-bucket-collection-create')
+BucketCollectionBucketCreate = partial(
+    ParameterizedActionNeed, 'files-rest-bucket-collection-bucket-create')
 
 BucketRead = partial(ParameterizedActionNeed, 'files-rest-bucket-read')
-BucketCreate = partial(ParameterizedActionNeed, 'files-rest-bucket-create')
+BucketCreateObject = partial(
+    ParameterizedActionNeed,
+    'files-rest-bucket-create-object'
+)
 BucketUpdate = partial(ParameterizedActionNeed, 'files-rest-bucket-update')
 BucketDelete = partial(ParameterizedActionNeed, 'files-rest-bucket-delete')
 
@@ -46,10 +48,10 @@ ObjectsUpdate = partial(ParameterizedActionNeed, 'files-rest-objects-update')
 ObjectsDelete = partial(ParameterizedActionNeed, 'files-rest-objects-delete')
 
 bucket_collection_read_all = BucketCollectionRead(None)
-bucket_collection_create = BucketCollectionCreate(None)
+bucket_collection_bucket_create = BucketCollectionBucketCreate(None)
 
 bucket_read_all = BucketRead(None)
-bucket_create = BucketCreate(None)
+bucket_create_object = BucketCreateObject(None)
 bucket_update_all = BucketUpdate(None)
 bucket_delete_all = BucketDelete(None)
 
@@ -59,9 +61,9 @@ objects_delete_all = ObjectsDelete(None)
 
 _action2need_map = {
     'bucket-collection-read': BucketCollectionRead,
-    'bucket-collection-create': BucketCollectionCreate,  # Create bucket
+    'bucket-collection-bucket-create': BucketCollectionBucketCreate,
     'bucket-read': BucketRead,
-    'bucket-create': BucketCreate,  # Create object
+    'bucket-create-object': BucketCreateObject,
     'bucket-update': BucketUpdate,
     'bucket-delete': BucketDelete,
     'objects-read': (BucketRead, ObjectsRead),
