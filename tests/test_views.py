@@ -208,6 +208,7 @@ def test_get_object_non_existing(app, client, headers, bucket, permissions,
     ('auth', 403),
     ('bucket', 200),
     ('objects', 200),
+    ('objects-read-version', 200),
 ])
 def test_get_object(app, client, headers, bucket, objects, permissions,
                     user, expected):
@@ -227,6 +228,30 @@ def test_get_object(app, client, headers, bucket, objects, permissions,
         if resp.status_code == 200:
             assert resp.content_md5 == obj.file.checksum
             assert resp.get_etag()[0] == obj.file.checksum
+
+
+@pytest.mark.parametrize('user, expected', [
+    (None, 401),
+    ('auth', 403),
+    ('bucket', 200),
+    ('objects', 403),
+    ('objects-read-version', 200),
+])
+def test_get_object_versions(app, client, bucket, versions, permissions,
+                             user, expected):
+    """Test object version getting."""
+    login_user(client, permissions[user])
+
+    for obj in versions:
+        resp = client.get(
+            url_for(
+                'invenio_files_rest.object_api',
+                bucket_id=bucket.id,
+                key=obj.key,
+            ),
+            query_string=dict(versionId=obj.version_id)
+        )
+        assert resp.status_code == expected
 
 
 @pytest.mark.parametrize('user, expected', [
