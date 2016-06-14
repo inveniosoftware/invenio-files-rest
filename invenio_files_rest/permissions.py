@@ -44,6 +44,10 @@ BucketUpdate = partial(ParameterizedActionNeed, 'files-rest-bucket-update')
 BucketDelete = partial(ParameterizedActionNeed, 'files-rest-bucket-delete')
 
 ObjectsRead = partial(ParameterizedActionNeed, 'files-rest-objects-read')
+ObjectsReadVersion = partial(
+    ParameterizedActionNeed,
+    'files-rest-objects-read-version'
+)
 ObjectsUpdate = partial(ParameterizedActionNeed, 'files-rest-objects-update')
 ObjectsDelete = partial(ParameterizedActionNeed, 'files-rest-objects-delete')
 
@@ -56,6 +60,7 @@ bucket_update_all = BucketUpdate(None)
 bucket_delete_all = BucketDelete(None)
 
 objects_read_all = ObjectsRead(None)
+objects_read_version_all = ObjectsReadVersion(None)
 objects_update_all = ObjectsUpdate(None)
 objects_delete_all = ObjectsDelete(None)
 
@@ -66,7 +71,8 @@ _action2need_map = {
     'bucket-create-object': BucketCreateObject,
     'bucket-update': BucketUpdate,
     'bucket-delete': BucketDelete,
-    'objects-read': (BucketRead, ObjectsRead),
+    'objects-read': (BucketRead, ObjectsRead, ObjectsReadVersion),
+    'objects-read-version': (BucketRead, ObjectsReadVersion),
     'objects-update': (BucketUpdate, ObjectsUpdate),
     'objects-delete': (BucketDelete, ObjectsDelete),
 }
@@ -84,7 +90,13 @@ def bucket_permission_factory(bucket, action='bucket-read'):
 
 def object_permission_factory(bucket, key, action='objects-read'):
     """Permission factory for the actions on Bucket and ObjectVersion items."""
-    return DynamicPermission(
+    obj_param = '{0}:{1}'.format(str(bucket.id), key)
+    needs = [
         _action2need_map[action][0](str(bucket.id)),
-        _action2need_map[action][1]('{0}:{1}'.format(str(bucket.id), key))
-    )
+        _action2need_map[action][1](obj_param),
+    ]
+
+    if action == 'objects-read':
+        needs.append(_action2need_map[action][2](obj_param))
+
+    return DynamicPermission(*needs)

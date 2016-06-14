@@ -476,7 +476,7 @@ class ObjectResource(ContentNegotiatedMethodView):
         permission = current_object_permission_factory(
             bucket,
             obj.key,
-            action='objects-read'
+            action='objects-read' if not version_id else 'objects-read-version'
         )
 
         if permission is not None and not permission.can():
