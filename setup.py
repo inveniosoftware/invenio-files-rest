@@ -36,7 +36,7 @@ tests_require = [
     'coverage>=4.0',
     'Flask-BabelEx>=0.9.3',
     'Flask-Menu>=0.2.1',
-    'invenio-access>=1.0.0a3',
+    'invenio-access>=1.0.0a6',
     'invenio-accounts>=1.0.0a2',
     'invenio-admin>=1.0.0a3',
     'invenio-celery>=1.0.0a4',
@@ -137,15 +137,17 @@ setup(
             '= invenio_files_rest.admin:fileinstance_adminview',
         ],
         'invenio_access.actions': [
-            'bucket_create = invenio_files_rest.permissions:bucket_create',
+            'bucket_create_object = '
+            'invenio_files_rest.permissions:bucket_create_object',
             'bucket_read_all = invenio_files_rest.permissions:bucket_read_all',
             'bucket_update_all = '
             'invenio_files_rest.permissions:bucket_update_all',
             'bucket_delete_all = '
             'invenio_files_rest.permissions:bucket_delete_all',
-            'objects_create = invenio_files_rest.permissions:objects_create',
             'objects_read_all = '
             'invenio_files_rest.permissions:objects_read_all',
+            'objects_read_version_all = '
+            'invenio_files_rest.permissions:objects_read_version_all',
             'objects_update_all = '
             'invenio_files_rest.permissions:objects_update_all',
             'objects_delete_all = '

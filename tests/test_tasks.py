@@ -61,7 +61,7 @@ def test_migrate_file(app, db, dummy_location, extra_location, bucket,
     assert exists(old_uri)
     assert old_uri == join(dummy_location.uri, str(obj.file.id)[0:2],
                            str(obj.file.id)[2:], 'data')
-    assert FileInstance.query.count() == 2
+    assert FileInstance.query.count() == 4
 
     # Migrate file
     with patch('invenio_files_rest.tasks.verify_checksum') as verify_checksum:
@@ -76,7 +76,7 @@ def test_migrate_file(app, db, dummy_location, extra_location, bucket,
     assert exists(old_uri)
     assert exists(new_uri)
     assert new_uri != old_uri
-    assert FileInstance.query.count() == 3
+    assert FileInstance.query.count() == 5
 
 
 def test_migrate_file_copyfail(app, db, dummy_location, extra_location,
@@ -84,7 +84,7 @@ def test_migrate_file_copyfail(app, db, dummy_location, extra_location,
     """Test a failed copy."""
     obj = objects[0]
 
-    assert FileInstance.query.count() == 2
+    assert FileInstance.query.count() == 4
     with patch('fs.osfs.io') as io:
         e = OSError()
         e.errno = errno.EPERM
@@ -95,4 +95,4 @@ def test_migrate_file_copyfail(app, db, dummy_location, extra_location,
             obj.file_id,
             location_name=extra_location.name
         )
-    assert FileInstance.query.count() == 2
+    assert FileInstance.query.count() == 4

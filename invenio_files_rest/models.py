@@ -61,6 +61,7 @@ from sqlalchemy.dialects import mysql
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import validates
 from sqlalchemy.orm.exc import MultipleResultsFound
+from sqlalchemy.sql import exists
 from sqlalchemy_utils.types import UUIDType
 
 from .errors import FileInstanceAlreadySetError, InvalidOperationError
@@ -299,11 +300,33 @@ class Bucket(db.Model, Timestamp):
         ).one_or_none()
 
     @classmethod
+    def exists(cls, bucket_id):
+        """Check if the given bucket exists.
+
+        :param bucket_id: Bucket identifier.
+        :returns: Boolean.
+        """
+        return cls.get(bucket_id) is not None
+
+    @classmethod
     def all(cls):
         """Return query of all buckets (excluding deleted)."""
         return cls.query.filter_by(
             deleted=False
         )
+
+    @classmethod
+    def delete(cls, bucket_id):
+        """Delete a bucket.
+
+        Does not actually delete the Bucket, just marks it as deleted.
+        """
+        bucket = cls.get(bucket_id)
+        if not bucket or bucket.deleted:
+            return False
+
+        bucket.deleted = True
+        return True
 
 
 class BucketTag(db.Model):
@@ -778,6 +801,16 @@ class ObjectVersion(db.Model, Timestamp):
         if stream:
             obj.set_contents(stream, **kwargs)
         return obj
+
+    @classmethod
+    def exists(cls, bucket_id, key):
+        """Check if the given object exists in the Bucket.
+
+        :param bucket_id: Bucket identifier.
+        :param object_id: ObjectVersion identifier.
+        :returns: Boolean.
+        """
+        return cls.get(bucket_id, key) is not None
 
     @classmethod
     def get(cls, bucket, key, version_id=None):

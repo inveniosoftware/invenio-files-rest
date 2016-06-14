@@ -39,6 +39,7 @@ from flask_cli import FlaskCLI
 from flask_menu import Menu
 from invenio_access import InvenioAccess
 from invenio_access.models import ActionUsers
+from invenio_access.permissions import superuser_access
 from invenio_accounts import InvenioAccounts
 from invenio_accounts.testutils import create_test_user
 from invenio_accounts.views import blueprint as accounts_blueprint
@@ -49,8 +50,10 @@ from sqlalchemy_utils.functions import create_database, database_exists
 
 from invenio_files_rest import InvenioFilesREST
 from invenio_files_rest.models import Bucket, Location, ObjectVersion
-from invenio_files_rest.permissions import objects_create, \
-    objects_delete_all, objects_read_all, objects_update_all
+from invenio_files_rest.permissions import bucket_collection_bucket_create, \
+    bucket_collection_read_all, bucket_create_object, bucket_delete_all, \
+    bucket_read_all, bucket_update_all, objects_delete_all, \
+    objects_read_all, objects_read_version_all, objects_update_all
 from invenio_files_rest.views import blueprint
 
 
@@ -59,10 +62,6 @@ def base_app():
     """Flask application fixture."""
     app_ = Flask('testapp')
     app_.config.update(
-        # CELERY_ALWAYS_EAGER=True,
-        # CELERY_RESULT_BACKEND="cache",
-        # CELERY_CACHE_BACKEND="memory",
-        # CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
         TESTING=True,
         SQLALCHEMY_TRACK_MODIFICATIONS=True,
         SQLALCHEMY_DATABASE_URI=os.environ.get(
@@ -105,6 +104,13 @@ def db(app):
     yield db_
     db_.session.remove()
     db_.drop_all()
+
+
+@pytest.yield_fixture()
+def client(app):
+    """Get test client."""
+    with app.test_client() as client:
+        yield client
 
 
 @pytest.yield_fixture()
@@ -154,19 +160,37 @@ def bucket(db, dummy_location):
 @pytest.yield_fixture()
 def objects(db, bucket):
     """File system location."""
-    data_bytes = b('license file')
-    obj1 = ObjectVersion.create(
-        bucket, 'LICENSE', stream=BytesIO(data_bytes),
-        size=len(data_bytes)
-    )
-    data_bytes2 = b('readme file')
-    obj2 = ObjectVersion.create(
-        bucket, 'README.rst', stream=BytesIO(data_bytes2),
-        size=len(data_bytes2)
-    )
+    # Create older versions first
+    for key, content in [
+            ('LICENSE', b'old license'),
+            ('README.rst', b'old readme')]:
+        ObjectVersion.create(
+            bucket, key, stream=BytesIO(content), size=len(content)
+        )
+
+    # Create new versions
+    objs = []
+    for key, content in [
+            ('LICENSE', b'license file'),
+            ('README.rst', b'readme file')]:
+        objs.append(
+            ObjectVersion.create(
+                bucket, key, stream=BytesIO(content), size=len(content)
+            )
+        )
     db.session.commit()
 
-    yield [obj1, obj2]
+    yield objs
+
+
+@pytest.yield_fixture()
+def versions(objects):
+    """Get objects with all their versions."""
+    versions = []
+    for obj in objects:
+        versions.extend(ObjectVersion.get_versions(obj.bucket, obj.key))
+
+    yield versions
 
 
 @pytest.fixture()
@@ -187,18 +211,64 @@ def users(db, users_data):
     ]
 
 
-@pytest.yield_fixture()
-def permissions(db, users, bucket):
-    """Bucket permissions."""
-    # Give permissions to user 'user1', but not to 'user2'
-    perms = [objects_create, objects_read_all, objects_update_all,
-             objects_delete_all]
+@pytest.fixture()
+def headers():
+    """Standard Invenio REST API headers."""
+    return {
+        'Content-Type': 'application/json',
+        'Accept': '*/*',
+    }
 
-    for perm in perms:
-        au = ActionUsers(action=perm.value,
-                         argument=str(bucket.id),
-                         user=users[0])
-        db.session.add(au)
+
+@pytest.yield_fixture()
+def permissions(db, bucket, objects):
+    """Permissions for users."""
+    users = {
+        None: None,
+    }
+
+    for user in [
+            'auth', 'bucket-collection', 'bucket',
+            'objects', 'objects-read-version']:
+        users[user] = create_test_user(
+            email='{0}@invenio-software.org'.format(user),
+            password='pass1',
+            active=True
+        )
+
+    bucket_collection_perms = [
+        bucket_collection_read_all, bucket_collection_bucket_create
+    ]
+
+    bucket_perms = [
+        bucket_read_all, bucket_create_object, bucket_update_all,
+        bucket_delete_all
+    ]
+
+    objects_perms = [
+        objects_read_all, objects_update_all,
+        objects_delete_all
+    ]
+
+    for perm in bucket_collection_perms:
+        db.session.add(ActionUsers(action=perm.value,
+                                   user=users['bucket-collection']))
+
+    for perm in bucket_perms:
+        db.session.add(ActionUsers(action=perm.value,
+                                   argument=str(bucket.id),
+                                   user=users['bucket']))
+    for perm in objects_perms:
+        for obj in objects:
+            db.session.add(ActionUsers(action=perm.value,
+                                       argument='{0}:{1}'.format(
+                                            str(bucket.id), obj.key),
+                                       user=users['objects']))
+    for obj in objects:
+        db.session.add(ActionUsers(action=objects_read_version_all.value,
+                                   argument='{0}:{1}'.format(
+                                        str(bucket.id), obj.key),
+                                   user=users['objects-read-version']))
     db.session.commit()
 
-    yield None
+    yield users

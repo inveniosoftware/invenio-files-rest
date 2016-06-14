@@ -27,6 +27,8 @@
 from __future__ import absolute_import, print_function
 
 import mimetypes
+from collections import namedtuple
+from functools import partial, wraps
 
 from flask import Blueprint, abort, current_app, request, url_for
 from flask_login import current_user
@@ -39,14 +41,92 @@ from werkzeug.local import LocalProxy
 
 from .errors import FileSizeError, UnexpectedFileSizeError
 from .models import Bucket, Location, ObjectVersion
-from .proxies import current_files_rest, current_permission_factory
-from .serializer import json_serializer
+from .proxies import current_bucket_collection_permission_factory, \
+    current_bucket_permission_factory, current_files_rest, \
+    current_object_permission_factory
+from .serializer import bucket_collection_serializer, bucket_serializer, \
+    json_serializer, object_serializer
 from .signals import file_downloaded
 
 blueprint = Blueprint(
     'invenio_files_rest',
     __name__,
     url_prefix='/files'
+)
+
+
+def pass_bucket(f):
+    """Decorator to retrieve a bucket."""
+    @wraps(f)
+    def decorate(*args, **kwargs):
+        bucket_id = kwargs.pop('bucket_id')
+        bucket = Bucket.get(bucket_id)
+        if not bucket:
+            abort(404, 'Bucket does not exist.')
+        return f(bucket=bucket, *args, **kwargs)
+    return decorate
+
+
+def pass_object(f):
+    """Decorator to retrieve an object."""
+    @wraps(f)
+    def decorate(*args, **kwargs):
+        key = kwargs.pop('key')
+        obj = ObjectVersion.get(kwargs['bucket'].id, key)
+        if not obj:
+            obj = namedtuple('mock_obj', ('key'))(None)
+        return f(obj=obj, *args, **kwargs)
+    return decorate
+
+
+def pass_file(f):
+    """Decorator to retrieve uploaded file."""
+    @wraps(f)
+    def decorate(*args, **kwargs):
+        uploaded_file = request.files.get('file')
+        if not uploaded_file:
+            abort(400, 'File is missing from the request.')
+        return f(uploaded_file=uploaded_file, *args, **kwargs)
+    return decorate
+
+
+def need_permissions(factory, action):
+    """"Get permission for buckets or abort."""
+    def decorator_builder(f):
+        @wraps(f)
+        def decorate(*args, **kwargs):
+            permission = factory(kwargs, action)
+            if permission is not None and not permission.can():
+                if current_user.is_authenticated:
+                    abort(403,
+                          'You do not have a permission for this action')
+                abort(401)
+            return f(*args, **kwargs)
+        return decorate
+    return decorator_builder
+
+
+need_bucket_collection_permission = partial(
+    need_permissions,
+    lambda kwargs, action: current_bucket_collection_permission_factory(action)
+)
+
+
+need_bucket_permission = partial(
+    need_permissions,
+    lambda kwargs, action: current_bucket_permission_factory(
+        kwargs['bucket'], action=action
+    )
+)
+
+
+need_objects_permission = partial(
+    need_permissions,
+    lambda kwargs, action: current_object_permission_factory(
+        kwargs['bucket'],
+        kwargs['obj'].key,
+        action=action
+    )
 )
 
 
@@ -72,16 +152,10 @@ def file_download_ui(pid, record, **kwargs):
     if not fileobj:
         abort(404)
 
-    # Check if file defines an expected checksum.
-    try:
-        expected_chksum = fileobj['checksum']
-    except KeyError:
-        expected_chksum = None
-
     # Send file.
     return ObjectResource.send_object(
-        fileobj.bucket_id, fileobj.key,
-        expected_chksum=expected_chksum,
+        fileobj.bucket, fileobj,
+        expected_chksum=fileobj.get('checksum'),
         logger_data=dict(
             bucket_id=fileobj.bucket_id,
             pid_type=pid.pid_type,
@@ -92,6 +166,13 @@ def file_download_ui(pid, record, **kwargs):
 class BucketCollectionResource(ContentNegotiatedMethodView):
     """"Bucket collection resource."""
 
+    post_args = {
+        'location_name': fields.String(
+            missing=None,
+            location='json'
+        )
+    }
+
     def __init__(self, serializers=None, *args, **kwargs):
         """Constructor."""
         super(BucketCollectionResource, self).__init__(
@@ -99,13 +180,8 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
             *args,
             **kwargs
         )
-        self.post_args = {
-            'location_name': fields.String(
-                missing=None,
-                location='json'
-            )
-        }
 
+    @need_bucket_collection_permission('bucket-collection-read')
     def get(self, **kwargs):
         """List all the buckets.
 
@@ -149,19 +225,12 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
             :statuscode 400: invalid request
             :statuscode 403: access denied
         """
-        bucket_list = []
-        for bucket in Bucket.all():
-            # TODO: Implement serializer
-            bucket_list.append({
-                'size': bucket.size,
-                'url': url_for("invenio_files_rest.bucket_api",
-                               bucket_id=bucket.id, _external=True),
-                'uuid': str(bucket.id)
-            })
-        # FIXME: how to avoid returning a dict with key 'json'
-        return {'json': bucket_list}
+        # TODO: Only get buckets that user has permission to.
+        return Bucket.all()
 
-    def post(self, **kwargs):
+    @use_kwargs(post_args)
+    @need_bucket_collection_permission('bucket-collection-bucket-create')
+    def post(self, location_name):
         """Create bucket.
 
         .. http:post:: /files
@@ -205,41 +274,27 @@ class BucketCollectionResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 500: failed request
         """
-        args = parser.parse(self.post_args, request)
-        try:
-            if args['location_name']:
-                # TODO: Check why query is used directly.
-                location = Location.get_by_name(args['location_name'])
-            else:
-                # Get one of the active locations
-                location = Location.get_default()
-            if not location:
-                abort(400, 'Invalid location.')
-            bucket = Bucket(
-                default_storage_class=current_app.config[
+        with db.session.begin_nested():
+            bucket = Bucket.create(
+                storage_class=current_app.config[
                     'FILES_REST_DEFAULT_STORAGE_CLASS'
                 ],
-                default_location=location.id
+                location=location_name
             )
-            db.session.add(bucket)
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            current_app.logger.exception('Failed to create bucket.')
-            abort(500, 'Failed to create bucket.')
+        db.session.commit()
 
-        # TODO: Implement serializer
-        return {'json':
-                {'size': bucket.size,
-                 'url': url_for("invenio_files_rest.bucket_api",
-                                bucket_id=bucket.id, _external=True),
-                 'uuid': str(bucket.id)
-                 }
-                }
+        return bucket
 
 
 class BucketResource(ContentNegotiatedMethodView):
     """"Bucket item resource."""
+
+    get_args = {
+        'versions': fields.Boolean(
+            location='query',
+            missing=False,
+        )
+    }
 
     def __init__(self, serializers=None, *args, **kwargs):
         """Constructor."""
@@ -248,13 +303,11 @@ class BucketResource(ContentNegotiatedMethodView):
             *args,
             **kwargs
         )
-        self.get_args = {
-            'versions': fields.Boolean(
-                location='query'
-            )
-        }
 
-    def get(self, bucket_id, **kwargs):
+    @use_kwargs(get_args)
+    @pass_bucket
+    @need_bucket_permission('bucket-read')
+    def get(self, versions, bucket=None, **kwargs):
         """Get list of objects in the bucket.
 
         .. http:get:: /files/(uuid:bucket_id)
@@ -303,27 +356,11 @@ class BucketResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 404: page not found
         """
-        # TODO: Implement serializer
-        def serialize(bucket):
-            return {'size': bucket.file.size,
-                    'checksum': bucket.file.checksum,
-                    'url': url_for('invenio_files_rest.object_api',
-                                   bucket_id=bucket.bucket_id,
-                                   key=bucket.key,
-                                   _external=True),
-                    'uuid': str(bucket.file.id)}
+        return ObjectVersion.get_by_bucket(bucket.id, versions=versions)
 
-        args = parser.parse(self.get_args, request)
-        if bucket_id and Bucket.get(bucket_id):
-            object_list = []
-            for obj in ObjectVersion.get_by_bucket(
-                bucket_id, versions=args.get('versions', False)
-            ).all():
-                object_list.append(serialize(obj))
-            return {'json': object_list}
-        abort(404, 'The specified bucket does not exist or has been deleted.')
-
-    def delete(self, bucket_id, **kwargs):
+    @pass_bucket
+    @need_bucket_permission('bucket-delete')
+    def delete(self, bucket=None, **kwargs):
         """Set bucket, and all files inside it, as deleted.
 
         .. http:head:: /files/(uuid:bucket_id)
@@ -360,21 +397,12 @@ class BucketResource(ContentNegotiatedMethodView):
             :statuscode 404: page not found
             :statuscode 500: exception while deleting
         """
-        try:
-            if Bucket.delete(bucket_id):
-                db.session.commit()
-            else:
-                abort(
-                    404,
-                    'The specified bucket does not exist or has already been '
-                    'deleted.'
-                )
-        except SQLAlchemyError:
-            db.session.rollback()
-            current_app.logger.exception('Failed to delete bucket.')
-            abort(500, 'Failed to delete bucket.')
+        Bucket.delete(bucket.id)
+        db.session.commit()
 
-    def head(self, bucket_id=None, **kwargs):
+    @pass_bucket
+    @need_bucket_permission('bucket-read')
+    def head(self, bucket=None, **kwargs):
         """Check the existence of the bucket.
 
         .. http:head:: /files/(uuid:bucket_id)
@@ -411,8 +439,7 @@ class BucketResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 404: the bucket does not exist
         """
-        if not bucket_id or not Bucket.get(bucket_id):
-            abort(404, 'This bucket does not exist or has been deleted.')
+        pass
 
 
 class ObjectResource(ContentNegotiatedMethodView):
@@ -424,6 +451,8 @@ class ObjectResource(ContentNegotiatedMethodView):
             load_from='versionId'),
     )
     """GET query arguments."""
+
+    post_args = {}
 
     put_args = dict(
         content_md5=fields.Str(
@@ -441,14 +470,14 @@ class ObjectResource(ContentNegotiatedMethodView):
         )
 
     @classmethod
-    def send_object(cls, bucket_id, key, version_id=None, expected_chksum=None,
+    def send_object(cls, bucket, obj, version_id=None, expected_chksum=None,
                     logger_data=None):
         """Send an object for a given bucket."""
-        bucket = Bucket.get(bucket_id)
-        if bucket is None:
-            abort(404, 'Bucket does not exist.')
-
-        permission = current_permission_factory(bucket, action='objects-read')
+        permission = current_object_permission_factory(
+            bucket,
+            obj.key,
+            action='objects-read' if not version_id else 'objects-read-version'
+        )
 
         if permission is not None and not permission.can():
             if current_user.is_authenticated:
@@ -456,8 +485,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             # TODO: Send user to login page. (not for REST API)
             abort(401)
 
-        obj = ObjectVersion.get(bucket_id, key, version_id=version_id)
-        if obj is None:
+        if not ObjectVersion.exists(bucket.id, obj.key):
             abort(404, 'Object does not exist.')
 
         if expected_chksum and obj.file.checksum != expected_chksum:
@@ -468,7 +496,9 @@ class ObjectResource(ContentNegotiatedMethodView):
         return obj.file.send_file(mimetype=obj.mimetype)
 
     @use_kwargs(get_args)
-    def get(self, bucket_id, key, version_id=None, **kwargs):
+    @pass_bucket
+    @pass_object
+    def get(self, bucket=None, obj=None, version_id=None, **kwargs):
         """Get object.
 
         .. http:get:: /files/(uuid:bucket_id)/(string:filename)
@@ -504,14 +534,36 @@ class ObjectResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 404: Object does not exist
         """
-        return self.send_object(bucket_id, key, version_id=version_id)
+        return self.send_object(bucket, obj, version_id=version_id)
+
+    @use_kwargs(post_args)
+    @pass_bucket
+    @need_bucket_permission('bucket-create-object')
+    @pass_file
+    def post(self, key, uploaded_file=None, bucket=None, content_md5=None):
+        """Upload a new object."""
+        # TODO: Support checking incoming MD5 header
+        # TODO: Support setting content-type
+        # TODO: Don't create a new file if content is identical.
+
+        # TODO: Pass storage class to get_or_create
+        with db.session.begin_nested():
+            obj = ObjectVersion.create(bucket.id, key)
+            obj.set_contents(uploaded_file)
+        db.session.commit()
+
+        # TODO: Fix response object to only include headers?
+        return obj
 
     @use_kwargs(put_args)
-    def put(self, bucket_id, key, content_md5=None):
-        """Upload object file.
+    @pass_bucket
+    @pass_object
+    @need_objects_permission('objects-update')
+    @pass_file
+    def put(self, uploaded_file=None, obj=None, bucket=None, content_md5=None):
+        """Update an existing object.
 
         .. http:put:: /files/(uuid:bucket_id)
-
             Uploads a new object file.
 
             **Request**:
@@ -557,45 +609,23 @@ class ObjectResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 500: failed request
         """
-        # TODO: Check key is a valid key.
-        uploaded_file = request.files.get('file')
-        if not uploaded_file:
-            abort(400, 'File is missing from the request.')
-
-        # Retrieve bucket.
-        bucket = Bucket.get(bucket_id)
-        if bucket is None:
-            abort(404, 'Bucket does not exist.')
-
-        permission = current_permission_factory(
-            bucket, action='objects-update')
-
-        if permission is not None and not permission.can():
-            if current_user.is_authenticated:
-                abort(403)
-            abort(401)
-
-        # TODO: Check access permission on the bucket
         # TODO: Support checking incoming MD5 header
         # TODO: Support setting content-type
         # TODO: Don't create a new file if content is identical.
 
         # TODO: Pass storage class to get_or_create
         with db.session.begin_nested():
-            obj = ObjectVersion.create(bucket, key)
+            obj = ObjectVersion.create(bucket.id, obj.key)
             obj.set_contents(uploaded_file)
         db.session.commit()
 
         # TODO: Fix response object to only include headers?
-        return {
-            'json': {
-                'checksum': obj.file.checksum,
-                'size': obj.file.size,
-                'versionId': str(obj.version_id),
-            }
-        }
+        return obj
 
-    def delete(self, bucket_id, key, **kwargs):
+    @pass_bucket
+    @pass_object
+    @need_objects_permission('objects-delete')
+    def delete(self, obj=None, bucket=None, **kwargs):
         """Set object file as deleted.
 
         .. http:head:: /files/(uuid:bucket_id)/(string:filename)
@@ -634,24 +664,22 @@ class ObjectResource(ContentNegotiatedMethodView):
             :statuscode 404: page not found
             :statuscode 500: exception while deleting
         """
-        try:
-            if ObjectVersion.delete(bucket_id, key):
-                db.session.commit()
-            else:
+        with db.session.begin_nested():
+            if not ObjectVersion.delete(bucket.id, obj.key):
                 abort(
                     404,
                     'The specified object does not exist or has already been '
                     'deleted.'
                 )
-        except SQLAlchemyError:
-            db.session.rollback()
-            current_app.logger.exception('Failed to delete object.')
-            abort(500, 'Failed to delete object.')
+        db.session.commit()
 
-    def head(self, bucket_id, key, **kwargs):
+    @pass_bucket
+    @pass_object
+    @need_objects_permission('objects-read')
+    def head(self, obj=None, bucket=None, **kwargs):
         """Check the existence of the object file.
 
-        .. http:head:: /files/(uuid:bucket_id)/(string:filename)
+        .. http:head:: /files/(uuid:bucket_id)/(string:key)
 
             Checks if the file exists.
 
@@ -684,23 +712,29 @@ class ObjectResource(ContentNegotiatedMethodView):
             :statuscode 403: access denied
             :statuscode 404: the file does not exist
         """
-        if not bucket_id or not ObjectVersion.get(bucket_id, key):
-            abort(404, 'The object file does not exist or has been deleted.')
+        if not ObjectVersion.exists(bucket.id, obj.key):
+            abort(404, 'Object does not exist.')
 
 
 serializers = {'application/json': json_serializer}
 
 bucket_collection_view = BucketCollectionResource.as_view(
     'bucket_collection_api',
-    serializers=serializers
+    serializers={
+        'application/json': bucket_collection_serializer,
+    }
 )
 bucket_view = BucketResource.as_view(
     'bucket_api',
-    serializers=serializers
+    serializers={
+        'application/json': bucket_serializer,
+    }
 )
 object_view = ObjectResource.as_view(
     'object_api',
-    serializers=serializers
+    serializers={
+        'application/json': object_serializer,
+    }
 )
 
 blueprint.add_url_rule(
@@ -716,5 +750,5 @@ blueprint.add_url_rule(
 blueprint.add_url_rule(
     '/<string:bucket_id>/<path:key>',
     view_func=object_view,
-    methods=['GET', 'PUT', 'DELETE', 'HEAD']
+    methods=['GET', 'POST', 'PUT', 'DELETE', 'HEAD']
 )

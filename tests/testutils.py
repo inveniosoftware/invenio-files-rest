@@ -1,8 +1,7 @@
-#!/usr/bin/env sh
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015 CERN.
+# Copyright (C) 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -23,9 +22,15 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-pydocstyle invenio_files_rest && \
-# isort -rc -c -df **/*.py && \
-check-manifest --ignore ".travis-*" && \
-sphinx-build -qnNW docs docs/_build/html && \
-python setup.py test && \
-sphinx-build -qnNW -b doctest docs docs/_build/doctest
+"""Files download/upload REST API similar to S3 for Invenio."""
+
+from __future__ import absolute_import, print_function
+
+from invenio_accounts.models import User
+
+
+def login_user(client, user):
+    """"Log in a specified user."""
+    with client.session_transaction() as sess:
+        sess['user_id'] = user.id if user else None
+        sess['_fresh'] = True

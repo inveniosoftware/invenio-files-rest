@@ -25,8 +25,9 @@
 """REST API serializers."""
 
 import json
+from functools import wraps
 
-from flask import Response
+from flask import Response, url_for
 
 
 def json_serializer(data=None, code=200, headers=None):
@@ -50,3 +51,55 @@ def json_serializer(data=None, code=200, headers=None):
     # ETag needed?
     # response.set_etag(str(record.model.version_id))
     return response
+
+
+def empty_if_none(f):
+    """Wrap a serialize to handle when data is None."""
+    @wraps(f)
+    def decorator(data=None, code=200, headers=None):
+        data = data if not data else f(data, code, headers)
+        return json_serializer({'json': data}, code, headers)
+    return decorator
+
+
+@empty_if_none
+def bucket_collection_serializer(data=None, code=200, headers=None):
+    """Serialize BucketCollectionResource responses."""
+    def serialize(bucket):
+        return {
+            'size': bucket.size,
+            'url': url_for('invenio_files_rest.bucket_api',
+                           bucket_id=bucket.id, _external=True),
+            'uuid': str(bucket.id),
+        }
+
+    return [serialize(bucket) for bucket in data] \
+        if hasattr(data, '__iter__') \
+        else serialize(data)
+
+
+@empty_if_none
+def bucket_serializer(data=None, code=200, headers=None):
+    """Serialize BucketResource responses."""
+    def serialize(obj):
+        return {
+            'checksum': obj.file.checksum,
+            'size': obj.file.size,
+            'url': url_for('invenio_files_rest.object_api',
+                           bucket_id=obj.bucket.id,
+                           key=obj.key,
+                           _external=True),
+            'uuid': str(obj.file.id),
+        }
+
+    return [serialize(obj) for obj in data]
+
+
+@empty_if_none
+def object_serializer(data=None, code=200, headers=None):
+    """Serialize ObjectResource response."""
+    return {
+        'checksum': data.file.checksum,
+        'size': data.file.size,
+        'versionId': str(data.version_id),
+    }

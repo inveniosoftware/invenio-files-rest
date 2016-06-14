@@ -82,7 +82,7 @@ def test_location_validation(app, db):
     pytest.raises(ValueError, Location, name='a'*21, uri='file://', )
 
 
-def test_bucket_create(app, db):
+def test_bucket_create_object(app, db):
     """Test bucket creation."""
     with db.session.begin_nested():
         l1 = Location(name='test1', uri='file:///tmp/1', default=False)

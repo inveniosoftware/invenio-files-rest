@@ -30,31 +30,73 @@ from flask_principal import ActionNeed
 from invenio_access.permissions import DynamicPermission, \
     ParameterizedActionNeed
 
+BucketCollectionRead = partial(
+    ParameterizedActionNeed, 'files-rest-bucket-collection-read')
+BucketCollectionBucketCreate = partial(
+    ParameterizedActionNeed, 'files-rest-bucket-collection-bucket-create')
+
 BucketRead = partial(ParameterizedActionNeed, 'files-rest-bucket-read')
+BucketCreateObject = partial(
+    ParameterizedActionNeed,
+    'files-rest-bucket-create-object'
+)
 BucketUpdate = partial(ParameterizedActionNeed, 'files-rest-bucket-update')
 BucketDelete = partial(ParameterizedActionNeed, 'files-rest-bucket-delete')
 
 ObjectsRead = partial(ParameterizedActionNeed, 'files-rest-objects-read')
+ObjectsReadVersion = partial(
+    ParameterizedActionNeed,
+    'files-rest-objects-read-version'
+)
 ObjectsUpdate = partial(ParameterizedActionNeed, 'files-rest-objects-update')
 ObjectsDelete = partial(ParameterizedActionNeed, 'files-rest-objects-delete')
 
-bucket_create = ActionNeed('files-rest-bucket-create')
+bucket_collection_read_all = BucketCollectionRead(None)
+bucket_collection_bucket_create = BucketCollectionBucketCreate(None)
+
 bucket_read_all = BucketRead(None)
+bucket_create_object = BucketCreateObject(None)
 bucket_update_all = BucketUpdate(None)
 bucket_delete_all = BucketDelete(None)
 
-objects_create = ActionNeed('files-rest-objects-create')
 objects_read_all = ObjectsRead(None)
+objects_read_version_all = ObjectsReadVersion(None)
 objects_update_all = ObjectsUpdate(None)
 objects_delete_all = ObjectsDelete(None)
 
 _action2need_map = {
-    'objects-read': ObjectsRead,
-    'objects-update': ObjectsUpdate,
-    'objects-delete': ObjectsDelete,
+    'bucket-collection-read': BucketCollectionRead,
+    'bucket-collection-bucket-create': BucketCollectionBucketCreate,
+    'bucket-read': BucketRead,
+    'bucket-create-object': BucketCreateObject,
+    'bucket-update': BucketUpdate,
+    'bucket-delete': BucketDelete,
+    'objects-read': (BucketRead, ObjectsRead, ObjectsReadVersion),
+    'objects-read-version': (BucketRead, ObjectsReadVersion),
+    'objects-update': (BucketUpdate, ObjectsUpdate),
+    'objects-delete': (BucketDelete, ObjectsDelete),
 }
 
 
-def permission_factory(bucket, action='objects-read'):
-    """Permission factory for the actions on Bucket and ObjectVersion items."""
+def bucket_collection_permission_factory(action='bucket-collection-read'):
+    """Permission factory for the actions on Bucket collections."""
+    return DynamicPermission(_action2need_map[action](None))
+
+
+def bucket_permission_factory(bucket, action='bucket-read'):
+    """Permission factory actions on buckets."""
     return DynamicPermission(_action2need_map[action](str(bucket.id)))
+
+
+def object_permission_factory(bucket, key, action='objects-read'):
+    """Permission factory for the actions on Bucket and ObjectVersion items."""
+    obj_param = '{0}:{1}'.format(str(bucket.id), key)
+    needs = [
+        _action2need_map[action][0](str(bucket.id)),
+        _action2need_map[action][1](obj_param),
+    ]
+
+    if action == 'objects-read':
+        needs.append(_action2need_map[action][2](obj_param))
+
+    return DynamicPermission(*needs)
