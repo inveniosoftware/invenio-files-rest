@@ -34,7 +34,8 @@ from fs.errors import FSError
 from mock import MagicMock, patch
 
 from invenio_files_rest.models import Bucket, FileInstance, ObjectVersion
-from invenio_files_rest.tasks import migrate_file, verify_checksum
+from invenio_files_rest.tasks import migrate_file, remove_file_data, \
+    verify_checksum
 
 
 def test_verify_checksum(app, db, dummy_location):
@@ -60,7 +61,7 @@ def test_migrate_file(app, db, dummy_location, extra_location, bucket,
     old_uri = obj.file.uri
     assert exists(old_uri)
     assert old_uri == join(dummy_location.uri, str(obj.file.id)[0:2],
-                           str(obj.file.id)[2:], 'data')
+                           str(obj.file.id)[2:4], str(obj.file.id)[4:], 'data')
     assert FileInstance.query.count() == 4
 
     # Migrate file
@@ -96,3 +97,36 @@ def test_migrate_file_copyfail(app, db, dummy_location, extra_location,
             location_name=extra_location.name
         )
     assert FileInstance.query.count() == 4
+
+
+def test_remove_file_data(app, db, dummy_location, versions):
+    """Test remove file data."""
+    # Remove an object, so file instance have no references
+    obj = versions[1]
+    assert obj.is_head is False
+    file_ = obj.file
+    obj.remove()
+    db.session.commit()
+
+    # Remove the file instance - file not writable
+    assert exists(file_.uri)
+    assert FileInstance.query.count() == 4
+    remove_file_data(str(file_.id))
+    assert FileInstance.query.count() == 4
+    assert exists(file_.uri)
+
+    # Remove the file instance - file is writable
+    file_.writable = True
+    db.session.commit()
+    assert exists(file_.uri)
+    assert FileInstance.query.count() == 4
+    remove_file_data(str(file_.id))
+    assert FileInstance.query.count() == 3
+    assert not exists(file_.uri)
+
+    # Try to remove file instance with references.
+    obj = versions[0]
+    assert exists(obj.file.uri)
+    assert FileInstance.query.count() == 3
+    remove_file_data(str(obj.file.id))
+    assert exists(obj.file.uri)

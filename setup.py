@@ -40,8 +40,8 @@ tests_require = [
     'invenio-accounts>=1.0.0a2',
     'invenio-admin>=1.0.0a3',
     'invenio-celery>=1.0.0a4',
-    'invenio-records-ui>=1.0.0a5',
     'invenio-records-files>=1.0.0a4',
+    'invenio-records-ui>=1.0.0a5',
     'isort>=4.2.2',
     'mock>=1.3.0',
     'pydocstyle>=1.0.0',
@@ -133,27 +133,39 @@ setup(
             'location_adminview = invenio_files_rest.admin:location_adminview',
             'bucket_adminview = invenio_files_rest.admin:bucket_adminview',
             'object_adminview = invenio_files_rest.admin:object_adminview',
-            'fileinstance_adminview '
-            '= invenio_files_rest.admin:fileinstance_adminview',
-            'multipartobject_adminview '
-            '= invenio_files_rest.admin:multipartobject_adminview',
+            'fileinstance_adminview'
+            ' = invenio_files_rest.admin:fileinstance_adminview',
+            'multipartobject_adminview'
+            ' = invenio_files_rest.admin:multipartobject_adminview',
         ],
         'invenio_access.actions': [
-            'bucket_create_object = '
-            'invenio_files_rest.permissions:bucket_create_object',
-            'bucket_read_all = invenio_files_rest.permissions:bucket_read_all',
-            'bucket_update_all = '
-            'invenio_files_rest.permissions:bucket_update_all',
-            'bucket_delete_all = '
-            'invenio_files_rest.permissions:bucket_delete_all',
-            'objects_read_all = '
-            'invenio_files_rest.permissions:objects_read_all',
-            'objects_read_version_all = '
-            'invenio_files_rest.permissions:objects_read_version_all',
-            'objects_update_all = '
-            'invenio_files_rest.permissions:objects_update_all',
-            'objects_delete_all = '
-            'invenio_files_rest.permissions:objects_delete_all',
+            # Location related permissions
+            'location_update_all'
+            ' = invenio_files_rest.permissions:location_update_all',
+            # Bucket related permissions.
+            'bucket_read_all'
+            ' = invenio_files_rest.permissions:bucket_read_all',
+            'bucket_read_versions_all'
+            ' = invenio_files_rest.permissions:bucket_read_versions_all',
+            'bucket_update_all'
+            ' = invenio_files_rest.permissions:bucket_update_all',
+            'bucket_listmultiparts_all'
+            ' = invenio_files_rest.permissions:bucket_listmultiparts_all',
+            # Object related permissions.
+            'object_read_all'
+            ' = invenio_files_rest.permissions:object_read_all',
+            'object_read_version_all'
+            ' = invenio_files_rest.permissions:object_read_version_all',
+            'object_delete_all'
+            ' = invenio_files_rest.permissions:object_delete_all',
+            'object_delete_version_all'
+            ' = invenio_files_rest.permissions:object_delete_version_all',
+            # Multipart related permissions.
+            'multipart_read_all'
+            ' = invenio_files_rest.permissions:multipart_read_all',
+            'multipart_delete_all'
+            ' = invenio_files_rest.permissions:multipart_delete_all',
+
         ],
     },
     extras_require=extras_require,

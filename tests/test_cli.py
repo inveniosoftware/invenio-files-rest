@@ -29,12 +29,10 @@ from __future__ import absolute_import, print_function
 
 import os
 
-import pkg_resources
 from click.testing import CliRunner
 from flask_cli import ScriptInfo
 
 from invenio_files_rest.cli import files as cmd
-from invenio_files_rest.models import ObjectVersion
 
 
 def test_simple_workflow(app, db, tmpdir):

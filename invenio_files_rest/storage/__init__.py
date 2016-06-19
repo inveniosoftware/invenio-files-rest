@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015 CERN.
+# Copyright (C) 2015, 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -22,30 +22,15 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-"""Module test views."""
+"""File storage interface."""
 
 from __future__ import absolute_import, print_function
 
-from flask import url_for
+from .base import FileStorage
+from .pyfs import PyFSFileStorage, pyfs_storage_factory
 
-from invenio_files_rest.models import Bucket
-
-# def test_object_put(app, db, dummy_location):
-#     """Test PUT /bucket/object."""
-#     with app.test_client() as client:
-#         bucket = Bucket.create()
-#         db.session.commit()
-
-#         object_url = url_for(
-#             'invenio_files_rest.object_api',
-#             bucket_id=str(bucket.id),
-#             key='LICENSE')
-
-#         # Upload file to bucket
-#         with open('LICENSE', 'rb') as f:
-#             resp = client.put(
-#                 object_url,
-#                 data={'file': (f, 'LICENSE')},
-#                 headers={'Accept': '*/*'}
-#             )
-#         assert resp.status_code == 200
+__all__ = (
+    'FileStorage',
+    'pyfs_storage_factory',
+    'PyFSFileStorage',
+)

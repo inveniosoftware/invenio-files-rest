@@ -29,8 +29,10 @@ from __future__ import absolute_import, print_function
 from invenio_rest.errors import RESTException
 
 
-class FilesException(Exception):
+class FilesException(RESTException):
     """Base exception for all errors ."""
+
+    code = 500
 
 
 class StorageError(FilesException):
@@ -40,25 +42,86 @@ class StorageError(FilesException):
 class UnexpectedFileSizeError(StorageError):
     """Exception raised when a file does not match its expected size."""
 
-
-class FileInstanceAlreadySetError(FilesException):
-    """Exception raised when file instance already set on object."""
+    code = 400
+    description = "Content-Length does not match file size."
 
 
 class InvalidOperationError(FilesException):
     """Exception raised when an invalid operation is performed."""
 
 
-class FileSizeError(RESTException):
+class FileInstanceAlreadySetError(InvalidOperationError):
+    """Exception raised when file instance already set on object."""
+
+
+class FileInstanceUnreadableError(InvalidOperationError):
+    """Exception raised when trying to get an unreadable file."""
+
+    code = 503
+    description = "File storage is offline."
+
+
+class BucketLockedError(InvalidOperationError):
+    """Exception raised when a bucket is locked."""
+
+    code = 403
+    description = "Bucket is locked for modifications."
+
+
+class InvalidKeyError(InvalidOperationError):
+    """Invalid key."""
+
+    code = 400
+    description = "Filename is too long."
+
+
+class FileSizeError(StorageError):
     """Exception raised when a file larger than allowed."""
 
     code = 400
-    """Exception raise when an invalid operation is performed."""
 
 
-class MultipartObjectException(FilesException):
+class MultipartException(FilesException):
     """Exception for multipart objects."""
 
 
-class MultipartObjectAlreadyCompleted(MultipartObjectException):
+class MultipartAlreadyCompleted(MultipartException):
     """Exception raised when multipart object is already completed."""
+
+    code = 403
+    description = "Multipart upload is already completed."
+
+
+class MultipartNotCompleted(MultipartException):
+    """Exception raised when multipart object is not already completed."""
+
+    code = 400
+    description = "Multipart upload is already completed."
+
+
+class MultipartInvalidChunkSize(MultipartException):
+    """Exception raised when multipart object is already completed."""
+
+    code = 400
+    description = "Invalid part size."
+
+
+class MultipartInvalidPartNumber(MultipartException):
+    """Exception raised when multipart object is already completed."""
+
+    code = 400
+    description = "Invalid part number."
+
+
+class MultipartInvalidSize(MultipartException):
+    """Exception raised when multipart object is already completed."""
+
+    code = 400
+    description = "Invalid file size."
+
+
+class MultipartMissingParts(MultipartException):
+    """Exception raised when multipart object is already completed."""
+
+    code = 400
+    description = "Not all parts have been uploaded."

@@ -31,9 +31,6 @@ from werkzeug.utils import cached_property, import_string
 
 from . import config
 from .cli import files as files_cmd
-from .storage import pyfs_storage_factory
-from .uploader import ng_file_upload
-from .views import blueprint
 
 
 class _FilesRESTState(object):
@@ -63,23 +60,10 @@ class _FilesRESTState(object):
         return import_string(self.app.config.get('FILES_REST_STORAGE_FACTORY'))
 
     @cached_property
-    def bucket_collection_permission_factory(self):
+    def permission_factory(self):
         """Load default permission factory for Buckets collections."""
         return import_string(
-            self.app.config.get(
-                'FILES_REST_BUCKET_COLLECTION_PERMISSION_FACTORY'))
-
-    @cached_property
-    def bucket_permission_factory(self):
-        """"Load default permission factory for Buckets."""
-        return import_string(
-            self.app.config.get('FILES_REST_BUCKET_PERMISSION_FACTORY'))
-
-    @cached_property
-    def object_permission_factory(self):
-        """Load default permission factory."""
-        return import_string(
-            self.app.config.get('FILES_REST_OBJECT_PERMISSION_FACTORY'))
+            self.app.config.get('FILES_REST_PERMISSION_FACTORY'))
 
     @cached_property
     def file_size_limiters(self):
@@ -99,10 +83,12 @@ class _FilesRESTState(object):
         return import_string(self.app.config.get('FILES_REST_SIZE_LIMITERS'))
 
     @cached_property
-    def upload_factory(self):
-        """Load default permission factory."""
-        imp = self.app.config["FILES_REST_UPLOAD_FACTORY"]
-        return import_string(imp) if imp else ng_file_upload
+    def uploadparts_schema_factory(self):
+        """Factory getting list of webargs schemas for parsing part number."""
+        return [
+            import_string(x) for x in
+            self.app.config.get('FILES_REST_MULTIPART_UPLOADPARTS_SCHEMAS')
+        ]
 
 
 class InvenioFilesREST(object):

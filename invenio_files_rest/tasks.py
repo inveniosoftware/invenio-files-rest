@@ -27,13 +27,16 @@
 from __future__ import absolute_import, print_function
 
 import uuid
+from datetime import datetime
 
 from celery import current_task, shared_task
 from celery.states import state
 from celery.utils.log import get_task_logger
+from flask import current_app
 from invenio_db import db
+from sqlalchemy.exc import IntegrityError
 
-from .models import FileInstance, Location, ObjectVersion
+from .models import FileInstance, Location, MultipartObject, ObjectVersion
 
 logger = get_task_logger(__name__)
 
@@ -69,7 +72,7 @@ def migrate_file(src_id, location_name, post_fixity_check=False):
         f_dst.copy_contents(
             f_src,
             progress_callback=progress_updater,
-            location=location,
+            default_location=location.uri,
         )
         db.session.commit()
     except Exception:
@@ -85,3 +88,55 @@ def migrate_file(src_id, location_name, post_fixity_check=False):
     # Start a fixity check
     if post_fixity_check:
         verify_checksum.delay(str(f_dst.id))
+
+
+@shared_task(ignore_result=True)
+def remove_file_data(file_id, silent=True):
+    """Remove file instance and associated data."""
+    try:
+        # First remove FileInstance from database and commit transaction to
+        # ensure integrity constraints are checked and enforced.
+        f = FileInstance.get(file_id)
+        if not f.writable:
+            return
+        f.delete()
+        db.session.commit()
+        # Next, remove the file on disk. This leaves the possibility of having
+        # a file on disk dangling in case the database removal works, and the
+        # disk file removal doesn't work.
+        f.storage().delete()
+    except IntegrityError:
+        if not silent:
+            raise
+
+
+@shared_task(ignore_result=True)
+def merge_multipartobject(upload_id):
+    """Merge multipart object."""
+    mp = MultipartObject.query.filter_by(upload_id=upload_id).one_or_none()
+    if not mp:
+        raise RuntimeError('Upload ID does not exists.')
+    if not mp.completed:
+        raise RuntimeError('MultipartObject is not completed.')
+
+    try:
+        mp.merge_parts()
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+
+@shared_task(ignore_result=True)
+def remove_expired_multipartobjects():
+    """Remove expired multipart objects."""
+    delta = current_app.config['FILES_REST_MULTIPART_EXPIRES']
+    expired_dt = datetime.utcnow() - delta
+
+    file_ids = []
+    for mp in MultipartObject.query_expired(expired_dt):
+        file_ids.append(str(mp.file_id))
+        mp.delete()
+
+    for fid in file_ids:
+        remove_file_data.delay(fid)

@@ -27,109 +27,223 @@
 from __future__ import absolute_import, print_function
 
 import errno
-import hashlib
-import uuid
-from os.path import getsize, join
+import os
+from os.path import dirname, exists, getsize, join
 
 import pytest
+from fs.errors import DirectoryNotEmptyError, ResourceNotFoundError
 from mock import patch
-from six import BytesIO, b
+from six import BytesIO
 
-from invenio_files_rest.errors import StorageError, UnexpectedFileSizeError
-from invenio_files_rest.models import Bucket, FileInstance, ObjectVersion
-from invenio_files_rest.storage import PyFilesystemStorage, Storage
+from invenio_files_rest.errors import FileSizeError, StorageError, \
+    UnexpectedFileSizeError
+from invenio_files_rest.limiters import FileSizeLimit
+from invenio_files_rest.storage import FileStorage, PyFSFileStorage
 
 
-def test_pyfilesystemstorage(app, db, dummy_location):
-    """Test pyfs storage."""
-    # Create bucket and object
-    with db.session.begin_nested():
-        b1 = Bucket.create()
-        obj = ObjectVersion.create(b1, "LICENSE")
-        obj.file = FileInstance.create()
+def test_storage_interface():
+    """Test storage interface."""
+    s = FileStorage()
+    pytest.raises(NotImplementedError, s.open)
+    pytest.raises(NotImplementedError, s.initialize)
+    pytest.raises(NotImplementedError, s.delete)
+    pytest.raises(NotImplementedError, s.save, None)
+    pytest.raises(NotImplementedError, s.update, None)
+    pytest.raises(NotImplementedError, s.checksum)
 
-    storage = PyFilesystemStorage(obj.file, base_uri=obj.bucket.location.uri)
+
+def test_pyfs_initialize(pyfs, pyfs_testpath):
+    """Test init of files."""
+    # Create file object.
+    assert not exists(pyfs_testpath)
+    uri, size, checksum = pyfs.initialize(size=100)
+
+    assert size == 100
+    assert checksum is None
+    assert os.stat(pyfs_testpath).st_size == size
+
+    uri, size, checksum = pyfs.initialize()
+    assert size == 0
+    assert size == os.stat(pyfs_testpath).st_size
+
+
+def test_pyfs_delete(app, db, dummy_location):
+    """Test init of files."""
+    testurl = join(dummy_location.uri, 'subpath/data')
+    s = PyFSFileStorage(testurl)
+    s.initialize(size=100)
+    assert exists(testurl)
+
+    s.delete()
+    assert not exists(testurl)
+
+    s = PyFSFileStorage(join(dummy_location.uri, 'anotherpath/data'))
+    pytest.raises(ResourceNotFoundError, s.delete)
+
+
+def test_pyfs_delete_fail(pyfs, pyfs_testpath):
+    """Test init of files."""
+    pyfs.save(BytesIO(b'somedata'))
+    os.rename(pyfs_testpath, join(dirname(pyfs_testpath), 'newname'))
+    pytest.raises(DirectoryNotEmptyError, pyfs.delete)
+
+
+def test_pyfs_save(pyfs, pyfs_testpath, get_md5):
+    """Test basic save operation."""
+    data = b'somedata'
+    uri, size, checksum = pyfs.save(BytesIO(data))
+
+    assert uri == pyfs_testpath
+    assert size == len(data)
+    assert checksum == get_md5(data)
+    assert exists(pyfs_testpath)
+    assert open(pyfs_testpath, 'rb').read() == data
+
+
+def test_pyfs_save_failcleanup(pyfs, pyfs_testpath, get_md5):
+    """Test basic save operation."""
+    data = b'somedata'
+
+    def fail_callback(total, size):
+        assert exists(pyfs_testpath)
+        raise Exception('Something bad happened')
+
+    pytest.raises(
+        Exception,
+        pyfs.save,
+        BytesIO(data), chunk_size=4, progress_callback=fail_callback
+    )
+    assert not exists(pyfs_testpath)
+    assert not exists(dirname(pyfs_testpath))
+
+
+def test_pyfs_save_callback(pyfs):
+    """Test progress callback."""
+    data = b'somedata'
+
     counter = dict(size=0)
 
     def callback(total, size):
         counter['size'] = size
 
-    def test_file_save(data, **kwargs):
-        stream = BytesIO(data)
-        loc, size, checksum = storage.save(stream, progress_callback=callback,
-                                           **kwargs)
+    uri, size, checksum = pyfs.save(
+        BytesIO(data), progress_callback=callback)
 
-        # Verify checksum, size and location.
-        m = hashlib.md5()
-        m.update(data)
-        assert "md5:{0}".format(m.hexdigest()) == checksum
-
-        assert size == len(data)
-        assert loc == join(dummy_location.uri, str(obj.file.id)[0:2],
-                           str(obj.file.id)[2:], 'data')
-
-    data = b("this is some content")
-    # test without size
-    test_file_save(data)
-    # test with correct size
-    test_file_save(data, size=len(data))
-    # test with wrong sizes
-    with pytest.raises(UnexpectedFileSizeError):
-        test_file_save(data, size=len(data) - 1)
-    with pytest.raises(UnexpectedFileSizeError):
-        test_file_save(data, size=len(data) + 1)
+    assert counter['size'] == len(data)
 
 
-def test_pyfilesystemstorage_checksum(app, db, dummy_location):
+def test_pyfs_save_limits(pyfs):
+    """Test progress callback."""
+    data = b'somedata'
+    uri, size, checksum = pyfs.save(BytesIO(data), size=len(data))
+    assert size == len(data)
+
+    uri, size, checksum = pyfs.save(BytesIO(data), size_limit=len(data))
+    assert size == len(data)
+
+    # Size doesn't match
+    pytest.raises(
+        UnexpectedFileSizeError, pyfs.save, BytesIO(data), size=len(data) - 1)
+    pytest.raises(
+        UnexpectedFileSizeError, pyfs.save, BytesIO(data), size=len(data) + 1)
+
+    # Exceeds size limits
+    pytest.raises(
+        FileSizeError, pyfs.save, BytesIO(data),
+        size_limit=FileSizeLimit(len(data) - 1, 'bla'))
+
+
+def test_pyfs_update(pyfs, pyfs_testpath, get_md5):
+    """Test update of file."""
+    pyfs.initialize(size=100)
+    pyfs.update(BytesIO(b'cd'), seek=2, size=2)
+    pyfs.update(BytesIO(b'ab'), seek=0, size=2)
+
+    with open(pyfs_testpath) as fp:
+        content = fp.read()
+    assert content[0:4] == 'abcd'
+    assert len(content) == 100
+
+    # Assert return parameters from update.
+    size, checksum = pyfs.update(BytesIO(b'ef'), seek=4, size=2)
+    assert size == 2
+    assert get_md5(b'ef') == checksum
+
+
+def test_pyfs_update_fail(pyfs, pyfs_testpath, get_md5):
+    """Test update of file."""
+    def fail_callback(total, size):
+        assert exists(pyfs_testpath)
+        raise Exception('Something bad happened')
+
+    pyfs.initialize(size=100)
+    pyfs.update(BytesIO(b'ab'), seek=0, size=2)
+    pytest.raises(
+        Exception,
+        pyfs.update,
+        BytesIO(b'cdef'),
+        seek=2,
+        size=4,
+        chunk_size=2,
+        progress_callback=fail_callback,
+    )
+
+    # Partial file can be written to disk!
+    with open(pyfs_testpath) as fp:
+        content = fp.read()
+    assert content[0:4] == 'abcd'
+    assert content[4:6] != 'ef'
+
+
+def test_pyfs_checksum(get_md5):
     """Test fixity."""
     # Compute checksum of license file/
-    with open("LICENSE", "rb") as fp:
-        m = hashlib.md5()
-        m.update(fp.read())
-        checksum = "md5:{0}".format(m.hexdigest())
+    with open('LICENSE', 'rb') as fp:
+        data = fp.read()
+        checksum = get_md5(data)
 
     counter = dict(size=0)
 
     def callback(total, size):
-        counter["size"] = size
+        counter['size'] = size
 
-    # Now do it with storage interfacee
-    storage = PyFilesystemStorage(
-        FileInstance(uri="LICENSE", size=getsize("LICENSE")))
-    assert checksum == storage.compute_checksum(
-        chunk_size=2, progress_callback=callback)
-    assert counter["size"] == getsize("LICENSE")
+    # Now do it with storage interface
+    s = PyFSFileStorage('LICENSE', size=getsize('LICENSE'))
+    assert checksum == s.checksum(chunk_size=2, progress_callback=callback)
+    assert counter['size'] == getsize('LICENSE')
+
+    # No size provided, means progress callback isn't called
+    counter['size'] = 0
+    s = PyFSFileStorage('LICENSE')
+    assert checksum == s.checksum(chunk_size=2, progress_callback=callback)
+    assert counter['size'] == 0
 
 
-def test_pyfilesystemstorage_checksum_fail(app, db, dummy_location):
+def test_pyfs_checksum_fail():
     """Test fixity problems."""
     # Raise an error during checksum calculation
     def callback(total, size):
         raise OSError(errno.EPERM, "Permission")
 
-    f = FileInstance.create()
-    f.set_contents(BytesIO(b("test")), location=dummy_location)
+    s = PyFSFileStorage('LICENSE', size=getsize('LICENSE'))
 
-    pytest.raises(
-        StorageError, PyFilesystemStorage(f).compute_checksum,
-        progress_callback=callback)
+    pytest.raises(StorageError, s.checksum, progress_callback=callback)
 
 
-def test_pyfs_send_file(app, db, dummy_location):
+def test_pyfs_send_file(app, pyfs):
     """Test send file."""
-    with db.session.begin_nested():
-        b = Bucket.create()
-        obj = ObjectVersion.create(b, "LICENSE")
-        with open("LICENSE", "rb") as fp:
-            obj.set_contents(fp)
+    data = b'sendthis'
+    uri, size, checksum = pyfs.save(BytesIO(data))
 
     with app.test_request_context():
-        res = obj.file.send_file()
+        res = pyfs.send_file(
+            'myfilename.txt', mimetype='text/plain', checksum=checksum)
         assert res.status_code == 200
         h = res.headers
-        assert h["Content-Length"] == str(obj.file.size)
-        assert h["Content-MD5"] == obj.file.checksum
-        assert h["ETag"] == '"{0}"'.format(obj.file.checksum)
+        assert h['Content-Type'] == 'text/plain; charset=utf-8'
+        assert h['Content-Length'] == str(size)
+        assert h['Content-MD5'] == checksum[4:]
+        assert h['ETag'] == '"{0}"'.format(checksum)
 
         # Content-Type: application/octet-stream
         # ETag: "b234ee4d69f5fce4486a80fdaf4a4263"
@@ -137,55 +251,27 @@ def test_pyfs_send_file(app, db, dummy_location):
         # Cache-Control: max-age=43200, public
         # Expires: Sat, 23 Jan 2016 19:21:04 GMT
         # Date: Sat, 23 Jan 2016 07:21:04 GMT
-        # print(res.headers)
+
+        res = pyfs.send_file(
+            'myfilename.txt', mimetype='text/plain', checksum='crc32:test')
+        assert 'Content-MD5' not in dict(res.headers)
 
 
-def test_pyfs_send_file_fail(app, db, dummy_location):
+def test_pyfs_send_file_fail(app, pyfs):
     """Test send file."""
-    f = FileInstance.create()
-    f.set_contents(BytesIO(b("test")), location=dummy_location)
+    pyfs.save(BytesIO(b'content'))
 
-    with patch('invenio_files_rest.storage.send_stream') as send_stream:
+    with patch('invenio_files_rest.storage.base.send_stream') as send_stream:
         send_stream.side_effect = OSError(errno.EPERM, "Permission problem")
         with app.test_request_context():
-            pytest.raises(StorageError, f.send_file)
+            pytest.raises(StorageError, pyfs.send_file, 'test.txt')
 
 
-def test_storage_interface():
-    """Test storage interface."""
-    f = FileInstance.create()
-    s = Storage(f)
+def test_pyfs_copy(pyfs, dummy_location):
+    """Test send file."""
+    s = PyFSFileStorage(join(dummy_location.uri, 'anotherpath/data'))
+    s.save(BytesIO(b'otherdata'))
 
-    pytest.raises(NotImplementedError, s.open)
-    pytest.raises(NotImplementedError, s.send_file)
-    pytest.raises(NotImplementedError, s.save, None)
-    pytest.raises(NotImplementedError, s.compute_checksum, None)
-
-
-def test_pyfilesystemstorage_make_path():
-    """Test path for files."""
-    fi = FileInstance.create()
-    fi.id = uuid.uuid5(uuid.NAMESPACE_DNS, 'Testing-')
-    fs = PyFilesystemStorage(fi, base_uri='Base')
-    assert 'Base/45/629316-6e69-5006-82ba-1ee2f18df5b2' == fs.make_path()
-    assert 'Base/4/5629316-6e69-5006-82ba-1ee2f18df5b2' == fs.make_path(1, 1)
-    assert 'Base/4/5/6/29316-6e69-5006-82ba-1ee2f18df5b2' == fs.make_path(3, 1)
-    assert 'Base/456/29316-6e69-5006-82ba-1ee2f18df5b2' == fs.make_path(1, 3)
-
-    # If length 0, it should take the default value.
-    assert 'Base/45/629316-6e69-5006-82ba-1ee2f18df5b2' == fs.make_path(1, 0)
-
-    # If dimensions are 0, it should take the default value.
-    assert 'Base/4/5629316-6e69-5006-82ba-1ee2f18df5b2' == fs.make_path(0, 1)
-
-    # Length of each partition is too long.
-    with pytest.raises(AssertionError):
-        fs.make_path(1, 50)
-
-    # Number of partitions is too high.
-    with pytest.raises(AssertionError):
-        fs.make_path(50, 1)
-
-    # Both values produce the exception.
-    with pytest.raises(AssertionError):
-        fs.make_path(50, 50)
+    pyfs.copy(s)
+    fp = pyfs.open()
+    assert fp.read() == b'otherdata'

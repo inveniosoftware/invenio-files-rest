@@ -24,6 +24,8 @@
 
 """Invenio Files Rest module configuration file."""
 
+from datetime import timedelta
+
 FILES_REST_STORAGE_CLASS_LIST = {
     'S': 'Standard',
     'A': 'Archive',
@@ -44,21 +46,17 @@ FILES_REST_DEFAULT_QUOTA_SIZE = None
 FILES_REST_DEFAULT_MAX_FILE_SIZE = None
 """Default maximum file size for a bucket in bytes."""
 
+FILES_REST_MIN_FILE_SIZE = 1
+"""Minimum file size for uploads (i.e. do not allow empty files)."""
+
 FILES_REST_SIZE_LIMITERS = 'invenio_files_rest.limiters.file_size_limiters'
 """Import path of file size limiters factory."""
 
 FILES_REST_STORAGE_FACTORY = 'invenio_files_rest.storage.pyfs_storage_factory'
 """Import path of factory used to create a storage instance."""
 
-FILES_REST_BUCKET_COLLECTION_PERMISSION_FACTORY = \
-    'invenio_files_rest.permissions.bucket_collection_permission_factory'
-
-FILES_REST_BUCKET_PERMISSION_FACTORY = \
-    'invenio_files_rest.permissions.bucket_permission_factory'
-
-FILES_REST_OBJECT_PERMISSION_FACTORY = \
-    'invenio_files_rest.permissions.object_permission_factory'
-"""Import path of permission factory."""
+FILES_REST_PERMISSION_FACTORY = \
+    'invenio_files_rest.permissions.permission_factory'
 
 FILES_REST_OBJECT_KEY_MAX_LEN = 255
 """Maximum length of the ObjectVersion.key field.
@@ -82,8 +80,23 @@ FILES_REST_RECORD_FILE_FACTORY = None
 FILES_REST_STORAGE_PATH_SPLIT_LENGTH = 2
 """Length of the filename that should be taken to create its root dir."""
 
-FILES_REST_STORAGE_PATH_DIMENSIONS = 1
+FILES_REST_STORAGE_PATH_DIMENSIONS = 2
 """Number of directory levels created for the storage."""
 
-FILES_REST_UPLOAD_FACTORY = None
+FILES_REST_MULTIPART_UPLOADPARTS_SCHEMAS = [
+    'invenio_files_rest.views:default_partnumber_schema',
+    'invenio_files_rest.views:ngfileupload_partnumber_schema',
+]
 """Import path of factory used to parse chunked upload parameters."""
+
+FILES_REST_MULTIPART_MAX_PARTS = 10000
+"""Maximum number of parts."""
+
+FILES_REST_MULTIPART_CHUNKSIZE_MIN = 5 * 1024 * 1024  # 5mb
+"""Minimum chunk size of multipart objects."""
+
+FILES_REST_MULTIPART_CHUNKSIZE_MAX = 5 * 1024 * 1024 * 1024  # 5gb
+"""Minimum chunk size of multipart objects."""
+
+FILES_REST_MULTIPART_EXPIRES = timedelta(days=4)
+"""Time delta after which a multipart upload is considered expired."""

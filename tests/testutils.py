@@ -26,7 +26,14 @@
 
 from __future__ import absolute_import, print_function
 
-from invenio_accounts.models import User
+import sys
+
+from six import BytesIO
+
+if sys.version_info.major == 2:
+    PY2 = True
+else:
+    PY2 = False
 
 
 def login_user(client, user):
@@ -34,3 +41,25 @@ def login_user(client, user):
     with client.session_transaction() as sess:
         sess['user_id'] = user.id if user else None
         sess['_fresh'] = True
+
+
+class BadBytesIO(BytesIO):
+    """Class for closing the stream for further reading abruptly."""
+
+    def __init__(self, *args, **kwargs):
+        """Initialize."""
+        self.called = False
+        if PY2:
+            return BytesIO.__init__(self, *args, **kwargs)
+        else:
+            return super(BadBytesIO, self).__init__(*args, **kwargs)
+
+    def read(self, *args, **kwargs):
+        """Fail on second read."""
+        if self.called:
+            self.close()
+        self.called = True
+        if PY2:
+            return BytesIO.read(self, *args, **kwargs)
+        else:
+            return super(BadBytesIO, self).read(*args, **kwargs)

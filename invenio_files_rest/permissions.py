@@ -22,81 +22,107 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-"""Permissions for files."""
+"""Permissions for files using Invenio-Access."""
 
 from functools import partial
 
-from flask_principal import ActionNeed
 from invenio_access.permissions import DynamicPermission, \
     ParameterizedActionNeed
 
-BucketCollectionRead = partial(
-    ParameterizedActionNeed, 'files-rest-bucket-collection-read')
-BucketCollectionBucketCreate = partial(
-    ParameterizedActionNeed, 'files-rest-bucket-collection-bucket-create')
+from .models import Bucket, Location, MultipartObject, ObjectVersion
 
-BucketRead = partial(ParameterizedActionNeed, 'files-rest-bucket-read')
-BucketCreateObject = partial(
-    ParameterizedActionNeed,
-    'files-rest-bucket-create-object'
-)
-BucketUpdate = partial(ParameterizedActionNeed, 'files-rest-bucket-update')
-BucketDelete = partial(ParameterizedActionNeed, 'files-rest-bucket-delete')
+#
+# Action needs
+#
+# Create buckets
+LocationUpdate = partial(
+    ParameterizedActionNeed, 'files-rest-location-update')
 
-ObjectsRead = partial(ParameterizedActionNeed, 'files-rest-objects-read')
-ObjectsReadVersion = partial(
-    ParameterizedActionNeed,
-    'files-rest-objects-read-version'
-)
-ObjectsUpdate = partial(ParameterizedActionNeed, 'files-rest-objects-update')
-ObjectsDelete = partial(ParameterizedActionNeed, 'files-rest-objects-delete')
+# List objects in bucket
+BucketRead = partial(
+    ParameterizedActionNeed, 'files-rest-bucket-read')
+# List object versions in bucket
+BucketReadVersions = partial(
+    ParameterizedActionNeed, 'files-rest-bucket-read-versions')
+# Create objects and multipart uploads in bucket
+BucketUpdate = partial(
+    ParameterizedActionNeed, 'files-rest-bucket-update')
+# List multipart uploads in bucket
+BucketListMultiparts = partial(
+    ParameterizedActionNeed, 'files-rest-bucket-listmultiparts')
 
-bucket_collection_read_all = BucketCollectionRead(None)
-bucket_collection_bucket_create = BucketCollectionBucketCreate(None)
+# Get object in bucket
+ObjectRead = partial(
+    ParameterizedActionNeed, 'files-rest-object-read')
+# Get object version in bucket
+ObjectReadVersion = partial(
+    ParameterizedActionNeed, 'files-rest-object-read-version')
+# Delete object in bucket
+ObjectDelete = partial(
+    ParameterizedActionNeed, 'files-rest-object-delete')
+# Permanently delete specific object version in bucket
+ObjectDeleteVersion = partial(
+    ParameterizedActionNeed, 'files-rest-object-delete-version')
+
+# List parts of a multipart upload in a bucket
+MultipartRead = partial(
+    ParameterizedActionNeed, 'files-rest-multipart-read')
+# Abort a multipart upload
+MultipartDelete = partial(
+    ParameterizedActionNeed, 'files-rest-multipart-delete')
+
+
+#
+# Global action needs
+#
+location_update_all = LocationUpdate(None)
 
 bucket_read_all = BucketRead(None)
-bucket_create_object = BucketCreateObject(None)
+bucket_read_versions_all = BucketReadVersions(None)
 bucket_update_all = BucketUpdate(None)
-bucket_delete_all = BucketDelete(None)
+bucket_listmultiparts_all = BucketListMultiparts(None)
 
-objects_read_all = ObjectsRead(None)
-objects_read_version_all = ObjectsReadVersion(None)
-objects_update_all = ObjectsUpdate(None)
-objects_delete_all = ObjectsDelete(None)
+object_read_all = ObjectRead(None)
+object_read_version_all = ObjectReadVersion(None)
+object_delete_all = ObjectDelete(None)
+object_delete_version_all = ObjectDeleteVersion(None)
 
+multipart_read_all = MultipartRead(None)
+multipart_delete_all = MultipartDelete(None)
+
+#
+# Mapping of action names to action needs.
+#
 _action2need_map = {
-    'bucket-collection-read': BucketCollectionRead,
-    'bucket-collection-bucket-create': BucketCollectionBucketCreate,
+    'location-update': LocationUpdate,
     'bucket-read': BucketRead,
-    'bucket-create-object': BucketCreateObject,
+    'bucket-read-versions': BucketReadVersions,
     'bucket-update': BucketUpdate,
-    'bucket-delete': BucketDelete,
-    'objects-read': (BucketRead, ObjectsRead, ObjectsReadVersion),
-    'objects-read-version': (BucketRead, ObjectsReadVersion),
-    'objects-update': (BucketUpdate, ObjectsUpdate),
-    'objects-delete': (BucketDelete, ObjectsDelete),
+    'bucket-listmultiparts': BucketListMultiparts,
+    'object-read': ObjectRead,
+    'object-read-version': ObjectReadVersion,
+    'object-delete': ObjectDelete,
+    'object-delete-version': ObjectDeleteVersion,
+    'multipart-read': MultipartRead,
+    'multipart-delete': MultipartDelete,
 }
 
 
-def bucket_collection_permission_factory(action='bucket-collection-read'):
-    """Permission factory for the actions on Bucket collections."""
-    return DynamicPermission(_action2need_map[action](None))
+def permission_factory(obj, action):
+    """Permission factory."""
+    need_class = _action2need_map[action]
 
+    if obj is None:
+        return DynamicPermission(need_class(None))
 
-def bucket_permission_factory(bucket, action='bucket-read'):
-    """Permission factory actions on buckets."""
-    return DynamicPermission(_action2need_map[action](str(bucket.id)))
+    arg = None
+    if isinstance(obj, Bucket):
+        arg = str(obj.id)
+    elif isinstance(obj, ObjectVersion):
+        arg = str(obj.bucket_id)
+    elif isinstance(obj, MultipartObject):
+        arg = str(obj.bucket_id)
+    else:
+        raise RuntimeError('Unknown object')
 
-
-def object_permission_factory(bucket, key, action='objects-read'):
-    """Permission factory for the actions on Bucket and ObjectVersion items."""
-    obj_param = '{0}:{1}'.format(str(bucket.id), key)
-    needs = [
-        _action2need_map[action][0](str(bucket.id)),
-        _action2need_map[action][1](obj_param),
-    ]
-
-    if action == 'objects-read':
-        needs.append(_action2need_map[action][2](obj_param))
-
-    return DynamicPermission(*needs)
+    return DynamicPermission(need_class(arg))

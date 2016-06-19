@@ -32,11 +32,5 @@ from werkzeug.local import LocalProxy
 current_files_rest = LocalProxy(
     lambda: current_app.extensions['invenio-files-rest'])
 
-current_bucket_collection_permission_factory = LocalProxy(
-    lambda: current_files_rest.bucket_collection_permission_factory)
-
-current_bucket_permission_factory = LocalProxy(
-    lambda: current_files_rest.bucket_permission_factory)
-
-current_object_permission_factory = LocalProxy(
-    lambda: current_files_rest.object_permission_factory)
+current_permission_factory = LocalProxy(
+    lambda: current_files_rest.permission_factory)

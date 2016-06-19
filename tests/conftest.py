@@ -27,33 +27,36 @@
 
 from __future__ import absolute_import, print_function
 
+import hashlib
 import os
 import shutil
 import tempfile
 
 import pytest
-from flask import Flask
+from flask import Flask, json, url_for
 from flask_babelex import Babel
 from flask_celeryext import FlaskCeleryExt
 from flask_cli import FlaskCLI
 from flask_menu import Menu
 from invenio_access import InvenioAccess
 from invenio_access.models import ActionUsers
-from invenio_access.permissions import superuser_access
 from invenio_accounts import InvenioAccounts
 from invenio_accounts.testutils import create_test_user
 from invenio_accounts.views import blueprint as accounts_blueprint
 from invenio_db import db as db_
 from invenio_db import InvenioDB
-from six import BytesIO, b
+from six import BytesIO
 from sqlalchemy_utils.functions import create_database, database_exists
 
 from invenio_files_rest import InvenioFilesREST
-from invenio_files_rest.models import Bucket, Location, ObjectVersion
-from invenio_files_rest.permissions import bucket_collection_bucket_create, \
-    bucket_collection_read_all, bucket_create_object, bucket_delete_all, \
-    bucket_read_all, bucket_update_all, objects_delete_all, \
-    objects_read_all, objects_read_version_all, objects_update_all
+from invenio_files_rest.models import Bucket, Location, MultipartObject, \
+    ObjectVersion, Part
+from invenio_files_rest.permissions import bucket_listmultiparts_all, \
+    bucket_read_all, bucket_read_versions_all, bucket_update_all, \
+    location_update_all, multipart_delete_all, multipart_read_all, \
+    object_delete_all, object_delete_version_all, object_read_all, \
+    object_read_version_all
+from invenio_files_rest.storage import PyFSFileStorage
 from invenio_files_rest.views import blueprint
 
 
@@ -71,6 +74,9 @@ def base_app():
         SERVER_NAME='invenio.org',
         SECURITY_PASSWORD_SALT='TEST_SECURITY_PASSWORD_SALT',
         SECRET_KEY='TEST_SECRET_KEY',
+        FILES_REST_MULTIPART_CHUNKSIZE_MIN=2,
+        FILES_REST_MULTIPART_CHUNKSIZE_MAX=20,
+        FILES_REST_MULTIPART_MAX_PARTS=100,
     )
 
     FlaskCLI(app_)
@@ -131,6 +137,18 @@ def dummy_location(db):
     shutil.rmtree(tmppath)
 
 
+@pytest.fixture()
+def pyfs_testpath(dummy_location):
+    """PyFS test temporary path."""
+    return os.path.join(dummy_location.uri, 'subpath/data')
+
+
+@pytest.fixture()
+def pyfs(dummy_location, pyfs_testpath):
+    """PyFSFileStorage instance."""
+    return PyFSFileStorage(pyfs_testpath)
+
+
 @pytest.yield_fixture()
 def extra_location(db):
     """File system location."""
@@ -155,6 +173,44 @@ def bucket(db, dummy_location):
     b1 = Bucket.create()
     db.session.commit()
     return b1
+
+
+@pytest.fixture()
+def multipart(db, bucket):
+    """Multipart object."""
+    mp = MultipartObject.create(bucket, 'mykey', 110, 20)
+    db.session.commit()
+    return mp
+
+
+@pytest.fixture()
+def multipart_url(multipart):
+    """File system location."""
+    return url_for(
+        'invenio_files_rest.object_api',
+        bucket_id=str(multipart.bucket_id),
+        key=multipart.key,
+        uploadId=multipart.upload_id
+    )
+
+
+@pytest.fixture()
+def parts(db, multipart):
+    """All parts for a multipart object."""
+    items = []
+    for i in range(multipart.last_part_number + 1):
+        chunk_size = multipart.chunk_size \
+            if not i == multipart.last_part_number \
+            else multipart.last_part_size
+        p = Part.create(
+            multipart,
+            i,
+            stream=BytesIO(u'{0}'.format(i).encode('ascii') * chunk_size)
+        )
+        items.append(p)
+
+    db.session.commit()
+    return items
 
 
 @pytest.yield_fixture()
@@ -221,14 +277,14 @@ def headers():
 
 
 @pytest.yield_fixture()
-def permissions(db, bucket, objects):
-    """Permissions for users."""
+def permissions(db, bucket):
+    """Permission for users."""
     users = {
         None: None,
     }
 
     for user in [
-            'auth', 'bucket-collection', 'bucket',
+            'auth', 'location', 'bucket',
             'objects', 'objects-read-version']:
         users[user] = create_test_user(
             email='{0}@invenio-software.org'.format(user),
@@ -236,39 +292,66 @@ def permissions(db, bucket, objects):
             active=True
         )
 
-    bucket_collection_perms = [
-        bucket_collection_read_all, bucket_collection_bucket_create
+    location_perms = [
+        location_update_all,
+        bucket_read_all,
+        bucket_read_versions_all,
+        bucket_update_all,
+        bucket_listmultiparts_all,
+        object_read_all,
+        object_read_version_all,
+        object_delete_all,
+        object_delete_version_all,
+        multipart_read_all,
+        multipart_delete_all,
     ]
 
     bucket_perms = [
-        bucket_read_all, bucket_create_object, bucket_update_all,
-        bucket_delete_all
+        bucket_read_all,
+        object_read_all,
+        bucket_update_all,
+        object_delete_all,
+        multipart_read_all,
     ]
 
     objects_perms = [
-        objects_read_all, objects_update_all,
-        objects_delete_all
+        object_read_all,
     ]
 
-    for perm in bucket_collection_perms:
-        db.session.add(ActionUsers(action=perm.value,
-                                   user=users['bucket-collection']))
-
+    for perm in location_perms:
+        db.session.add(ActionUsers(
+            action=perm.value,
+            user=users['location']))
     for perm in bucket_perms:
-        db.session.add(ActionUsers(action=perm.value,
-                                   argument=str(bucket.id),
-                                   user=users['bucket']))
+        db.session.add(ActionUsers(
+            action=perm.value,
+            argument=str(bucket.id),
+            user=users['bucket']))
     for perm in objects_perms:
-        for obj in objects:
-            db.session.add(ActionUsers(action=perm.value,
-                                       argument='{0}:{1}'.format(
-                                            str(bucket.id), obj.key),
-                                       user=users['objects']))
-    for obj in objects:
-        db.session.add(ActionUsers(action=objects_read_version_all.value,
-                                   argument='{0}:{1}'.format(
-                                        str(bucket.id), obj.key),
-                                   user=users['objects-read-version']))
+        db.session.add(ActionUsers(
+            action=perm.value,
+            argument=str(bucket.id),
+            user=users['objects']))
     db.session.commit()
 
     yield users
+
+
+@pytest.fixture()
+def get_md5():
+    """Get MD5 of data."""
+    def inner(data, prefix=True):
+        m = hashlib.md5()
+        m.update(data)
+        return "md5:{0}".format(m.hexdigest()) if prefix else m.hexdigest()
+    return inner
+
+
+@pytest.fixture()
+def get_json():
+    """Get JSON from response."""
+    def inner(resp, code=None):
+        if code is not None:
+            assert resp.status_code == code
+        return json.loads(resp.get_data(as_text=True))
+    return inner

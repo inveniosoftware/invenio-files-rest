@@ -33,7 +33,7 @@ import pytest
 from six import BytesIO, b
 
 from invenio_files_rest.errors import FileInstanceAlreadySetError, \
-    InvalidOperationError
+    FileInstanceUnreadableError, InvalidKeyError, InvalidOperationError
 from invenio_files_rest.models import Bucket, BucketTag, FileInstance, \
     Location, ObjectVersion
 
@@ -79,7 +79,7 @@ def test_location_validation(app, db):
     """Test validation of location name."""
     pytest.raises(ValueError, Location, name='UPPER', uri='file://', )
     pytest.raises(ValueError, Location, name='1ab', uri='file://', )
-    pytest.raises(ValueError, Location, name='a'*21, uri='file://', )
+    pytest.raises(ValueError, Location, name='a' * 21, uri='file://', )
 
 
 def test_bucket_create_object(app, db):
@@ -301,7 +301,7 @@ def test_object_delete(app, db, dummy_location):
     assert ObjectVersion.get_by_bucket(b1).count() == 0
 
     obj = ObjectVersion.get(b1, "test", version_id=obj_deleted.version_id)
-    assert obj.is_deleted
+    assert obj.deleted
     assert obj.file_id is None
 
     ObjectVersion.create(b1, "test").set_location(
@@ -531,7 +531,7 @@ def test_object_relink_all(app, db, dummy_location):
     assert FileInstance.query.count() == 2
 
     fnew = FileInstance.create()
-    fnew.copy_contents(obj1.file, location=b1.location)
+    fnew.copy_contents(obj1.file, default_location=b1.location.uri)
     db.session.commit()
 
     fold = obj1.file
@@ -550,7 +550,7 @@ def test_object_validation(app, db, dummy_location):
     """Test validating the ObjectVersion."""
     b1 = Bucket.create()
     ObjectVersion.create(b1, 'x' * 255)  # Should not raise
-    pytest.raises(ValueError, ObjectVersion.create, b1, 'x' * 256)
+    pytest.raises(InvalidKeyError, ObjectVersion.create, b1, 'x' * 256)
 
 
 def test_bucket_tags(app, db, dummy_location):
@@ -646,7 +646,8 @@ def test_fileinstance_set_contents(app, db, dummy_location):
     assert f.readable is False
     assert f.writable is True
     data = BytesIO(b("test file instance set contents"))
-    f.set_contents(data, location=dummy_location, progress_callback=callback)
+    f.set_contents(
+        data, default_location=dummy_location.uri, progress_callback=callback)
     db.session.commit()
     assert f.readable is True
     assert f.writable is False
@@ -670,7 +671,7 @@ def test_fileinstance_copy_contents(app, db, dummy_location):
     # Create source and set data.
     data = b('this is some data')
     src = FileInstance.create()
-    src.set_contents(BytesIO(data), location=dummy_location)
+    src.set_contents(BytesIO(data), default_location=dummy_location.uri)
     db.session.commit()
 
     # Create destination - and use it to copy_contents from another object.
@@ -680,7 +681,8 @@ def test_fileinstance_copy_contents(app, db, dummy_location):
     db.session.commit()
 
     # Copy contents
-    dst.copy_contents(src, progress_callback=callback, location=dummy_location)
+    dst.copy_contents(
+        src, progress_callback=callback, default_location=dummy_location.uri)
     db.session.commit()
     assert dst.size == src.size
     assert dst.checksum == src.checksum
@@ -703,7 +705,7 @@ def test_fileinstance_copy_contents_invalid(app, db, dummy_location):
     # Create valid source
     data = b('this is some data')
     src = FileInstance.create()
-    src.set_contents(BytesIO(data), location=dummy_location)
+    src.set_contents(BytesIO(data), default_location=dummy_location.uri)
     db.session.commit()
 
     # Destination not writable
@@ -719,16 +721,16 @@ def test_fileinstance_send_file(app, db, dummy_location):
     """Test file instance send file."""
     f = FileInstance.create()
     # File not readable
-    pytest.raises(ValueError, f.send_file)
+    pytest.raises(FileInstanceUnreadableError, f.send_file)
 
     # Write data
     data = b("test file instance set contents")
-    f.set_contents(BytesIO(data), location=dummy_location)
+    f.set_contents(BytesIO(data), default_location=dummy_location.uri)
     db.session.commit()
 
     # Send data
     with app.test_request_context():
-        res = f.send_file()
+        res = f.send_file('test.txt')
         assert int(res.headers['Content-Length']) == len(data)
 
 

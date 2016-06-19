@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015 CERN.
+# Copyright (C) 2015, 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -22,29 +22,30 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-"""Module tests."""
+"""Storage module tests."""
 
 from __future__ import absolute_import, print_function
 
-from flask import Flask
+import pytest
 
-from invenio_files_rest import InvenioFilesREST
-
-
-def test_version():
-    """Test version import."""
-    from invenio_files_rest import __version__
-    assert __version__
+from invenio_files_rest.helpers import make_path
 
 
-def test_init():
-    """Test extension initialization."""
-    app = Flask('testapp')
-    ext = InvenioFilesREST(app)
-    assert 'invenio-files-rest' in app.extensions
+def test_make_path():
+    """Test path for files."""
+    myid = 'deadbeef-dead-dead-dead-deaddeafbeef'
+    base = '/base'
+    f = 'data'
 
-    app = Flask('testapp')
-    ext = InvenioFilesREST()
-    assert 'invenio-files-rest' not in app.extensions
-    ext.init_app(app)
-    assert 'invenio-files-rest' in app.extensions
+    assert make_path(base, myid, f, 1, 1) == \
+        '/base/d/eadbeef-dead-dead-dead-deaddeafbeef/data'
+    assert make_path(base, myid, f, 3, 1) == \
+        '/base/d/e/a/dbeef-dead-dead-dead-deaddeafbeef/data'
+    assert make_path(base, myid, f, 1, 3) == \
+        '/base/dea/dbeef-dead-dead-dead-deaddeafbeef/data'
+    assert make_path(base, myid, f, 2, 2) == \
+        '/base/de/ad/beef-dead-dead-dead-deaddeafbeef/data'
+
+    pytest.raises(AssertionError, make_path, base, myid, f, 1, 50)
+    pytest.raises(AssertionError, make_path, base, myid, f, 50, 1)
+    pytest.raises(AssertionError, make_path, base, myid, f, 50, 50)

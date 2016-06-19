@@ -252,15 +252,15 @@ class MultipartObjectModelView(ModelView):
     )
     column_labels = dict(
         id=_('ID'),
-        complete=_('Complete'),
+        completed=_('Complete'),
         file_instance=_('File'),
     )
     column_list = (
-        'upload_id', 'complete', 'created', 'updated', 'file_instance', )
+        'upload_id', 'completed', 'created', 'updated', 'file_instance', )
     column_details_list = (
-        'upload_id', 'complete', 'created', 'updated', 'file_instance', )
+        'upload_id', 'completed', 'created', 'updated', 'file_instance', )
     column_filters = (
-        'upload_id', 'complete', 'created', 'updated', )
+        'upload_id', 'completed', 'created', 'updated', )
     column_default_sort = ('upload_id', True)
     page_size = 25
 

@@ -74,7 +74,7 @@ from flask_cli import FlaskCLI
 from flask_menu import Menu
 from invenio_access import InvenioAccess
 from invenio_accounts import InvenioAccounts
-from invenio_accounts.views import blueprint
+from invenio_accounts.views import blueprint as accounts_blueprint
 from invenio_admin import InvenioAdmin
 from invenio_celery import InvenioCelery
 from invenio_db import InvenioDB, db
@@ -83,6 +83,7 @@ from invenio_rest import InvenioREST
 from invenio_files_rest import InvenioFilesREST
 from invenio_files_rest.models import Bucket, FileInstance, Location, \
     ObjectVersion
+from invenio_files_rest.views import blueprint
 
 # Create Flask application
 app = Flask(__name__)
@@ -109,6 +110,7 @@ InvenioAccounts(app)
 InvenioAccess(app)
 InvenioFilesREST(app)
 
+app.register_blueprint(accounts_blueprint)
 app.register_blueprint(blueprint)
 
 celery = InvenioCelery(app).celery
@@ -141,12 +143,14 @@ def files():
 
     # Bucket 1
     b1 = Bucket.create(loc)
+    b1.id = '00000000-0000-0000-0000-000000000000'
     for f in ['README.rst', 'LICENSE']:
         with open(join(srcroot, f), 'rb') as fp:
             ObjectVersion.create(b1, f, stream=fp)
 
-    # Bucket 1
+    # Bucket 2
     b2 = Bucket.create(loc)
+    b2.id = '11111111-1111-1111-1111-111111111111'
     k = 'AUTHORS.rst'
     with open(join(srcroot, 'CHANGES.rst'), 'rb') as fp:
         ObjectVersion.create(b2, k, stream=fp)
