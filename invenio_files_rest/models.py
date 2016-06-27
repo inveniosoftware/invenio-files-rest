@@ -63,7 +63,8 @@ from sqlalchemy.orm import validates
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy_utils.types import UUIDType
 
-from .errors import FileInstanceAlreadySetError, InvalidOperationError
+from .errors import FileInstanceAlreadySetError, InvalidOperationError, \
+    MultipartObjectAlreadyCompleted
 from .proxies import current_files_rest
 
 slug_pattern = re.compile('^[a-z][a-z0-9-]+$')
@@ -479,6 +480,22 @@ class FileInstance(db.Model, Timestamp):
             self.last_check_at = datetime.utcnow()
         return self.last_check
 
+    def update_contents(self, stream, chunk_size=None,
+                        progress_callback=None, **kwargs):
+        """Save contents of stream to this file.
+
+        :param obj: ObjectVersion instance from where this file is accessed
+            from.
+        :param stream: File-like stream.
+        """
+        if not self.writable:
+            raise ValueError("File instance is not writable.")
+        self.set_uri(
+            *self.storage(**kwargs).update(
+                stream, chunk_size=chunk_size,
+                progress_callback=progress_callback
+                ), readable=False, writable=True)
+
     def set_contents(self, stream, chunk_size=None, size=None, size_limit=None,
                      progress_callback=None, **kwargs):
         """Save contents of stream to this file.
@@ -868,10 +885,144 @@ class ObjectVersion(db.Model, Timestamp):
             ObjectVersion.query.filter_by(file_id=str(old_file.id)).update({
                 ObjectVersion.file_id: str(new_file.id)})
 
+    def serialize(self):
+        """Dummy serialization."""
+        return dict(
+            file_id=str(self.file.id),
+            version_id=str(self.version_id),
+            bucket=str(self.bucket.id)
+        )
+
+
+class MultipartObject(db.Model, Timestamp):
+    """Model for storing files in chunks.
+
+    A multipart object handles the file upload in chunks.
+
+    First it creates an ``upload_id`` and a file instance and updates the file
+    until the ``finalize()`` called. Then the multipart object will mark the
+    instance as completed and create a ObjectVersion with the uploaded file.
+    """
+
+    __tablename__ = 'files_multipart_object'
+
+    bucket_id = db.Column(
+        UUIDType,
+        db.ForeignKey(Bucket.id, ondelete='RESTRICT'),
+        default=uuid.uuid4,
+        primary_key=True, )
+    """Bucket identifier."""
+
+    key = db.Column(
+        db.String(255),
+        primary_key=True, )
+    """Key identifying the object."""
+
+    upload_id = db.Column(
+        UUIDType,
+        default=uuid.uuid4, )
+    """Identifier for the specific version of an object."""
+
+    file_id = db.Column(
+        UUIDType,
+        db.ForeignKey(FileInstance.id, ondelete='RESTRICT'), nullable=True)
+    """File instance for this object version.
+
+    A null value in this column defines that the object has been deleted.
+    """
+
+    complete = db.Column(db.Boolean, nullable=False, default=True)
+    """Defines if object is the completed."""
+
+    # Relationships definitions
+    bucket = db.relationship(Bucket, backref='multipart_objects')
+    """Relationship to buckets."""
+
+    file = db.relationship(FileInstance, backref='multipart_objects')
+    """Relationship to file instance."""
+
+    def __repr__(self):
+        """Return representation of the multipart object."""
+        return "{0}:{2}:{1}".format(
+            self.bucket_id, self.key, self.upload_id)
+
+    def set_contents(self, stream, size=None, chunk_size=None,
+                     progress_callback=None):
+        """Save contents of stream to file instance.
+
+        If a file instance has already been set, this methods raises an
+        ``MultipartObjectAlreadyCompleted`` exception.
+
+        :param stream: File-like stream.
+        :param size: Size of stream if known.
+        :param chunk_size: Desired chunk size to read stream in. It is up to
+            the storage interface if it respects this value.
+        """
+        if self.complete:
+            raise MultipartObjectAlreadyCompleted()
+
+        self.file.update_contents(
+            stream, size=size, chunk_size=chunk_size,
+            progress_callback=progress_callback, objectversion=self)
+
+        return self
+
+    def finalize(self):
+        """Move the multipart object to a versioned object."""
+        if self.complete:
+            raise MultipartObjectAlreadyCompleted()
+
+        self.file.writable = False
+        self.file.readable = True
+        # Create a Object version with the specific file
+        obj = ObjectVersion.create(
+            self.bucket, self.key
+        )
+        obj.set_file(self.file)
+        db.session.add(obj)
+        return obj
+
+    @classmethod
+    def create(cls, bucket, key, size, **kwargs):
+        """Create a new object in a bucket."""
+        bucket = bucket if isinstance(bucket, Bucket) else Bucket.get(bucket)
+        with db.session.begin_nested():
+            obj = cls(
+                bucket=bucket,
+                key=key,
+                upload_id=uuid.uuid4(),
+                complete=False,
+                file=FileInstance(),
+            )
+            # Update bucket size
+            bucket.size += size
+            # Create the file
+            db.session.add(obj)
+        return obj
+
+    @classmethod
+    def get(cls, upload_id):
+        """Fetch a specific multipart object."""
+        args = [
+            cls.complete.is_(False),
+            cls.upload_id == upload_id,
+        ]
+
+        return cls.query.filter(*args).one_or_none()
+
+    def serialize(self):
+        """Dummy serialization."""
+        return dict(
+            complete=str(self.complete),
+            file_id=str(self.file.id),
+            upload_id=str(self.upload_id),
+            bucket=str(self.bucket.id)
+        )
 
 __all__ = (
     'Bucket',
     'FileInstance',
     'Location',
+    'MultipartObject',
     'ObjectVersion',
 )

@@ -78,3 +78,6 @@ FILES_REST_STORAGE_PATH_SPLIT_LENGTH = 2
 
 FILES_REST_STORAGE_PATH_DIMENSIONS = 1
 """Number of directory levels created for the storage."""
+
+FILES_REST_UPLOAD_FACTORY = None
+"""Import path of factory used to parse chunked upload parameters."""

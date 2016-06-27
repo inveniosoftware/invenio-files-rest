@@ -38,6 +38,7 @@ from webargs.flaskparser import parser, use_kwargs
 from werkzeug.local import LocalProxy
 
 from .errors import FileSizeError, UnexpectedFileSizeError
+from .helpers import proccess_chunked_upload
 from .models import Bucket, Location, ObjectVersion
 from .proxies import current_files_rest, current_permission_factory
 from .serializer import json_serializer
@@ -566,6 +567,7 @@ class ObjectResource(ContentNegotiatedMethodView):
         bucket = Bucket.get(bucket_id)
         if bucket is None:
             abort(404, 'Bucket does not exist.')
+        # TODO: Check key is a valid key.
 
         permission = current_permission_factory(
             bucket, action='objects-update')
@@ -585,6 +587,38 @@ class ObjectResource(ContentNegotiatedMethodView):
             obj = ObjectVersion.create(bucket, key)
             obj.set_contents(uploaded_file)
         db.session.commit()
+
+        try:
+            if request.args.get('uploads') or request.form.get('upload_id'):
+                obj = proccess_chunked_upload(bucket, key, content_length)
+            else:
+                # check content size limit
+                size_limit, size_limit_reason = \
+                        current_files_rest.file_size_limiter(bucket=bucket)
+                if size_limit is not None and content_length > size_limit:
+                    abort(400, size_limit_reason)
+                uploaded_file = request.files['file']
+                if not uploaded_file:
+                    abort(400, 'file missing in request.')
+                # TODO: Pass storage class to get_or_create
+                obj = ObjectVersion.create(bucket, key)
+                obj.set_contents(uploaded_file, size=content_length)
+                db.session.commit()
+            # TODO: Fix response object to only include headers?
+            return {
+                'json': {
+                    'checksum': obj.file.checksum,
+                    'size': obj.file.size,
+                    'versionId': str(obj.version_id),
+                }
+            }
+        except SQLAlchemyError:
+            db.session.rollback()
+            current_app.logger.exception('Failed to create object.')
+            abort(500, 'Failed to create object.')
+        except UnexpectedFileSizeError:
+            db.session.rollback()
+            abort(400, 'File size different than Content-Length')
 
         # TODO: Fix response object to only include headers?
         return {
