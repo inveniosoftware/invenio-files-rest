@@ -35,7 +35,7 @@ Initialize database
 
 Create a user (for accessing admin):
 
-   $ flask -a app.py users create info@invenio-software.org -a
+   $ flask -a app.py users create info@inveniosoftware.org -a
 
 Load some test data:
 

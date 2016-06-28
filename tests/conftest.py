@@ -173,8 +173,8 @@ def objects(db, bucket):
 def users_data(db):
     """User data fixture."""
     return [
-        dict(email='user1@invenio-software.org', password='pass1'),
-        dict(email='user2@invenio-software.org', password='pass1'),
+        dict(email='user1@inveniosoftware.org', password='pass1'),
+        dict(email='user2@inveniosoftware.org', password='pass1'),
     ]
 
 

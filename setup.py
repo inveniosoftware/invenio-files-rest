@@ -107,7 +107,7 @@ setup(
     keywords='invenio files REST',
     license='GPLv2',
     author='CERN',
-    author_email='info@invenio-software.org',
+    author_email='info@inveniosoftware.org',
     url='https://github.com/inveniosoftware/invenio-files-rest',
     packages=packages,
     zip_safe=False,
