@@ -127,3 +127,10 @@ class MultipartMissingParts(MultipartException):
 
     code = 400
     description = "Not all parts have been uploaded."
+
+
+class MultipartNoPart(MultipartException):
+    """Exception raised by part factories when no part was detected."""
+
+    code = 400
+    description = "No upload part detected in request."

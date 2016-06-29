@@ -27,10 +27,12 @@
 from __future__ import absolute_import, print_function
 
 from pkg_resources import DistributionNotFound, get_distribution
+from werkzeug.exceptions import UnprocessableEntity
 from werkzeug.utils import cached_property, import_string
 
 from . import config
 from .cli import files as files_cmd
+from .errors import MultipartNoPart
 
 
 class _FilesRESTState(object):
@@ -83,12 +85,21 @@ class _FilesRESTState(object):
         return import_string(self.app.config.get('FILES_REST_SIZE_LIMITERS'))
 
     @cached_property
-    def uploadparts_schema_factory(self):
+    def part_factories(self):
         """Factory getting list of webargs schemas for parsing part number."""
         return [
             import_string(x) for x in
-            self.app.config.get('FILES_REST_MULTIPART_UPLOADPARTS_SCHEMAS')
+            self.app.config.get('FILES_REST_MULTIPART_PART_FACTORIES', [])
         ]
+
+    def multipart_partfactory(self):
+        """Factory to get content length, part number and stream for a part."""
+        for factory in self.part_factories:
+            try:
+                return factory()
+            except (MultipartNoPart, UnprocessableEntity):
+                pass
+        raise MultipartNoPart()
 
 
 class InvenioFilesREST(object):

@@ -83,9 +83,9 @@ FILES_REST_STORAGE_PATH_SPLIT_LENGTH = 2
 FILES_REST_STORAGE_PATH_DIMENSIONS = 2
 """Number of directory levels created for the storage."""
 
-FILES_REST_MULTIPART_UPLOADPARTS_SCHEMAS = [
-    'invenio_files_rest.views:default_partnumber_schema',
-    'invenio_files_rest.views:ngfileupload_partnumber_schema',
+FILES_REST_MULTIPART_PART_FACTORIES = [
+    'invenio_files_rest.views:default_partfactory',
+    'invenio_files_rest.views:ngfileupload_partfactory',
 ]
 """Import path of factory used to parse chunked upload parameters."""
 

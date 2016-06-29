@@ -231,8 +231,17 @@ def test_put_wrong_sizes(client, db, bucket, multipart, multipart_url):
 def test_put_ngfileupload(client, db, bucket, multipart, multipart_url):
     """Test invalid part sizes."""
     res = client.put(
-        multipart_url + '&_chunkNumber={0}'.format(1),
-        input_stream=BytesIO(b'a' * multipart.chunk_size),
+        multipart_url,
+        data={
+            '_chunkNumber': 1,
+            '_currentChunkSize': multipart.chunk_size,
+            '_chunkSize': multipart.chunk_size,
+            '_totalSize': multipart.size,
+            'file': (
+                BytesIO(b'a' * multipart.chunk_size),
+                multipart.key
+            )
+        }
     )
     assert res.status_code == 200
 

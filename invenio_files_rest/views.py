@@ -34,11 +34,9 @@ from flask_login import current_user
 from invenio_db import db
 from invenio_rest import ContentNegotiatedMethodView
 from webargs import fields
-from webargs.flaskparser import parser, use_kwargs
-from werkzeug.exceptions import UnprocessableEntity
+from webargs.flaskparser import use_kwargs
 
-from .errors import FileSizeError, MultipartInvalidChunkSize, \
-    MultipartInvalidPartNumber
+from .errors import FileSizeError, MultipartInvalidChunkSize
 from .models import Bucket, MultipartObject, ObjectVersion, Part
 from .proxies import current_files_rest, current_permission_factory
 from .serializer import json_serializer
@@ -51,23 +49,10 @@ blueprint = Blueprint(
     url_prefix='/files'
 )
 
-default_partnumber_schema = {
-    'part_number': fields.Int(
-        load_from='partNumber',
-        location='query',
-        required=True,
-    ),
-}
 
-ngfileupload_partnumber_schema = {
-    'part_number': fields.Int(
-        load_from='_chunkNumber',
-        location='query',
-        required=True,
-    ),
-}
-
-
+#
+# Helpers
+#
 def as_uuid(val):
     """Convert to UUID."""
     try:
@@ -82,6 +67,65 @@ def minsize_validator(val):
         raise FileSizeError()
 
 
+#
+# Part upload factories
+#
+@use_kwargs({
+    'part_number': fields.Int(
+        load_from='partNumber',
+        location='query',
+        required=True,
+    ),
+    'content_length': fields.Int(
+        load_from='Content-Length',
+        location='headers',
+        required=True,
+        validate=minsize_validator,
+    ),
+    'content_type': fields.Str(
+        load_from='Content-Type',
+        location='headers',
+    ),
+    'content_md5': fields.Str(
+        load_from='Content-MD5',
+        location='headers',
+    ),
+})
+def default_partfactory(part_number=None, content_length=None,
+                        content_type=None, content_md5=None):
+    """Default part factory."""
+    return content_length, part_number, request.stream, content_type, \
+        content_md5
+
+
+@use_kwargs({
+    'part_number': fields.Int(
+        load_from='_chunkNumber',
+        location='form',
+        required=True,
+    ),
+    'content_length': fields.Int(
+        load_from='_currentChunkSize',
+        location='form',
+        required=True,
+        validate=minsize_validator,
+    ),
+    'uploaded_file': fields.Raw(
+        load_from='file',
+        location='files',
+        required=True,
+    ),
+})
+def ngfileupload_partfactory(part_number=None, content_length=None,
+                             uploaded_file=None):
+    """Part factory for ng-file-upload."""
+    return content_length, part_number, uploaded_file.stream, \
+        uploaded_file.headers.get('Content-Type'), None
+
+
+#
+# Object retrieval
+#
 def pass_bucket(f):
     """Decorator to retrieve a bucket."""
     @wraps(f)
@@ -108,6 +152,9 @@ def pass_multipart(with_completed=False):
     return decorate
 
 
+#
+# Permission checking
+#
 def check_permission(permission, hidden=True):
     """Check if permission is allowed.
 
@@ -155,6 +202,9 @@ need_bucket_permission = partial(
 )
 
 
+#
+# Records-UI integration
+#
 def file_download_ui(pid, record, **kwargs):
     """File download view for a given record.
 
@@ -188,6 +238,9 @@ def file_download_ui(pid, record, **kwargs):
         ))
 
 
+#
+# REST resources
+#
 class LocationResource(ContentNegotiatedMethodView):
     """"Service resource."""
 
@@ -453,36 +506,24 @@ class ObjectResource(ContentNegotiatedMethodView):
             }
         )
 
-    @use_kwargs(upload_headers)
     @pass_multipart(with_completed=True)
-    def multipart_uploadpart(self, multipart, content_md5=None,
-                             content_length=None):
+    def multipart_uploadpart(self, multipart):
         """Upload a part."""
-        if content_length != multipart.chunk_size:
+        content_length, part_number, stream, content_type, content_md5 = \
+            current_files_rest.multipart_partfactory()
+
+        if content_length and content_length != multipart.chunk_size:
             raise MultipartInvalidChunkSize()
-
-        # Extract part number from request.
-        data = None
-        for schema in current_files_rest.uploadparts_schema_factory:
-            try:
-                data = parser.parse(schema)
-                if data:
-                    break
-            except UnprocessableEntity:
-                pass
-
-        if not data or data.get('part_number') is None:
-            raise MultipartInvalidPartNumber()
-        part_number = data['part_number']
 
         # Create part
         try:
             p = Part.get_or_create(multipart, part_number)
-            p.set_contents(request.stream)
+            p.set_contents(stream)
             db.session.commit()
         except Exception:
             # We remove the Part since incomplete data may have been written to
-            # disk (e.g. client closed connection etc.)
+            # disk (e.g. client closed connection etc.) so it must be
+            # reuploaded.
             db.session.rollback()
             Part.delete(multipart, part_number)
             raise

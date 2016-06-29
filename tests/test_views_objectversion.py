@@ -193,7 +193,7 @@ def test_post(client, headers, permissions, bucket):
         assert resp.status_code == expected
 
 
-def test_put(client, bucket, permissions, get_md5):
+def test_put(client, bucket, permissions, get_md5, get_json):
     """Test upload of an object."""
     cases = [
         (None, 404),
