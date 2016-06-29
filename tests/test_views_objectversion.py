@@ -205,7 +205,7 @@ def test_put(client, bucket, permissions, get_md5, get_json):
 
     key = 'test.txt'
     data = b'updated_content'
-    checksum = get_md5(data, prefix=False)
+    checksum = get_md5(data, prefix=True)
     object_url = url_for(
         'invenio_files_rest.object_api', bucket_id=bucket.id, key=key)
 
@@ -218,10 +218,12 @@ def test_put(client, bucket, permissions, get_md5, get_json):
         assert resp.status_code == expected
 
         if expected == 200:
+            assert resp.get_etag()[0] == checksum
+
             resp = client.get(object_url)
             assert resp.status_code == 200
             assert resp.data == data
-            assert resp.content_md5 == checksum
+            assert resp.content_md5 == checksum[4:]
 
 
 def test_put_versioning(client, bucket, permissions, get_md5, get_json):

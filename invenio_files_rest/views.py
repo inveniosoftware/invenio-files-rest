@@ -409,9 +409,8 @@ class ObjectResource(ContentNegotiatedMethodView):
             )
         return obj
 
-    @staticmethod
     @use_kwargs(upload_headers)
-    def create_object(bucket, key, uploaded_file=None, content_md5=None,
+    def create_object(self, bucket, key, uploaded_file=None, content_md5=None,
                       content_length=None):
         """Create a new object."""
         # Initial validation of size based on Content-Length.
@@ -429,7 +428,14 @@ class ObjectResource(ContentNegotiatedMethodView):
             obj.set_contents(
                 request.stream, size=content_length, size_limit=size_limit)
         db.session.commit()
-        return obj
+        return self.make_response(
+            data=obj,
+            context={
+                'class': ObjectVersion,
+                'bucket': bucket,
+            },
+            etag=obj.file.checksum
+        )
 
     @need_permissions(
         lambda self, bucket, obj, *args: obj,
