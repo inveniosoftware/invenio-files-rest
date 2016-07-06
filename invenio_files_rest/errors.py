@@ -49,6 +49,8 @@ class UnexpectedFileSizeError(StorageError):
 class InvalidOperationError(FilesException):
     """Exception raised when an invalid operation is performed."""
 
+    code = 403
+
 
 class FileInstanceAlreadySetError(InvalidOperationError):
     """Exception raised when file instance already set on object."""
