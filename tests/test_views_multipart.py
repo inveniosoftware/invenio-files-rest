@@ -233,10 +233,10 @@ def test_put_ngfileupload(client, db, bucket, multipart, multipart_url):
     res = client.put(
         multipart_url,
         data={
-            '_chunkNumber': 1,
-            '_currentChunkSize': multipart.chunk_size,
-            '_chunkSize': multipart.chunk_size,
-            '_totalSize': multipart.size,
+            '_chunkNumber': '0',
+            '_currentChunkSize': str(multipart.chunk_size),
+            '_chunkSize': str(multipart.chunk_size),
+            '_totalSize': str(multipart.size),
             'file': (
                 BytesIO(b'a' * multipart.chunk_size),
                 multipart.key

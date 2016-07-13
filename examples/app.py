@@ -88,7 +88,7 @@ from invenio_files_rest.views import blueprint
 # Create Flask application
 app = Flask(__name__)
 app.config.update(dict(
-    CELERY_ALWAYS_EAGER=False,
+    CELERY_ALWAYS_EAGER=True,
     CELERY_CACHE_BACKEND='memory',
     CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
     CELERY_RESULT_BACKEND='cache',

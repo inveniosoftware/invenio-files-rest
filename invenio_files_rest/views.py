@@ -518,8 +518,13 @@ class ObjectResource(ContentNegotiatedMethodView):
         content_length, part_number, stream, content_type, content_md5 = \
             current_files_rest.multipart_partfactory()
 
-        if content_length and content_length != multipart.chunk_size:
-            raise MultipartInvalidChunkSize()
+        if content_length:
+            ck = multipart.last_part_size if \
+                part_number == multipart.last_part_number \
+                else multipart.chunk_size
+
+            if ck != content_length:
+                raise MultipartInvalidChunkSize()
 
         # Create part
         try:
