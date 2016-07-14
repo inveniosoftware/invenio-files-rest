@@ -26,7 +26,7 @@
 
 import json
 
-from flask import Response, current_app, url_for, request
+from flask import Response, current_app, request, url_for
 from marshmallow import Schema, fields, missing, post_dump
 
 from .models import Bucket, MultipartObject, ObjectVersion, Part
