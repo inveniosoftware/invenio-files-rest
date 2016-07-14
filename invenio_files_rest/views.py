@@ -224,15 +224,21 @@ def file_download_ui(pid, record, **kwargs):
     # Extract file from record.
     fileobj = current_files_rest.record_file_factory(
         pid, record, request.view_args.get('filename'))
+
     if not fileobj:
         abort(404)
 
+    obj = fileobj.obj
+
+    # Check permissions
+    ObjectResource.check_object_permission(obj)
+
     # Send file.
     return ObjectResource.send_object(
-        fileobj.bucket, fileobj,
+        obj.bucket, obj,
         expected_chksum=fileobj.get('checksum'),
         logger_data=dict(
-            bucket_id=fileobj.bucket_id,
+            bucket_id=obj.bucket_id,
             pid_type=pid.pid_type,
             pid_value=pid.pid_value,
         ))
@@ -392,12 +398,8 @@ class ObjectResource(ContentNegotiatedMethodView):
     # ObjectVersion helpers
     #
     @staticmethod
-    def get_object(bucket, key, version_id):
+    def check_object_permission(obj):
         """Retrieve object and abort if it doesn't exists."""
-        obj = ObjectVersion.get(bucket, key, version_id=version_id)
-        if not obj:
-            abort(404, 'Object does not exists.')
-
         check_permission(current_permission_factory(
             obj,
             'object-read'
@@ -407,6 +409,16 @@ class ObjectResource(ContentNegotiatedMethodView):
                 current_permission_factory(obj, 'object-read-version'),
                 hidden=False
             )
+
+    @classmethod
+    def get_object(cls, bucket, key, version_id):
+        """Retrieve object and abort if it doesn't exists."""
+        obj = ObjectVersion.get(bucket, key, version_id=version_id)
+        if not obj:
+            abort(404, 'Object does not exists.')
+
+        cls.check_object_permission(obj)
+
         return obj
 
     @use_kwargs(upload_headers)
