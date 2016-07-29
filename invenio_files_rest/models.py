@@ -433,9 +433,16 @@ class Bucket(db.Model, Timestamp):
 
     @ensure_unlocked()
     def remove(self):
-        """Permanently remove a bucket and all objects."""
-        # 1) remove all object versions 2) remove bucket.
-        raise NotImplementedError()
+        """Permanently remove a bucket and all objects (including versions).
+
+        Note the method does not remove the associated file instances which
+        must be garbage collected.
+        """
+        with db.session.begin_nested():
+            ObjectVersion.query.filter_by(
+                bucket_id=self.id
+            ).delete()
+            self.query.filter_by(id=self.id).delete()
 
 
 class BucketTag(db.Model):
@@ -920,7 +927,12 @@ class ObjectVersion(db.Model, Timestamp):
         :returns: ``self``.
         """
         with db.session.begin_nested():
-            db.session.delete(self)
+            self.query.filter_by(
+                bucket_id=self.bucket_id,
+                key=self.key,
+                version_id=self.version_id,
+            ).delete()
+
         return self
 
     @classmethod

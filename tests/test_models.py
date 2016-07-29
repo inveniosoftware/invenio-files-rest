@@ -32,8 +32,9 @@ from os.path import getsize
 import pytest
 from six import BytesIO, b
 
-from invenio_files_rest.errors import FileInstanceAlreadySetError, \
-    FileInstanceUnreadableError, InvalidKeyError, InvalidOperationError
+from invenio_files_rest.errors import BucketLockedError, \
+    FileInstanceAlreadySetError, FileInstanceUnreadableError, \
+    InvalidKeyError, InvalidOperationError
 from invenio_files_rest.models import Bucket, BucketTag, FileInstance, \
     Location, ObjectVersion
 
@@ -80,6 +81,20 @@ def test_location_validation(app, db):
     pytest.raises(ValueError, Location, name='UPPER', uri='file://', )
     pytest.raises(ValueError, Location, name='1ab', uri='file://', )
     pytest.raises(ValueError, Location, name='a' * 21, uri='file://', )
+
+
+def test_bucket_removal(app, db, bucket, objects):
+    """Test removal of bucket."""
+    assert Bucket.query.count() == 1
+    assert ObjectVersion.query.count() == 4
+    assert FileInstance.query.count() == 4
+    bucket.locked = True
+    pytest.raises(BucketLockedError, bucket.remove)
+    bucket.locked = False
+    bucket.remove()
+    assert Bucket.query.count() == 0
+    assert ObjectVersion.query.count() == 0
+    assert FileInstance.query.count() == 4
 
 
 def test_bucket_create_object(app, db):
