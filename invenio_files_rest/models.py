@@ -435,14 +435,23 @@ class Bucket(db.Model, Timestamp):
     def remove(self):
         """Permanently remove a bucket and all objects (including versions).
 
-        Note the method does not remove the associated file instances which
-        must be garbage collected.
+        .. warning::
+
+           This by-passes the normal versioning and should only be used when
+           you want to permanently delete a bucket and its objects. Otherwise
+           use :py:data:`Bucket.delete()`.
+
+           Note the method does not remove the associated file instances which
+           must be garbage collected.
+
+        :returns: ``self``.
         """
         with db.session.begin_nested():
             ObjectVersion.query.filter_by(
                 bucket_id=self.id
             ).delete()
             self.query.filter_by(id=self.id).delete()
+        return self
 
 
 class BucketTag(db.Model):
@@ -919,10 +928,14 @@ class ObjectVersion(db.Model, Timestamp):
     def remove(self):
         """Permanently remove a specific object version from the database.
 
-        .. note::
+        .. warning::
 
-           This overrides the normal versioning and should only be used when
-           you want to permanently delete an object.
+           This by-passes the normal versioning and should only be used when
+           you want to permanently delete a specific object version. Otherwise
+           use :py:data:`ObjectVersion.delete()`.
+
+           Note the method does not remove the associated file instance which
+           must be garbage collected.
 
         :returns: ``self``.
         """
