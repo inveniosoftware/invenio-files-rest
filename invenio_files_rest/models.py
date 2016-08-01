@@ -377,13 +377,15 @@ class Bucket(db.Model, Timestamp):
         return {t.key: t.value for t in self.tags}
 
     @classmethod
-    def create(cls, location=None, storage_class=None):
-        """Create a bucket.
+    def create(cls, location=None, storage_class=None, **kwargs):
+        r"""Create a bucket.
 
         :param location: Location of bucket (instance or name).
             Default: Default location.
         :param storage_class: Storage class of bucket.
             Default: Default storage class.
+        :param \**kwargs: Keyword arguments are forwarded to the class
+            constructor.
         :returns: Created bucket.
         """
         with db.session.begin_nested():
@@ -395,7 +397,9 @@ class Bucket(db.Model, Timestamp):
             obj = cls(
                 location=location,
                 default_storage_class=storage_class or current_app.config[
-                    'FILES_REST_DEFAULT_STORAGE_CLASS'])
+                    'FILES_REST_DEFAULT_STORAGE_CLASS'],
+                **kwargs
+            )
             db.session.add(obj)
         return obj
 

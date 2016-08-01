@@ -97,6 +97,13 @@ def test_bucket_removal(app, db, bucket, objects):
     assert FileInstance.query.count() == 4
 
 
+def test_bucket_kwargs_creation(app, db, dummy_location):
+    """Test kwargs during object creation."""
+    b = Bucket.create(quota_size=100, max_file_size=10)
+    assert b.quota_size == 100
+    assert b.max_file_size == 10
+
+
 def test_bucket_create_object(app, db):
     """Test bucket creation."""
     with db.session.begin_nested():
@@ -117,6 +124,7 @@ def test_bucket_create_object(app, db):
             app.config['FILES_REST_DEFAULT_STORAGE_CLASS']
         assert b.size == 0
         assert b.quota_size is None
+        assert b.max_file_size is None
         assert b.deleted is False
 
     # __repr__ test
