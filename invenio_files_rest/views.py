@@ -105,6 +105,24 @@ def default_partfactory(part_number=None, content_length=None,
 
 
 @use_kwargs({
+    'content_md5': fields.Str(
+        load_from='Content-MD5',
+        location='headers',
+        missing=None,
+    ),
+    'content_length': fields.Int(
+        load_from='Content-Length',
+        location='headers',
+        required=True,
+        validate=minsize_validator,
+    )
+})
+def stream_uploadfactory(content_md5=None, content_length=None):
+    """Get default put factory."""
+    return request.stream, content_length, content_md5
+
+
+@use_kwargs({
     'part_number': fields.Int(
         load_from='_chunkNumber',
         location='form',
@@ -127,6 +145,32 @@ def ngfileupload_partfactory(part_number=None, content_length=None,
     """Part factory for ng-file-upload."""
     return content_length, part_number, uploaded_file.stream, \
         uploaded_file.headers.get('Content-Type'), None
+
+
+@use_kwargs({
+    'total_size': fields.Int(
+        load_from='_totalSize',
+        location='form',
+        required=True,
+    ),
+    'content_type': fields.Str(
+        load_from='Content-Type',
+        location='headers',
+        required=True,
+    ),
+})
+def ngfileupload_uploadfactory(total_size=None, content_type=None):
+    """Get default put factory."""
+    if not content_type.startswith('multipart/form-data'):
+        abort(422)
+
+    content_length, part_number, stream, content_type, content_md5 = \
+        ngfileupload_partfactory()
+
+    if content_length != total_size:
+        abort(422)
+
+    return stream, content_length, content_md5
 
 
 #
@@ -375,21 +419,6 @@ class ObjectResource(ContentNegotiatedMethodView):
         ),
     }
 
-    upload_headers = {
-        'content_md5': fields.Str(
-            load_from='Content-MD5',
-            location='headers',
-            missing=None,
-        ),
-        'content_length': fields.Int(
-            load_from='Content-Length',
-            location='headers',
-            required=True,
-            validate=minsize_validator,
-
-        )
-    }
-
     multipart_init_args = {
         'size': fields.Int(
             locations=('query', 'json'),
@@ -428,16 +457,17 @@ class ObjectResource(ContentNegotiatedMethodView):
 
         return obj
 
-    @use_kwargs(upload_headers)
-    def create_object(self, bucket, key, uploaded_file=None, content_md5=None,
-                      content_length=None):
+    def create_object(self, bucket, key):
         """Create a new object."""
         # Initial validation of size based on Content-Length.
         # User can tamper with Content-Length, so this is just an initial up
         # front check. The storage subsystem must validate the size limit as
         # well.
+        stream, content_length, content_md5 = \
+            current_files_rest.upload_factory()
+
         size_limit = bucket.size_limit
-        if size_limit and content_length > size_limit:
+        if content_length and size_limit and content_length > size_limit:
             desc = 'File size limit exceeded.' \
                 if isinstance(size_limit, int) else size_limit.reason
             raise FileSizeError(description=desc)
@@ -445,7 +475,7 @@ class ObjectResource(ContentNegotiatedMethodView):
         with db.session.begin_nested():
             obj = ObjectVersion.create(bucket, key)
             obj.set_contents(
-                request.stream, size=content_length, size_limit=size_limit)
+                stream, size=content_length, size_limit=size_limit)
         db.session.commit()
         return self.make_response(
             data=obj,

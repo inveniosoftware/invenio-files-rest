@@ -344,6 +344,24 @@ def test_put_error(client, bucket):
     assert len(list(opener.opendir(bucket.location.uri).walk('.'))) == 3
 
 
+def test_put_multipartform(client, bucket):
+    """Test upload via multipart/form-data."""
+    object_url = url_for(
+        'invenio_files_rest.object_api', bucket_id=bucket.id, key='test.txt')
+
+    res = client.put(object_url, data={
+        '_chunkNumber': '0',
+        '_currentChunkSize': '100',
+        '_chunkSize': '10000000',
+        '_totalSize': '100',
+        'file': (
+            BytesIO(b'a' * 100),
+            'test.txt'
+        )
+    })
+    assert res.status_code == 200
+
+
 @pytest.mark.parametrize('user, expected', [
     (None, 404),
     ('auth', 404),

@@ -26,6 +26,7 @@
 
 from __future__ import absolute_import, print_function
 
+from flask import abort
 from pkg_resources import DistributionNotFound, get_distribution
 from werkzeug.exceptions import UnprocessableEntity
 from werkzeug.utils import cached_property, import_string
@@ -92,6 +93,14 @@ class _FilesRESTState(object):
             self.app.config.get('FILES_REST_MULTIPART_PART_FACTORIES', [])
         ]
 
+    @cached_property
+    def upload_factories(self):
+        """Factory getting list of webargs schemas for parsing part number."""
+        return [
+            import_string(x) for x in
+            self.app.config.get('FILES_REST_UPLOAD_FACTORIES', [])
+        ]
+
     def multipart_partfactory(self):
         """Factory to get content length, part number and stream for a part."""
         for factory in self.part_factories:
@@ -100,6 +109,15 @@ class _FilesRESTState(object):
             except (MultipartNoPart, UnprocessableEntity):
                 pass
         raise MultipartNoPart()
+
+    def upload_factory(self):
+        """Factory to get stream, content length and checksum for a file."""
+        for factory in self.upload_factories:
+            try:
+                return factory()
+            except UnprocessableEntity:
+                pass
+        abort(400)
 
 
 class InvenioFilesREST(object):

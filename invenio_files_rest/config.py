@@ -89,6 +89,13 @@ FILES_REST_MULTIPART_PART_FACTORIES = [
 ]
 """Import path of factory used to parse chunked upload parameters."""
 
+FILES_REST_UPLOAD_FACTORIES = [
+
+    'invenio_files_rest.views:ngfileupload_uploadfactory',
+    'invenio_files_rest.views:stream_uploadfactory',
+]
+"""Import path of factory used to parse file uploads."""
+
 FILES_REST_MULTIPART_MAX_PARTS = 10000
 """Maximum number of parts."""
 
