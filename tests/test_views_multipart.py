@@ -91,6 +91,15 @@ def test_post_init_querystring(client, bucket, get_json):
     assert res.status_code == 200
 
 
+def test_get_init_not_allowed(client, bucket, get_json):
+    """Test get request to ?uploads."""
+    res = client.get(
+        obj_url(bucket),
+        query_string='uploads',
+    )
+    assert res.status_code == 405
+
+
 def test_post_invalid_partsizes(client, headers, bucket, get_json):
     """Test invalid multipart init."""
     # Part size too large
@@ -428,6 +437,15 @@ def test_delete_invalid(client, db, multipart, multipart_url,
     db.session.commit()
     res = client.delete(multipart_url)
     assert res.status_code == 404
+
+
+def test_delete_init_not_allowed(client, bucket):
+    """Test get request to ?uploads."""
+    res = client.delete(
+        obj_url(bucket),
+        query_string='uploads',
+    )
+    assert res.status_code == 405
 
 
 def test_get_listuploads(client, db, bucket, multipart, multipart_url,

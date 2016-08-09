@@ -33,6 +33,7 @@ from flask import Blueprint, abort, current_app, request
 from flask_login import current_user
 from invenio_db import db
 from invenio_rest import ContentNegotiatedMethodView
+from marshmallow import missing
 from webargs import fields
 from webargs.flaskparser import use_kwargs
 
@@ -65,6 +66,11 @@ def minsize_validator(val):
     """Validate Content-Length header."""
     if val < current_app.config['FILES_REST_MIN_FILE_SIZE']:
         raise FileSizeError()
+
+
+def invalid_subresource_validator(val):
+    """Ensure subresource."""
+    abort(405)
 
 
 #
@@ -274,11 +280,9 @@ class BucketResource(ContentNegotiatedMethodView):
     get_args = {
         'versions': fields.Raw(
             location='query',
-            missing=False,
         ),
         'uploads': fields.Raw(
             location='query',
-            missing=False,
         )
     }
 
@@ -300,14 +304,14 @@ class BucketResource(ContentNegotiatedMethodView):
     )
     def listobjects(self, bucket, versions):
         """List objects in a bucket."""
-        if versions is not False:
+        if versions is not missing:
             check_permission(
                 current_permission_factory(bucket, 'bucket-read-versions'),
                 hidden=False
             )
         return self.make_response(
             data=ObjectVersion.get_by_bucket(
-                bucket.id, versions=versions is not False).limit(1000).all(),
+                bucket.id, versions=versions is not missing).limit(1000).all(),
             context={
                 'class': ObjectVersion,
                 'bucket': bucket,
@@ -319,7 +323,7 @@ class BucketResource(ContentNegotiatedMethodView):
     @pass_bucket
     def get(self, bucket=None, versions=None, uploads=None):
         """Get list of objects in the bucket."""
-        if uploads is not False:
+        if uploads is not missing:
             return self.multipart_listuploads(bucket)
         else:
             return self.listobjects(bucket, versions)
@@ -343,7 +347,11 @@ class ObjectResource(ContentNegotiatedMethodView):
             location='query',
             load_from='uploadId',
             missing=None,
-        )
+        ),
+        'uploads': fields.Raw(
+            location='query',
+            validate=invalid_subresource_validator,
+        ),
     }
 
     delete_args = get_args
@@ -351,7 +359,6 @@ class ObjectResource(ContentNegotiatedMethodView):
     post_args = {
         'uploads': fields.Raw(
             location='query',
-            missing=False,
         ),
         'upload_id': fields.UUID(
             location='query',
@@ -590,7 +597,8 @@ class ObjectResource(ContentNegotiatedMethodView):
     #
     @use_kwargs(get_args)
     @pass_bucket
-    def get(self, bucket=None, key=None, version_id=None, upload_id=None):
+    def get(self, bucket=None, key=None, version_id=None, upload_id=None,
+            uploads=None):
         """Get object or list parts of a multpart upload."""
         if upload_id:
             return self.multipart_listparts(bucket, key, upload_id)
@@ -603,7 +611,7 @@ class ObjectResource(ContentNegotiatedMethodView):
     @need_bucket_permission('bucket-update')
     def post(self, bucket=None, key=None, uploads=None, upload_id=None):
         """Upload a new object or start/complete a multipart upload."""
-        if uploads is not False:
+        if uploads is not missing:
             return self.multipart_init(bucket, key)
         elif upload_id is not None:
             return self.multipart_complete(bucket, key, upload_id)
@@ -621,7 +629,8 @@ class ObjectResource(ContentNegotiatedMethodView):
 
     @use_kwargs(delete_args)
     @pass_bucket
-    def delete(self, bucket=None, key=None, version_id=None, upload_id=None):
+    def delete(self, bucket=None, key=None, version_id=None, upload_id=None,
+               uploads=None):
         """Delete an object or abort a multipart upload."""
         if upload_id is not None:
             return self.multipart_delete(bucket, key, upload_id)
