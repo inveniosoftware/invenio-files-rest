@@ -100,6 +100,15 @@ def test_get(client, headers, permissions, bucket, objects, get_json):
             assert len(data['contents']) == 2
             assert all([x['is_head'] for x in data['contents']])
 
+            assert set(data['contents'][0].keys()) == {
+                'checksum', 'created', 'delete_marker', 'is_head', 'key',
+                'links', 'mimetype', 'size', 'updated', 'version_id',
+            }
+            assert set(data.keys()) == {
+                'contents', 'created', 'id', 'links', 'locked',
+                'max_file_size', 'quota_size', 'size', 'updated',
+            }
+
         # Non-existing bucket
         resp = client.get(url_for(
             'invenio_files_rest.bucket_api',

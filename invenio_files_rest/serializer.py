@@ -72,7 +72,7 @@ class ObjectVersionSchema(BaseSchema):
     is_head = fields.Boolean()
     mimetype = fields.Str()
     size = fields.Integer(attribute='file.size')
-    checksum = fields.Integer(attribute='file.checksum')
+    checksum = fields.String(attribute='file.checksum')
     delete_marker = fields.Boolean(attribute='deleted')
 
     def dump_links(self, o):
