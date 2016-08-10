@@ -30,7 +30,7 @@ import json
 
 import pytest
 from flask import url_for
-from mock import patch
+from mock import MagicMock, patch
 from six import BytesIO
 from testutils import BadBytesIO, login_user
 
@@ -373,8 +373,23 @@ def test_post_complete(client, headers, permissions, bucket, multipart,
     """Test complete multipart upload."""
     login_user(client, permissions[user])
 
-    # Initiate multipart upload
+    # Mock celery task to emulate real usage.
+    def _mock_celery_result():
+        yield False
+        yield False
+        merge_multipartobject(str(multipart.upload_id))
+        yield True
+
+    result_iter = _mock_celery_result()
+
+    task_result = MagicMock()
+    task_result.ready = MagicMock(side_effect=lambda *args: next(result_iter))
+    task_result.successful = MagicMock(return_value=True)
+
+    # Complete multipart upload
     with patch('invenio_files_rest.views.merge_multipartobject') as task:
+        task.delay = MagicMock(return_value=task_result)
+
         res = client.post(multipart_url)
         assert res.status_code == expected
 
@@ -382,27 +397,70 @@ def test_post_complete(client, headers, permissions, bucket, multipart,
             data = get_json(res)
             assert data['completed'] is True
             assert task.called_with(str(multipart.upload_id))
-
-            # Cannot complete the multipart object a second time
-            res = client.post(multipart_url)
-            assert res.status_code == 403
-
-            # Multipart object still exists.
-            data = get_json(client.get(multipart_url), code=200)
-            assert data['completed'] is True
-            assert len(data['parts']) == multipart.last_part_number + 1
-
-            # Object doesn't exists yet.
-            assert client.get(data['links']['object']).status_code == 404
-
-            # Run merge
-            merge_multipartobject(str(multipart.upload_id))
+            # Two whitespaces expected to have been sent to client before
+            # JSON was sent.
+            assert res.data.startswith(b'  {')
 
             # Multipart object no longer exists
             assert client.get(multipart_url).status_code == 404
 
             # Object exists
             assert client.get(data['links']['object']).status_code == 200
+
+
+def test_post_complete_fail(client, headers, bucket, multipart,
+                            multipart_url, parts, get_json):
+    """Test completing multipart when merge fails."""
+    # Mock celery task to emulate real usage.
+    task_result = MagicMock()
+    task_result.ready = MagicMock(side_effect=[False, False, True])
+    task_result.successful = MagicMock(return_value=False)
+
+    # Complete multipart upload
+    with patch('invenio_files_rest.views.merge_multipartobject') as task:
+        task.delay = MagicMock(return_value=task_result)
+
+        res = client.post(multipart_url)
+        data = get_json(res, code=200)
+        assert res.data.startswith(b'  {')
+        assert data['status'] == 500
+        assert data['message'] == 'Job failed.'
+
+        # Multipart object still exists.
+        data = get_json(client.get(multipart_url), code=200)
+        assert data['completed'] is True
+
+        # Object doesn't exists yet.
+        assert client.get(data['links']['object']).status_code == 404
+
+
+def test_post_complete_timeout(app, client, headers, bucket, multipart,
+                               multipart_url, parts, get_json):
+    """Test completing multipart when merge fails."""
+    max_rounds = int(
+        app.config['FILES_REST_TASK_WAIT_MAX_SECONDS'] //
+        app.config['FILES_REST_TASK_WAIT_INTERVAL'])
+
+    # Mock celery task to emulate real usage.
+    task_result = MagicMock()
+    task_result.ready = MagicMock(return_value=False)
+
+    # Complete multipart upload
+    with patch('invenio_files_rest.views.merge_multipartobject') as task:
+        task.delay = MagicMock(return_value=task_result)
+
+        res = client.post(multipart_url)
+        data = get_json(res, code=200)
+        assert res.data.startswith(b' ' * max_rounds)
+        assert data['status'] == 500
+        assert data['message'] == 'Job timed out.'
+
+        # Multipart object still exists.
+        data = get_json(client.get(multipart_url), code=200)
+        assert data['completed'] is True
+
+        # Object doesn't exists yet.
+        assert client.get(data['links']['object']).status_code == 404
 
 
 def test_delete(client, db, bucket, multipart, multipart_url, permissions,

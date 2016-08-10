@@ -90,7 +90,6 @@ FILES_REST_MULTIPART_PART_FACTORIES = [
 """Import path of factory used to parse chunked upload parameters."""
 
 FILES_REST_UPLOAD_FACTORIES = [
-
     'invenio_files_rest.views:ngfileupload_uploadfactory',
     'invenio_files_rest.views:stream_uploadfactory',
 ]
@@ -107,3 +106,9 @@ FILES_REST_MULTIPART_CHUNKSIZE_MAX = 5 * 1024 * 1024 * 1024  # 5gb
 
 FILES_REST_MULTIPART_EXPIRES = timedelta(days=4)
 """Time delta after which a multipart upload is considered expired."""
+
+FILES_REST_TASK_WAIT_INTERVAL = 2
+"""Interval in seconds between sending a whitespace to not close connection."""
+
+FILES_REST_TASK_WAIT_MAX_SECONDS = 600
+"""Maximum number of seconds to wait for a task to finish."""

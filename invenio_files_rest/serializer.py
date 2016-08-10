@@ -25,10 +25,12 @@
 """REST API serializers."""
 
 import json
+from time import sleep
 
-from flask import Response, current_app, request, url_for
+from flask import current_app, request, url_for
 from marshmallow import Schema, fields, missing, post_dump
 
+from .errors import FilesException
 from .models import Bucket, MultipartObject, ObjectVersion, Part
 
 
@@ -219,8 +221,43 @@ def _format_args():
         )
 
 
+def wait_for_taskresult(task_result, content, interval, max_rounds):
+    """Helper to wait for async task result to finish.
+
+    The task will periodically send whitespace to prevent the connection from
+    being closed.
+    """
+    assert max_rounds > 0
+
+    def _whitespace_waiting():
+        current = 0
+        while current < max_rounds and current != -1:
+            if task_result.ready():
+                # Task is done and we return
+                current = -1
+                if task_result.successful():
+                    yield content
+                else:
+                    yield FilesException(
+                        description='Job failed.'
+                    ).get_body()
+            else:
+                # Send whitespace to prevent connection from closing.
+                current += 1
+                sleep(interval)
+                yield b' '
+
+        # Timed-out reached
+        if current == max_rounds:
+            yield FilesException(
+                description='Job timed out.'
+            ).get_body()
+
+    return _whitespace_waiting()
+
+
 def json_serializer(data=None, code=200, headers=None, context=None,
-                    etag=None):
+                    etag=None, task_result=None):
     """Build a json flask response using the given data.
 
     :returns: A flask response with json data.
@@ -229,15 +266,25 @@ def json_serializer(data=None, code=200, headers=None, context=None,
     schema_class, many = schema_from_context(context or {})
 
     if data is not None:
-        response = Response(
-            json.dumps(
-                schema_class(context=context).dump(data, many=many).data,
-                **_format_args()
-            ),
+        # Generate JSON response
+        data = json.dumps(
+            schema_class(context=context).dump(data, many=many).data,
+            **_format_args()
+        )
+
+        interval = current_app.config['FILES_REST_TASK_WAIT_INTERVAL']
+        max_rounds = int(
+            current_app.config['FILES_REST_TASK_WAIT_MAX_SECONDS'] // interval
+        )
+
+        response = current_app.response_class(
+            # Stream response if waiting for task result.
+            data if task_result is None else wait_for_taskresult(
+                task_result, data, interval, max_rounds, ),
             mimetype='application/json'
         )
     else:
-        response = Response(mimetype='application/json')
+        response = current_app.response_class(mimetype='application/json')
 
     response.status_code = code
     if headers is not None:

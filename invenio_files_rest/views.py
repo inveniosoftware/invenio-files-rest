@@ -600,13 +600,16 @@ class ObjectResource(ContentNegotiatedMethodView):
         """Complete a multipart upload."""
         multipart.complete()
         db.session.commit()
-        merge_multipartobject.delay(str(multipart.upload_id))
+
         return self.make_response(
             data=multipart,
             context={
                 'class': MultipartObject,
                 'bucket': multipart.bucket,
-            }
+            },
+            # This will wait for the result, and send whitespace on the
+            # connection until the task has finished (or max timeout reached).
+            task_result=merge_multipartobject.delay(str(multipart.upload_id)),
         )
 
     @pass_multipart()
