@@ -34,33 +34,6 @@ from ..helpers import make_path
 from .base import FileStorage
 
 
-def pyfs_storage_factory(fileinstance=None, default_location=None,
-                         default_storage_class=None):
-    """Factory function for creating a PyFS file storage instance."""
-    assert fileinstance
-
-    fileurl = None
-    size = fileinstance.size
-    modified = fileinstance.updated
-
-    if fileinstance.uri:
-        # Use already existing URL.
-        fileurl = fileinstance.uri
-    else:
-        assert default_location
-        # Generate a new URL.
-        fileurl = make_path(
-            default_location,
-            str(fileinstance.id),
-            'data',
-            current_app.config['FILES_REST_STORAGE_PATH_DIMENSIONS'],
-            current_app.config['FILES_REST_STORAGE_PATH_SPLIT_LENGTH'],
-        )
-
-    return PyFSFileStorage(
-        fileurl, size=size, modified=modified, clean_dir=True)
-
-
 class PyFSFileStorage(FileStorage):
     """File system storage using PyFilesystem for access the file.
 
@@ -169,3 +142,31 @@ class PyFSFileStorage(FileStorage):
             fp.close()
 
         return bytes_written, checksum
+
+
+def pyfs_storage_factory(fileinstance=None, default_location=None,
+                         default_storage_class=None,
+                         filestorage_class=PyFSFileStorage):
+    """Factory function for creating a PyFS file storage instance."""
+    assert fileinstance
+
+    fileurl = None
+    size = fileinstance.size
+    modified = fileinstance.updated
+
+    if fileinstance.uri:
+        # Use already existing URL.
+        fileurl = fileinstance.uri
+    else:
+        assert default_location
+        # Generate a new URL.
+        fileurl = make_path(
+            default_location,
+            str(fileinstance.id),
+            'data',
+            current_app.config['FILES_REST_STORAGE_PATH_DIMENSIONS'],
+            current_app.config['FILES_REST_STORAGE_PATH_SPLIT_LENGTH'],
+        )
+
+    return filestorage_class(
+        fileurl, size=size, modified=modified, clean_dir=True)
