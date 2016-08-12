@@ -36,7 +36,6 @@ import pytest
 from flask import Flask, json, url_for
 from flask_babelex import Babel
 from flask_celeryext import FlaskCeleryExt
-from flask_cli import FlaskCLI
 from flask_menu import Menu
 from invenio_access import InvenioAccess
 from invenio_access.models import ActionUsers
@@ -81,7 +80,6 @@ def base_app():
         FILES_REST_TASK_WAIT_MAX_SECONDS=1,
     )
 
-    FlaskCLI(app_)
     FlaskCeleryExt(app_)
     InvenioDB(app_)
     Babel(app_)

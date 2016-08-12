@@ -76,7 +76,6 @@ for name, reqs in extras_require.items():
 
 install_requires = [
     'celery>=3.1.18',
-    'Flask-CLI>=0.2.1',
     'Flask-Login>=0.3.2',
     'Flask-WTF>=0.12',
     'Flask>=0.11',

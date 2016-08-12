@@ -30,7 +30,7 @@ from __future__ import absolute_import, print_function
 import os
 
 from click.testing import CliRunner
-from flask_cli import ScriptInfo
+from flask.cli import ScriptInfo
 
 from invenio_files_rest.cli import files as cmd
 

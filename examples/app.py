@@ -70,7 +70,6 @@ from os.path import dirname, exists, join
 
 from flask import Flask, current_app
 from flask_babelex import Babel
-from flask_cli import FlaskCLI
 from flask_menu import Menu
 from invenio_access import InvenioAccess
 from invenio_accounts import InvenioAccounts
@@ -100,7 +99,6 @@ app.config.update(dict(
     DATADIR=join(dirname(__file__), 'data')
 ))
 
-FlaskCLI(app)
 Babel(app)
 Menu(app)
 InvenioDB(app)
