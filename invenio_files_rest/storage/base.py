@@ -22,7 +22,7 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-"""Storage related module."""
+"""File storage base module."""
 
 from __future__ import absolute_import, print_function
 
@@ -31,7 +31,27 @@ import time
 from functools import partial
 
 from ..errors import FileSizeError, StorageError, UnexpectedFileSizeError
-from ..helpers import compute_md5_checksum, send_stream
+from ..helpers import compute_checksum, send_stream
+
+
+def check_sizelimit(size_limit, bytes_written, total_size):
+    """Check if size limit was exceeded."""
+    if size_limit is not None and bytes_written > size_limit:
+        desc = 'File size limit exceeded.' \
+            if isinstance(size_limit, int) else size_limit.reason
+        raise FileSizeError(description=desc)
+
+    # Never write more than advertised
+    if total_size is not None and bytes_written > total_size:
+        raise UnexpectedFileSizeError(
+            description='File is bigger than expected.')
+
+
+def check_size(bytes_written, total_size):
+    """Check if expected amounts of bytes have been written."""
+    if total_size and bytes_written < total_size:
+        raise UnexpectedFileSizeError(
+            description='File is smaller than expected.')
 
 
 class FileStorage(object):
@@ -125,6 +145,14 @@ class FileStorage(object):
     #
     # Helpers
     #
+    def _init_hash(self):
+        """Initialize message digest object.
+
+        Overwrite this method if you want to use different checksum
+        algorithm for your storage backend.
+        """
+        return "md5", hashlib.md5()
+
     def _compute_checksum(self, stream, size=None, chunk_size=None,
                           progress_callback=None):
         """Helper method to compute checksum from a stream.
@@ -138,10 +166,12 @@ class FileStorage(object):
             progress_callback = None
 
         try:
-            return compute_md5_checksum(
-                stream,
+            algo, m = self._init_hash()
+            return compute_checksum(
+                stream, algo, m,
                 chunk_size=chunk_size,
-                progress_callback=progress_callback
+                progress_callback=progress_callback,
+
             )
         except Exception as e:
             raise StorageError(
@@ -158,36 +188,33 @@ class FileStorage(object):
         :param size_limit: ``FileSizeLimit`` instance to limit number of bytes
             to write.
         """
-        chunk_size = chunk_size or 1024 * 64
+        chunk_size = chunk_size or 1024 * 1024 * 5
 
-        m = hashlib.md5()
+        algo, m = self._init_hash()
         bytes_written = 0
 
         while 1:
             # Check that size limits aren't bypassed
-            if size_limit is not None and bytes_written > size_limit:
-                desc = 'File size limit exceeded.' \
-                    if isinstance(size_limit, int) else size_limit.reason
-                raise FileSizeError(description=desc)
-
-            # Never write more than advertised
-            if size is not None and bytes_written > size:
-                raise UnexpectedFileSizeError(
-                    description='File is bigger than expected.')
+            check_sizelimit(size_limit, bytes_written, size)
 
             chunk = src.read(chunk_size)
+
             if not chunk:
                 if progress_callback:
                     progress_callback(bytes_written, bytes_written)
                 break
+
             dst.write(chunk)
+
             bytes_written += len(chunk)
-            m.update(chunk)
+
+            if m:
+                m.update(chunk)
+
             if progress_callback:
                 progress_callback(None, bytes_written)
 
-        if size and bytes_written < size:
-            raise UnexpectedFileSizeError(
-                description='File is smaller than expected.')
+        check_size(bytes_written, size)
 
-        return bytes_written, "md5:{0}".format(m.hexdigest())
+        return bytes_written, "{0}:{1}".format(
+            algo, m.hexdigest()) if m else None

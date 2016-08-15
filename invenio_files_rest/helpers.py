@@ -98,27 +98,34 @@ def make_path(base_uri, path, filename, path_dimensions, split_length):
     return os.path.join(base_uri, *uri_parts)
 
 
-def compute_md5_checksum(stream, chunk_size=None, progress_callback=None):
+def compute_md5_checksum(stream, **kwargs):
+    """Helper method to compute MD5 checksum from a stream."""
+    return compute_checksum(stream, 'md5', hashlib.md5(), **kwargs)
+
+
+def compute_checksum(stream, algo, message_digest, chunk_size=None,
+                     progress_callback=None):
     """Helper method to compute checksum from a stream.
 
     :param src: File-like object.
     :param chunk_size: Read at most size bytes from the file.
+    :param algo: Identifier for checksum algorithm.
+    :param messsage_digest: A message digest instance.
     :param progress_callback: Function accepting one argument with number
         of bytes read.
     """
     bytes_read = 0
-    m = hashlib.md5()
     while 1:
         chunk = stream.read(chunk_size)
         if not chunk:
             if progress_callback:
                 progress_callback(bytes_read)
             break
-        m.update(chunk)
+        message_digest.update(chunk)
         bytes_read += len(chunk)
         if progress_callback:
             progress_callback(bytes_read)
-    return "md5:{0}".format(m.hexdigest())
+    return "{0}:{1}".format(algo, message_digest.hexdigest())
 
 
 def populate_from_path(bucket, source, checksum=True, key_prefix=''):

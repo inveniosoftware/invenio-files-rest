@@ -148,7 +148,7 @@ def ngfileupload_partfactory(part_number=None, content_length=None,
 
 
 @use_kwargs({
-    'total_size': fields.Int(
+    'content_length': fields.Int(
         load_from='_totalSize',
         location='form',
         required=True,
@@ -158,19 +158,19 @@ def ngfileupload_partfactory(part_number=None, content_length=None,
         location='headers',
         required=True,
     ),
+    'uploaded_file': fields.Raw(
+        load_from='file',
+        location='files',
+        required=True,
+    ),
 })
-def ngfileupload_uploadfactory(total_size=None, content_type=None):
+def ngfileupload_uploadfactory(content_length=None, content_type=None,
+                               uploaded_file=None):
     """Get default put factory."""
     if not content_type.startswith('multipart/form-data'):
         abort(422)
 
-    content_length, part_number, stream, content_type, content_md5 = \
-        ngfileupload_partfactory()
-
-    if content_length != total_size:
-        abort(422)
-
-    return stream, content_length, content_md5
+    return uploaded_file.stream, content_length, None
 
 
 #

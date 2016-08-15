@@ -94,7 +94,13 @@ class PyFSFileStorage(FileStorage):
     def initialize(self, size=0):
         """Initialize file on storage and truncate to given size."""
         fs, path = self._get_fs()
-        fp = fs.open(path, mode='ab')
+
+        # Required for reliably opening the file on certain file systems:
+        if fs.exists(path):
+            fp = fs.open(path, mode='r+b')
+        else:
+            fp = fs.open(path, mode='wb')
+
         try:
             fp.truncate(size)
         except Exception:
@@ -111,8 +117,7 @@ class PyFSFileStorage(FileStorage):
     def save(self, incoming_stream, size_limit=None, size=None,
              chunk_size=None, progress_callback=None):
         """Save file in the file system."""
-        fs, path = self._get_fs()
-        fp = fs.open(path, mode='wb')
+        fp = self.open(mode='wb')
         try:
             bytes_written, checksum = self._write_stream(
                 incoming_stream, fp, chunk_size=chunk_size,
@@ -132,7 +137,7 @@ class PyFSFileStorage(FileStorage):
     def update(self, incoming_stream, seek=0, size=None, chunk_size=None,
                progress_callback=None):
         """Update a file in the file system."""
-        fp = self.open(mode='rb+')
+        fp = self.open(mode='r+b')
         try:
             fp.seek(seek)
             bytes_written, checksum = self._write_stream(
