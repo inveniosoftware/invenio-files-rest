@@ -335,6 +335,23 @@ def test_object_delete(app, db, dummy_location):
     assert ObjectVersion.get_by_bucket(b1.id).count() == 1
 
 
+def test_object_remove(app, db, bucket, objects):
+    """Test object remove."""
+    obj = objects[0]
+    obj_size = obj.file.size
+    before_size = bucket.size
+
+    assert ObjectVersion.query.count() == 4
+    obj.remove()
+    assert ObjectVersion.query.count() == 3
+    assert bucket.size == before_size - obj_size
+
+    bucket.locked = True
+    obj = objects[1]
+    pytest.raises(BucketLockedError, obj.remove)
+    assert ObjectVersion.query.count() == 3
+
+
 def test_object_set_contents(app, db, dummy_location):
     """Test object set contents."""
     with db.session.begin_nested():

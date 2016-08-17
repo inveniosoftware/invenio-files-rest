@@ -944,6 +944,7 @@ class ObjectVersion(db.Model, Timestamp):
         :returns: ``self``.
         """
         with db.session.begin_nested():
+            self.bucket.size -= self.file.size
             self.query.filter_by(
                 bucket_id=self.bucket_id,
                 key=self.key,
