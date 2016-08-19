@@ -26,6 +26,22 @@
 
 from datetime import timedelta
 
+MAX_CONTENT_LENGTH = 16 * 1024 * 1024
+"""Maximum allowed content length for form data.
+
+This value limits the maximum file upload size via multipart-formdata and is
+a Flask configuration variable that by default is unlimited.  The value must
+be larger than the maximum part size you want to accept via
+application/multipart-formdata (used by e.g. ng-file upload). This value only
+limits file upload size via application/multipart-formdata and in particular
+does not restrict the maximum file size possible when streaming a file in the
+body of a PUT request.
+
+Flask, by default, saves any file bigger than 500kb to a temporary file on
+disk, thus do not set this value to large or you may run out of disk space on
+your nodes.
+"""
+
 FILES_REST_STORAGE_CLASS_LIST = {
     'S': 'Standard',
     'A': 'Archive',
