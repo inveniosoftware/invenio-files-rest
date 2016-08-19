@@ -601,15 +601,21 @@ class ObjectResource(ContentNegotiatedMethodView):
         multipart.complete()
         db.session.commit()
 
+        version_id = str(uuid.uuid4())
+
         return self.make_response(
             data=multipart,
             context={
                 'class': MultipartObject,
                 'bucket': multipart.bucket,
+                'object_version_id': version_id,
             },
             # This will wait for the result, and send whitespace on the
             # connection until the task has finished (or max timeout reached).
-            task_result=merge_multipartobject.delay(str(multipart.upload_id)),
+            task_result=merge_multipartobject.delay(
+                str(multipart.upload_id),
+                version_id=version_id,
+            ),
         )
 
     @pass_multipart()

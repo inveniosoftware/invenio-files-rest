@@ -79,11 +79,16 @@ class ObjectVersionSchema(BaseSchema):
 
     def dump_links(self, o):
         """Dump links."""
-        params = {}
-        if not o.is_head or o.deleted:
-            params = {'versionId': o.version_id}
+        params = {'versionId': o.version_id}
         data = {
             'self': url_for(
+                '.object_api',
+                bucket_id=o.bucket_id,
+                key=o.key,
+                _external=True,
+                **(params if not o.is_head or o.deleted else {})
+            ),
+            'version': url_for(
                 '.object_api',
                 bucket_id=o.bucket_id,
                 key=o.key,
@@ -146,6 +151,18 @@ class MultipartObjectSchema(BaseSchema):
                 _external=True,
             ),
         }
+
+        version_id = self.context.get('object_version_id')
+        if version_id:
+            links.update({
+                'object_version': url_for(
+                    '.object_api',
+                    bucket_id=o.bucket_id,
+                    key=o.key,
+                    versionId=version_id,
+                    _external=True,
+                )
+            })
 
         bucket = self.context.get('bucket')
         if bucket:

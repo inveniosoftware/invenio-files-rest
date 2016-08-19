@@ -31,7 +31,8 @@ from os.path import exists
 
 from six import BytesIO
 
-from invenio_files_rest.models import MultipartObject, ObjectVersion, Part
+from invenio_files_rest.models import Bucket, MultipartObject, ObjectVersion, \
+    Part
 
 
 def make_stream(size):
@@ -122,8 +123,13 @@ def test_multipart_full(app, db, bucket):
     db.session.commit()
 
     # Merge parts.
+    pre_size = mp.bucket.size
     mp.merge_parts()
     db.session.commit()
+
+    # Test size update
+    bucket = Bucket.get(bucket.id)
+    assert bucket.size == pre_size
 
     app.config.update(dict(
         FILES_REST_MULTIPART_CHUNKSIZE_MIN=2,

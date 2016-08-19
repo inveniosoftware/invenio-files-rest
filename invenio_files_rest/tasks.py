@@ -111,7 +111,7 @@ def remove_file_data(file_id, silent=True):
 
 
 @shared_task()
-def merge_multipartobject(upload_id):
+def merge_multipartobject(upload_id, version_id=None):
     """Merge multipart object."""
     mp = MultipartObject.query.filter_by(upload_id=upload_id).one_or_none()
     if not mp:
@@ -120,13 +120,15 @@ def merge_multipartobject(upload_id):
         raise RuntimeError('MultipartObject is not completed.')
 
     try:
-        mp.merge_parts(progress_callback=progress_updater)
+        obj = mp.merge_parts(
+            version_id=version_id,
+            progress_callback=progress_updater
+        )
         db.session.commit()
+        return str(obj.version_id)
     except Exception:
         db.session.rollback()
         raise
-
-    return True
 
 
 @shared_task(ignore_result=True)

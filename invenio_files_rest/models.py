@@ -956,7 +956,7 @@ class ObjectVersion(db.Model, Timestamp):
 
     @classmethod
     def create(cls, bucket, key, _file_id=None, stream=None, mimetype=None,
-               **kwargs):
+               version_id=None, **kwargs):
         """Create a new object in a bucket.
 
         The created object is by default created as a delete marker. You must
@@ -986,7 +986,7 @@ class ObjectVersion(db.Model, Timestamp):
             obj = cls(
                 bucket=bucket,
                 key=key,
-                version_id=uuid.uuid4(),
+                version_id=version_id or uuid.uuid4(),
                 is_head=True,
                 mimetype=mimetype,
             )
@@ -1206,12 +1206,16 @@ class MultipartObject(db.Model, Timestamp):
         return self
 
     @ensure_completed()
-    def merge_parts(self, **kwargs):
+    def merge_parts(self, version_id=None, **kwargs):
         """Merge parts into object version."""
         self.file.update_checksum(**kwargs)
         with db.session.begin_nested():
             obj = ObjectVersion.create(
-                self.bucket, self.key, _file_id=self.file_id)
+                self.bucket,
+                self.key,
+                _file_id=self.file_id,
+                version_id=version_id
+            )
             self.delete()
         return obj
 
