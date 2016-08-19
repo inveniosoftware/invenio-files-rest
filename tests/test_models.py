@@ -352,6 +352,18 @@ def test_object_remove(app, db, bucket, objects):
     assert ObjectVersion.query.count() == 3
 
 
+def test_object_remove_marker(app, db, bucket, objects):
+    """Test object remove."""
+    obj = objects[0]
+    assert ObjectVersion.query.count() == 4
+    obj = ObjectVersion.delete(obj.bucket, obj.key)
+    db.session.commit()
+    assert ObjectVersion.query.count() == 5
+    obj = ObjectVersion.get(obj.bucket, obj.key, version_id=obj.version_id)
+    obj.remove()
+    assert ObjectVersion.query.count() == 4
+
+
 def test_object_set_contents(app, db, dummy_location):
     """Test object set contents."""
     with db.session.begin_nested():
