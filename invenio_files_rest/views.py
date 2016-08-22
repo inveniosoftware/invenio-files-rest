@@ -115,10 +115,17 @@ def default_partfactory(part_number=None, content_length=None,
         location='headers',
         required=True,
         validate=minsize_validator,
-    )
+    ),
+    'content_type': fields.Str(
+        load_from='Content-Type',
+        location='headers',
+    ),
 })
-def stream_uploadfactory(content_md5=None, content_length=None):
+def stream_uploadfactory(content_md5=None, content_length=None,
+                         content_type=None):
     """Get default put factory."""
+    if content_type.startswith('multipart/form-data'):
+        abort(422)
     return request.stream, content_length, content_md5
 
 

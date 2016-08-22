@@ -106,10 +106,16 @@ FILES_REST_MULTIPART_PART_FACTORIES = [
 """Import path of factory used to parse chunked upload parameters."""
 
 FILES_REST_UPLOAD_FACTORIES = [
-    'invenio_files_rest.views:ngfileupload_uploadfactory',
     'invenio_files_rest.views:stream_uploadfactory',
+    'invenio_files_rest.views:ngfileupload_uploadfactory',
 ]
-"""Import path of factory used to parse file uploads."""
+"""Import path of factory used to parse file uploads.
+
+.. note::
+
+   Factories that reads ``request.stream`` directly must be first in the list,
+   otherwise Werkzeug's form-data parser  will read the stream.
+"""
 
 FILES_REST_MULTIPART_MAX_PARTS = 10000
 """Maximum number of parts."""
