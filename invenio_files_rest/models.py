@@ -1155,7 +1155,9 @@ class MultipartObject(db.Model, Timestamp):
     @property
     def last_part_number(self):
         """Get last part number."""
-        return int(self.size / self.chunk_size)
+        return int(self.size / self.chunk_size) \
+            if self.size % self.chunk_size else \
+            int(self.size / self.chunk_size) - 1
 
     @property
     def last_part_size(self):

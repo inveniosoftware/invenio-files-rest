@@ -56,6 +56,16 @@ def test_multipart_creation(app, db, bucket):
     assert exists(mp.file.uri)
 
 
+def test_multipart_last_part(app, db, bucket):
+    """Test multipart creation."""
+    mp = MultipartObject.create(bucket, 'test.txt', 100, 20)
+    assert mp.last_part_size == 0
+    assert mp.last_part_number == 4
+    mp = MultipartObject.create(bucket, 'test.txt', 101, 20)
+    assert mp.last_part_size == 1
+    assert mp.last_part_number == 5
+
+
 def test_part_creation(app, db, bucket, get_md5):
     """Test part creation."""
     assert bucket.size == 0
