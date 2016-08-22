@@ -67,7 +67,7 @@ def test_post_init(client, headers, permissions, bucket, get_json):
             headers={'Content-Type': 'application/json'},
             data=json.dumps({
                 'size': 10,
-                'part_size': 4,
+                'partSize': 4,
             })
         )
         assert res.status_code == expected
@@ -86,7 +86,7 @@ def test_post_init_querystring(client, bucket, get_json):
     """Test init multipart upload."""
     res = client.post(
         obj_url(bucket),
-        query_string='uploads&size=10&part_size=4',
+        query_string='uploads&size=10&partSize=4',
     )
     assert res.status_code == 200
 
@@ -105,19 +105,19 @@ def test_post_invalid_partsizes(client, headers, bucket, get_json):
     # Part size too large
     res = client.post(
         obj_url(bucket), query_string='uploads', headers=headers,
-        data=json.dumps({'size': 30, 'part_size': 21}))
+        data=json.dumps({'size': 30, 'partSize': 21}))
     assert res.status_code == 400
 
     # Part size too small
     res = client.post(
         obj_url(bucket), query_string='uploads', headers=headers,
-        data=json.dumps({'size': 30, 'part_size': 1}))
+        data=json.dumps({'size': 30, 'partSize': 1}))
     assert res.status_code == 400
 
     # Size too large
     res = client.post(
         obj_url(bucket), query_string='uploads', headers=headers,
-        data=json.dumps({'size': 2 * 100 + 1, 'part_size': 2}))
+        data=json.dumps({'size': 2 * 100 + 1, 'partSize': 2}))
     assert res.status_code == 400
 
 
@@ -129,7 +129,7 @@ def test_post_size_limits(client, db, headers, bucket):
     # Bucket quota exceed
     res = client.post(
         obj_url(bucket), query_string='uploads', headers=headers,
-        data=json.dumps({'size': 101, 'part_size': 20}))
+        data=json.dumps({'size': 101, 'partSize': 20}))
     assert res.status_code == 400
 
     bucket.max_file_size = 50
@@ -138,7 +138,7 @@ def test_post_size_limits(client, db, headers, bucket):
     # Max file size exceeded
     res = client.post(
         obj_url(bucket), query_string='uploads', headers=headers,
-        data=json.dumps({'size': 51, 'part_size': 20}))
+        data=json.dumps({'size': 51, 'partSize': 20}))
     assert res.status_code == 400
 
 
@@ -149,7 +149,7 @@ def test_post_locked_bucket(client, db, headers, bucket, get_json):
 
     res = client.post(
         obj_url(bucket), query_string='uploads', headers=headers,
-        data=json.dumps({'size': 10, 'part_size': 2}))
+        data=json.dumps({'size': 10, 'partSize': 2}))
     assert res.status_code == 403
 
     bucket.deleted = True
@@ -157,7 +157,7 @@ def test_post_locked_bucket(client, db, headers, bucket, get_json):
 
     res = client.post(
         obj_url(bucket), query_string='uploads', headers=headers,
-        data=json.dumps({'size': 10, 'part_size': 2}))
+        data=json.dumps({'size': 10, 'partSize': 2}))
     assert res.status_code == 404
 
 
@@ -172,7 +172,7 @@ def test_post_invalidkey(client, db, headers, bucket):
     # Bucket quota exceed
     res = client.post(
         object_url, query_string='uploads', headers=headers,
-        data=json.dumps({'size': 50, 'part_size': 20}))
+        data=json.dumps({'size': 50, 'partSize': 20}))
     assert res.status_code == 400
 
 

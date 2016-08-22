@@ -37,7 +37,8 @@ from marshmallow import missing
 from webargs import fields
 from webargs.flaskparser import use_kwargs
 
-from .errors import FileSizeError, MultipartInvalidChunkSize
+from .errors import FileSizeError, MissingQueryParameter, \
+    MultipartInvalidChunkSize
 from .models import Bucket, MultipartObject, ObjectVersion, Part
 from .proxies import current_files_rest, current_permission_factory
 from .serializer import json_serializer
@@ -429,11 +430,12 @@ class ObjectResource(ContentNegotiatedMethodView):
     multipart_init_args = {
         'size': fields.Int(
             locations=('query', 'json'),
-            required=True,
+            missing=None,
         ),
         'part_size': fields.Int(
             locations=('query', 'json'),
-            required=True,
+            missing=None,
+            load_from='partSize',
         ),
     }
 
@@ -558,6 +560,10 @@ class ObjectResource(ContentNegotiatedMethodView):
     @use_kwargs(multipart_init_args)
     def multipart_init(self, bucket, key, size=None, part_size=None):
         """Initiate a multipart upload."""
+        if size is None:
+            raise MissingQueryParameter('size')
+        if part_size is None:
+            raise MissingQueryParameter('partSize')
         multipart = MultipartObject.create(bucket, key, size, part_size)
         db.session.commit()
         return self.make_response(

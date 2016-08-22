@@ -52,6 +52,22 @@ class InvalidOperationError(FilesException):
     code = 403
 
 
+class MissingQueryParameter(FilesException):
+    """Exception raised when missing a query parameter."""
+
+    code = 400
+    description = "Missing required query argument '{arg_name}'"
+
+    def __init__(self, arg_name, **kwargs):
+        """Initialize RESTException."""
+        self.arg_name = arg_name
+        super(MissingQueryParameter, self).__init__(**kwargs)
+
+    def get_description(self, environ=None):
+        """Get the description."""
+        return self.description.format(arg_name=self.arg_name)
+
+
 class FileInstanceAlreadySetError(InvalidOperationError):
     """Exception raised when file instance already set on object."""
 
