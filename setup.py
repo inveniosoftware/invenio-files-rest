@@ -75,10 +75,10 @@ for name, reqs in extras_require.items():
     extras_require['all'].extend(reqs)
 
 install_requires = [
+    'Flask>=0.11.1',
     'celery>=3.1.18',
     'Flask-Login>=0.3.2',
     'Flask-WTF>=0.12',
-    'Flask>=0.11',
     'fs>=0.5.4',
     'invenio-rest[cors]>=1.0.0a8',
     'SQLAlchemy-Utils>=0.31.0',
