@@ -28,7 +28,7 @@ User's Guide
 ------------
 
 This part of the documentation will show you how to get started in using
-Invenio-Base.
+Invenio-Files-REST.
 
 .. toctree::
    :maxdepth: 2
