@@ -362,6 +362,10 @@ def file_download_ui(pid, record, **kwargs):
 class LocationResource(ContentNegotiatedMethodView):
     """"Service resource."""
 
+    def __init__(self, *args, **kwargs):
+        """Instatiate content negotiated view."""
+        super(LocationResource, self).__init__(*args, **kwargs)
+
     @need_location_permission('location-update', hidden=False)
     def post(self):
         """Create bucket."""
@@ -391,6 +395,10 @@ class BucketResource(ContentNegotiatedMethodView):
             location='query',
         )
     }
+
+    def __init__(self, *args, **kwargs):
+        """Instatiate content negotiated view."""
+        super(BucketResource, self).__init__(*args, **kwargs)
 
     @need_permissions(lambda self, bucket: bucket, 'bucket-listmultiparts')
     def multipart_listuploads(self, bucket):
@@ -507,6 +515,10 @@ class ObjectResource(ContentNegotiatedMethodView):
             load_from='partSize',
         ),
     }
+
+    def __init__(self, *args, **kwargs):
+        """Instatiate content negotiated view."""
+        super(ObjectResource, self).__init__(*args, **kwargs)
 
     #
     # ObjectVersion helpers

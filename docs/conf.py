@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015 CERN.
+# Copyright (C) 2015, 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -22,11 +22,11 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
+"""Sphinx configuration."""
+
 from __future__ import print_function
 
 import os
-
-import sphinx.environment
 
 # -- General configuration ------------------------------------------------
 
@@ -138,8 +138,8 @@ html_theme_options = {
     'github_banner': True,
     'show_powered_by': False,
     'extra_nav_links': {
-        'invenio-files-rest@GitHub': 'http://github.com/inveniosoftware/invenio-files-rest',
-        'invenio-files-rest@PyPI': 'http://pypi.python.org/pypi/invenio-files-rest/',
+        'invenio-files-rest@GitHub': 'https://github.com/inveniosoftware/invenio-files-rest',
+        'invenio-files-rest@PyPI': 'https://pypi.python.org/pypi/invenio-files-rest/',
     }
 }
 
@@ -249,25 +249,25 @@ htmlhelp_basename = 'invenio-files-rest_namedoc'
 # -- Options for LaTeX output ---------------------------------------------
 
 latex_elements = {
-# The paper size ('letterpaper' or 'a4paper').
-#'papersize': 'letterpaper',
+    # The paper size ('letterpaper' or 'a4paper').
+    #'papersize': 'letterpaper',
 
-# The font size ('10pt', '11pt' or '12pt').
-#'pointsize': '10pt',
+    # The font size ('10pt', '11pt' or '12pt').
+    #'pointsize': '10pt',
 
-# Additional stuff for the LaTeX preamble.
-#'preamble': '',
+    # Additional stuff for the LaTeX preamble.
+    #'preamble': '',
 
-# Latex figure (float) alignment
-#'figure_align': 'htbp',
+    # Latex figure (float) alignment
+    #'figure_align': 'htbp',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  (master_doc, 'invenio-files-rest.tex', u'invenio-files-rest Documentation',
-   u'CERN', 'manual'),
+    (master_doc, 'invenio-files-rest.tex', u'invenio-files-rest Documentation',
+     u'CERN', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -310,9 +310,9 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  (master_doc, 'invenio-files-rest', u'Invenio-Files-REST Documentation',
-   author, 'invenio-files-rest', 'Files download/upload REST API similar to S3 for Invenio.',
-   'Miscellaneous'),
+    (master_doc, 'invenio-files-rest', u'Invenio-Files-REST Documentation',
+     author, 'invenio-files-rest', 'Files download/upload REST API similar to S3 for Invenio.',
+     'Miscellaneous'),
 ]
 
 # Documents to append as an appendix to all manuals.
@@ -327,11 +327,13 @@ texinfo_documents = [
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
 
-
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
     'flask': ('http://flask.pocoo.org/docs/latest/', None),
     'invenio-access': ('https://pythonhosted.org/invenio-access', None),
     'invenio-pidstore': ('https://pythonhosted.org/invenio-pidstore', None),
-    'python': ('https://docs.python.org/3', None),
+    'python': ('https://docs.python.org/', None),
 }
+
+# Autodoc configuraton.
+autoclass_content = 'both'
