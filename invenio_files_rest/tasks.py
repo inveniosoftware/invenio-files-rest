@@ -51,7 +51,10 @@ def progress_updater(size, total):
 
 @shared_task(ignore_result=True)
 def verify_checksum(file_id):
-    """Verify checksum of a file instance."""
+    """Verify checksum of a file instance.
+
+    :param file_id: The file ID.
+    """
     f = FileInstance.query.get(uuid.UUID(file_id))
     f.verify_checksum(progress_callback=progress_updater)
     db.session.commit()
@@ -59,7 +62,16 @@ def verify_checksum(file_id):
 
 @shared_task(ignore_result=True, max_retries=3, default_retry_delay=20 * 60)
 def migrate_file(src_id, location_name, post_fixity_check=False):
-    """Task to migrate a file instance to a new location."""
+    """Task to migrate a file instance to a new location.
+
+    .. note:: If something goes wrong during the content copy, the destination
+        file instance is removed.
+
+    :param src_id: The :class:`invenio_files_rest.models.FileInstance` ID.
+    :param location_name: Where to migrate the file.
+    :param post_fixity_check: Verify checksum after migration.
+        (Default: ``False``)
+    """
     location = Location.get_by_name(location_name)
     f_src = FileInstance.get(src_id)
 
@@ -92,7 +104,14 @@ def migrate_file(src_id, location_name, post_fixity_check=False):
 
 @shared_task(ignore_result=True)
 def remove_file_data(file_id, silent=True):
-    """Remove file instance and associated data."""
+    """Remove file instance and associated data.
+
+    :param file_id: The :class:`invenio_files_rest.models.FileInstance` ID.
+    :param silent: It stops propagation of a possible arised IntegrityError
+        exception. (Default: ``True``)
+    :raises sqlalchemy.exc.IntegrityError: Raised if the database removal goes
+        wrong and silent is set to ``False``.
+    """
     try:
         # First remove FileInstance from database and commit transaction to
         # ensure integrity constraints are checked and enforced.
@@ -112,7 +131,15 @@ def remove_file_data(file_id, silent=True):
 
 @shared_task()
 def merge_multipartobject(upload_id, version_id=None):
-    """Merge multipart object."""
+    """Merge multipart object.
+
+    :param upload_id: The :class:`invenio_files_rest.models.MultipartObject`
+        upload ID.
+    :param version_id: Optionally you can define which file version.
+        (Default: ``None``)
+    :returns: The :class:`invenio_files_rest.models.ObjectVersion` version
+        ID.
+    """
     mp = MultipartObject.query.filter_by(upload_id=upload_id).one_or_none()
     if not mp:
         raise RuntimeError('Upload ID does not exists.')

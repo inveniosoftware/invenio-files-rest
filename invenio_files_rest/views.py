@@ -56,7 +56,11 @@ blueprint = Blueprint(
 # Helpers
 #
 def as_uuid(val):
-    """Convert to UUID."""
+    """Convert to UUID.
+
+    :param val: The value to convert into UUID.
+    :returns: A UUID.
+    """
     try:
         return uuid.UUID(val)
     except ValueError:
@@ -64,7 +68,12 @@ def as_uuid(val):
 
 
 def minsize_validator(val):
-    """Validate Content-Length header."""
+    """Validate Content-Length header.
+
+    :param val: The value to validate.
+    :raises invenio_files_rest.errors.FileSizeError: If the value is less than
+        :data:`invenio_files_rest.config.FILES_REST_MIN_FILE_SIZE` size.
+    """
     if val < current_app.config['FILES_REST_MIN_FILE_SIZE']:
         raise FileSizeError()
 
@@ -100,7 +109,15 @@ def invalid_subresource_validator(val):
 })
 def default_partfactory(part_number=None, content_length=None,
                         content_type=None, content_md5=None):
-    """Default part factory."""
+    """Default part factory.
+
+    :param part_number: The part number. (Default: ``None``)
+    :param content_length: The content length. (Default: ``None``)
+    :param content_type: The HTTP Content-Type. (Default: ``None``)
+    :param content_md5: The content MD5. (Default: ``None``)
+    :returns: The content length, the part number, the stream, the content
+        type, MD5 of the content.
+    """
     return content_length, part_number, request.stream, content_type, \
         content_md5
 
@@ -124,7 +141,16 @@ def default_partfactory(part_number=None, content_length=None,
 })
 def stream_uploadfactory(content_md5=None, content_length=None,
                          content_type=None):
-    """Get default put factory."""
+    """Get default put factory.
+
+    .. note:: If Content-Type is``'multipart/form-data'`` then the stream is
+        aborted
+
+    :param content_md5: The content MD5. (Default: ``None``)
+    :param content_length: The content length. (Default: ``None``)
+    :param content_type: The HTTP Content-Type. (Default: ``None``)
+    :returns: The stream, content length, MD5 of the content.
+    """
     if content_type.startswith('multipart/form-data'):
         abort(422)
     return request.stream, content_length, content_md5
@@ -150,7 +176,14 @@ def stream_uploadfactory(content_md5=None, content_length=None,
 })
 def ngfileupload_partfactory(part_number=None, content_length=None,
                              uploaded_file=None):
-    """Part factory for ng-file-upload."""
+    """Part factory for ng-file-upload.
+
+    :param part_number: The part number. (Default: ``None``)
+    :param content_length: The content length. (Default: ``None``)
+    :param uploaded_file: The upload request. (Default: ``None``)
+    :returns: The content length, part number, stream, HTTP Content-Type
+        header.
+    """
     return content_length, part_number, uploaded_file.stream, \
         uploaded_file.headers.get('Content-Type'), None
 
@@ -174,7 +207,17 @@ def ngfileupload_partfactory(part_number=None, content_length=None,
 })
 def ngfileupload_uploadfactory(content_length=None, content_type=None,
                                uploaded_file=None):
-    """Get default put factory."""
+    """Get default put factory.
+
+    .. note:: If Content-Type is``'multipart/form-data'`` then the stream is
+        aborted
+
+    :param content_length: The content length. (Default: ``None``)
+    :param content_type: The HTTP Content-Type. (Default: ``None``)
+    :param uploaded_file: The upload request. (Default: ``None``)
+    :returns: The stream, content length, ``None``
+        header.
+    """
     if not content_type.startswith('multipart/form-data'):
         abort(422)
 
@@ -216,12 +259,12 @@ def pass_multipart(with_completed=False):
 def check_permission(permission, hidden=True):
     """Check if permission is allowed.
 
+    .. note:: If permission fails then the connection is aborted.
+
+    :param permission: The permission to check.
     :param hidden: Determine if a 404 error (``True``) or 401/403 error
         (``False``) should be returned if the permission is rejected (i.e.
         hide or reveal the existence of a particular object).
-
-    if existence of a particular object should be
-        hidden if the permission is
     """
     if permission is not None and not permission.can():
         if hidden:
@@ -234,7 +277,13 @@ def check_permission(permission, hidden=True):
 
 
 def need_permissions(object_getter, action, hidden=True):
-    """"Get permission for buckets or abort."""
+    """"Get permission for buckets or abort.
+
+    :param object_getter: The function used to retrieve the object and pass it
+        to the permission factory.
+    :param action: The action needed.
+    :param hidden: Determine which kind of error to return. (Default: ``True``)
+    """
     def decorator_builder(f):
         @wraps(f)
         def decorate(*args, **kwargs):
@@ -278,6 +327,10 @@ def file_download_ui(pid, record, **kwargs):
                 record_class='invenio_records_files.api:Record',
             )
         )
+
+    :param pid: The :class:`invenio_pidstore.models.PersistentIdentifier`
+        instance.
+    :param record: The record metadata.
     """
     # Extract file from record.
     fileobj = current_files_rest.record_file_factory(
@@ -340,7 +393,11 @@ class BucketResource(ContentNegotiatedMethodView):
 
     @need_permissions(lambda self, bucket: bucket, 'bucket-listmultiparts')
     def multipart_listuploads(self, bucket):
-        """List objects in a bucket."""
+        """List objects in a bucket.
+
+        ;param bucket: A :class:`invenio_files_rest.models.Bucket` instance.
+        :returns: The Flask response.
+        """
         return self.make_response(
             data=MultipartObject.query_by_bucket(bucket).limit(1000).all(),
             context={
@@ -355,7 +412,11 @@ class BucketResource(ContentNegotiatedMethodView):
         'bucket-read',
     )
     def listobjects(self, bucket, versions):
-        """List objects in a bucket."""
+        """List objects in a bucket.
+
+        ;param bucket: A :class:`invenio_files_rest.models.Bucket` instance.
+        :returns: The Flask response.
+        """
         if versions is not missing:
             check_permission(
                 current_permission_factory(bucket, 'bucket-read-versions'),
@@ -374,7 +435,11 @@ class BucketResource(ContentNegotiatedMethodView):
     @use_kwargs(get_args)
     @pass_bucket
     def get(self, bucket=None, versions=None, uploads=None):
-        """Get list of objects in the bucket."""
+        """Get list of objects in the bucket.
+
+        ;param bucket: A :class:`invenio_files_rest.models.Bucket` instance.
+        :returns: The Flask response.
+        """
         if uploads is not missing:
             return self.multipart_listuploads(bucket)
         else:
@@ -383,7 +448,10 @@ class BucketResource(ContentNegotiatedMethodView):
     @pass_bucket
     @need_bucket_permission('bucket-read')
     def head(self, bucket=None, **kwargs):
-        """Check the existence of the bucket."""
+        """Check the existence of the bucket.
+
+        .. note:: Not implemented.
+        """
 
 
 class ObjectResource(ContentNegotiatedMethodView):
@@ -444,7 +512,10 @@ class ObjectResource(ContentNegotiatedMethodView):
     #
     @staticmethod
     def check_object_permission(obj):
-        """Retrieve object and abort if it doesn't exists."""
+        """Retrieve object and abort if it doesn't exists.
+
+        :param obj: The object to check.
+        """
         check_permission(current_permission_factory(
             obj,
             'object-read'
@@ -457,7 +528,16 @@ class ObjectResource(ContentNegotiatedMethodView):
 
     @classmethod
     def get_object(cls, bucket, key, version_id):
-        """Retrieve object and abort if it doesn't exists."""
+        """Retrieve object and abort if it doesn't exists.
+
+        .. note:: if the file is not found, the connection is aborted and
+            a 404 error is returned.
+
+        :param bucket: The bucket (instance or id) to get the object from.
+        :param key: The file key.
+        :param version_id: The version ID.
+        :returns: A :class:`invenio_files_rest.models.ObjectVersion` instance.
+        """
         obj = ObjectVersion.get(bucket, key, version_id=version_id)
         if not obj:
             abort(404, 'Object does not exists.')
@@ -467,7 +547,12 @@ class ObjectResource(ContentNegotiatedMethodView):
         return obj
 
     def create_object(self, bucket, key):
-        """Create a new object."""
+        """Create a new object.
+
+        :param bucket: The bucket (instance or id) to get the object from.
+        :param key: The file key.
+        :returns: A Flask response.
+        """
         # Initial validation of size based on Content-Length.
         # User can tamper with Content-Length, so this is just an initial up
         # front check. The storage subsystem must validate the size limit as
@@ -501,7 +586,14 @@ class ObjectResource(ContentNegotiatedMethodView):
         hidden=False,  # Because get_object permission check has already run
     )
     def delete_object(self, bucket, obj, version_id):
-        """Delete an existing object."""
+        """Delete an existing object.
+
+        :param bucket: The bucket (instance or id) to get the object from.
+        :param obj: A :class:`invenio_files_rest.models.ObjectVersion`
+            instance.
+        :param version_id: The version ID.
+        :returns: A Flask response.
+        """
         if version_id is None:
             # Create a delete marker.
             with db.session.begin_nested():
@@ -523,7 +615,15 @@ class ObjectResource(ContentNegotiatedMethodView):
     @staticmethod
     def send_object(bucket, obj, expected_chksum=None, logger_data=None,
                     restricted=True):
-        """Send an object for a given bucket."""
+        """Send an object for a given bucket.
+
+        :param bucket: The bucket (instance or id) to get the object from.
+        :param obj: A :class:`invenio_files_rest.models.ObjectVersion`
+            instance.
+        :params expected_chksum: Expected checksum.
+        :param logger_data: The python logger.
+        :returns: A Flask response.
+        """
         if not obj.is_head:
             check_permission(
                 current_permission_factory(obj, 'object-read-version'),
@@ -546,7 +646,12 @@ class ObjectResource(ContentNegotiatedMethodView):
         'multipart-read'
     )
     def multipart_listparts(self, multipart):
-        """Get parts of a multpart upload."""
+        """Get parts of a multipart upload.
+
+        :param multipart: A :class:`invenio_files_rest.models.MultipartObject`
+            instance.
+        :returns: A Flask response.
+        """
         return self.make_response(
             data=Part.query_by_multipart(
                 multipart).order_by(Part.part_number).limit(1000).all(),
@@ -559,7 +664,16 @@ class ObjectResource(ContentNegotiatedMethodView):
 
     @use_kwargs(multipart_init_args)
     def multipart_init(self, bucket, key, size=None, part_size=None):
-        """Initiate a multipart upload."""
+        """Initiate a multipart upload.
+
+        :param bucket: The bucket (instance or id) to get the object from.
+        :param key: The file key.
+        :param size: The total size.
+        :param part_size: The part size.
+        :arises invenio_files_rest.errors.MissingQueryParameter: If size or
+            part_size are not defined.
+        :returns: A Flask response.
+        """
         if size is None:
             raise MissingQueryParameter('size')
         if part_size is None:
@@ -576,7 +690,12 @@ class ObjectResource(ContentNegotiatedMethodView):
 
     @pass_multipart(with_completed=True)
     def multipart_uploadpart(self, multipart):
-        """Upload a part."""
+        """Upload a part.
+
+        :param multipart: A :class:`invenio_files_rest.models.MultipartObject`
+            instance.
+        :returns: A Flask response.
+        """
         content_length, part_number, stream, content_type, content_md5 = \
             current_files_rest.multipart_partfactory()
 
@@ -610,7 +729,12 @@ class ObjectResource(ContentNegotiatedMethodView):
 
     @pass_multipart(with_completed=True)
     def multipart_complete(self, multipart):
-        """Complete a multipart upload."""
+        """Complete a multipart upload.
+
+        :param multipart: A :class:`invenio_files_rest.models.MultipartObject`
+            instance.
+        :returns: A Flask response.
+        """
         multipart.complete()
         db.session.commit()
 
@@ -637,7 +761,12 @@ class ObjectResource(ContentNegotiatedMethodView):
         'multipart-delete',
     )
     def multipart_delete(self, multipart):
-        """Abort a multipart upload."""
+        """Abort a multipart upload.
+
+        :param multipart: A :class:`invenio_files_rest.models.MultipartObject`
+            instance.
+        :returns: A Flask response.
+        """
         multipart.delete()
         db.session.commit()
         if multipart.file_id:
@@ -651,7 +780,15 @@ class ObjectResource(ContentNegotiatedMethodView):
     @pass_bucket
     def get(self, bucket=None, key=None, version_id=None, upload_id=None,
             uploads=None):
-        """Get object or list parts of a multpart upload."""
+        """Get object or list parts of a multpart upload.
+
+        :param bucket: The bucket (instance or id) to get the object from.
+            (Default: ``None``)
+        :param key: The file key. (Default: ``None``)
+        :param version_id: The version ID. (Default: ``None``)
+        :param upload_id: The upload ID. (Default: ``None``)
+        :returns: A Flask response.
+        """
         if upload_id:
             return self.multipart_listparts(bucket, key, upload_id)
         else:
@@ -662,7 +799,14 @@ class ObjectResource(ContentNegotiatedMethodView):
     @pass_bucket
     @need_bucket_permission('bucket-update')
     def post(self, bucket=None, key=None, uploads=None, upload_id=None):
-        """Upload a new object or start/complete a multipart upload."""
+        """Upload a new object or start/complete a multipart upload.
+
+        :param bucket: The bucket (instance or id) to get the object from.
+            (Default: ``None``)
+        :param key: The file key. (Default: ``None``)
+        :param upload_id: The upload ID. (Default: ``None``)
+        :returns: A Flask response.
+        """
         if uploads is not missing:
             return self.multipart_init(bucket, key)
         elif upload_id is not None:
@@ -673,7 +817,14 @@ class ObjectResource(ContentNegotiatedMethodView):
     @pass_bucket
     @need_bucket_permission('bucket-update')
     def put(self, bucket=None, key=None, upload_id=None):
-        """Update a new object or upload a part of a multipart upload."""
+        """Update a new object or upload a part of a multipart upload.
+
+        :param bucket: The bucket (instance or id) to get the object from.
+            (Default: ``None``)
+        :param key: The file key. (Default: ``None``)
+        :param upload_id: The upload ID. (Default: ``None``)
+        :returns: A Flask response.
+        """
         if upload_id is not None:
             return self.multipart_uploadpart(bucket, key, upload_id)
         else:
@@ -683,7 +834,15 @@ class ObjectResource(ContentNegotiatedMethodView):
     @pass_bucket
     def delete(self, bucket=None, key=None, version_id=None, upload_id=None,
                uploads=None):
-        """Delete an object or abort a multipart upload."""
+        """Delete an object or abort a multipart upload.
+
+        :param bucket: The bucket (instance or id) to get the object from.
+            (Default: ``None``)
+        :param key: The file key. (Default: ``None``)
+        :param version_id: The version ID. (Default: ``None``)
+        :param upload_id: The upload ID. (Default: ``None``)
+        :returns: A Flask response.
+        """
         if upload_id is not None:
             return self.multipart_delete(bucket, key, upload_id)
         else:

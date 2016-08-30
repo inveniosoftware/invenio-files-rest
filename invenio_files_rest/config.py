@@ -73,6 +73,7 @@ FILES_REST_STORAGE_FACTORY = 'invenio_files_rest.storage.pyfs_storage_factory'
 
 FILES_REST_PERMISSION_FACTORY = \
     'invenio_files_rest.permissions.permission_factory'
+"""Permission factory to control the files access from the REST interface."""
 
 FILES_REST_OBJECT_KEY_MAX_LEN = 255
 """Maximum length of the ObjectVersion.key field.

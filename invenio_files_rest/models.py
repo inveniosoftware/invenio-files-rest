@@ -82,19 +82,35 @@ slug_pattern = re.compile('^[a-z][a-z0-9-]+$')
 # Helpers
 #
 def validate_key(key):
-    """Validate key."""
+    """Validate key.
+
+    :param key: The key to validate.
+    :raises invenio_files_rest.errors.InvalidKeyError: If the key is longer
+        than the maximum length defined in
+        :data:`invenio_files_rest.config.FILES_REST_FILE_URI_MAX_LEN`.
+    :returns: The key.
+    """
     if len(key) > current_app.config['FILES_REST_OBJECT_KEY_MAX_LEN']:
         raise InvalidKeyError()
     return key
 
 
 def as_bucket(value):
-    """Get a bucket object from a bucket id or bucket."""
+    """Get a bucket object from a bucket id or bucket.
+
+    :param value: A :class:`invenio_files_rest.models.Bucket` or a Bucket ID.
+    :returns: A :class:`invenio_files_rest.models.Bucket` instance.
+    """
     return value if isinstance(value, Bucket) else Bucket.get(value)
 
 
 def as_bucket_id(value):
-    """Get a bucket id from a bucket id or bucket."""
+    """Get a bucket id from a bucket id or bucket.
+
+    :param value: A :class:`invenio_files_rest.models.Bucket` instance of a
+        bucket ID.
+    :returns: The :class:`invenio_files_rest.models.Bucket` ID.
+    """
     return value.id if isinstance(value, Bucket) else value
 
 
@@ -128,34 +144,42 @@ def ensure_state(default_getter, exc_class, default_msg=None):
 ensure_readable = ensure_state(
     lambda o: o.readable,
     FileInstanceUnreadableError)
+"""Ensure file is readable."""
 
 ensure_writable = ensure_state(
     lambda o: o.writable,
     ValueError, 'File is not writable.')
+"""Ensure file is writeable."""
 
 ensure_completed = ensure_state(
     lambda o: o.completed,
     MultipartNotCompleted)
+"""Ensure file is completed."""
 
 ensure_uncompleted = ensure_state(
     lambda o: not o.completed,
     MultipartAlreadyCompleted)
+"""Ensure file is not completed."""
 
 ensure_not_deleted = ensure_state(
     lambda o: not o.deleted,
     InvalidOperationError, 'Cannot make snapshot of a deleted bucket.')
+"""Ensure file is not deleted."""
 
 ensure_unlocked = ensure_state(
     lambda o: not o.locked,
     BucketLockedError)
+"""Ensure bucket is locked."""
 
 ensure_no_file = ensure_state(
     lambda o: o.file_id is None,
     FileInstanceAlreadySetError)
+"""Ensure file is not already set."""
 
 ensure_is_previous_version = ensure_state(
     lambda o: not o.is_head,
     InvalidOperationError, 'Cannot restore latest version.')
+"""Ensure file is the previous version."""
 
 
 #
@@ -1383,7 +1407,12 @@ class Part(db.Model, Timestamp):
 
     @classmethod
     def query_by_multipart(cls, multipart):
-        """Get all parts for a specific multipart upload."""
+        """Get all parts for a specific multipart upload.
+
+        :param multipart: A :class:`invenio_files_rest.models.MultipartObject`
+            instance.
+        :returns: A :class:`invenio_files_rest.models.Part` instance.
+        """
         upload_id = multipart.upload_id \
             if isinstance(multipart, MultipartObject) else multipart
         return cls.query.filter_by(

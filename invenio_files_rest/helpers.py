@@ -37,7 +37,24 @@ from werkzeug.wsgi import FileWrapper
 def send_stream(stream, filename, size, mtime, mimetype=None, restricted=True,
                 as_attachment=False, etag=None, content_md5=None,
                 chunk_size=8192, conditional=True):
-    """Send the contents of a file to the client."""
+    """Send the contents of a file to the client.
+
+    :param stream: The file stream to send.
+    :param filename: The file name.
+    :param size: The file size.
+    :param mtime: A Unix timestamp that represents last modified time.
+    :param mimetype: The file mimetype. If ``None``, the module will try to
+        guess. (Default: ``None``)
+    :param restricted: If the file is not restricted, the module will set the
+        cache-control. (Default: ``True``)
+    :param as_attachment: If the file is an attachment. (Default: ``False``)
+    :param etag: If defined, it will be set as HTTP E-Tag.
+    :param content_md5: If defined, a HTTP Content-MD5 header will be set.
+    :param chunk_size: The chunk size. (Default: ``8192``)
+    :param conditional: Make the response conditional to the request.
+        (Default: ``True``)
+    :returns: A Flask response instance.
+    """
     # Guess mimetype from filename if not provided.
     if mimetype is None and filename:
         mimetype = mimetypes.guess_type(filename)[0]
@@ -85,7 +102,14 @@ def send_stream(stream, filename, size, mtime, mimetype=None, restricted=True,
 
 
 def make_path(base_uri, path, filename, path_dimensions, split_length):
-    """Generate a path as base location for file instance."""
+    """Generate a path as base location for file instance.
+
+    :param base_uri: The base URI.
+    :param path: The relative path.
+    :param path_dimensions: Number of chunks the path should be split into.
+    :param split_length: The length of any chunk.
+    :returns: A string representing the full path.
+    """
     assert len(path) > path_dimensions * split_length
 
     uri_parts = []
@@ -99,7 +123,11 @@ def make_path(base_uri, path, filename, path_dimensions, split_length):
 
 
 def compute_md5_checksum(stream, **kwargs):
-    """Helper method to compute MD5 checksum from a stream."""
+    """Helper method to compute MD5 checksum from a stream.
+
+    :param stream: The input stream.
+    :returns: The MD5 checksum.
+    """
     return compute_checksum(stream, 'md5', hashlib.md5(), **kwargs)
 
 
@@ -107,12 +135,14 @@ def compute_checksum(stream, algo, message_digest, chunk_size=None,
                      progress_callback=None):
     """Helper method to compute checksum from a stream.
 
-    :param src: File-like object.
-    :param chunk_size: Read at most size bytes from the file.
+    :param stream: File-like object.
     :param algo: Identifier for checksum algorithm.
     :param messsage_digest: A message digest instance.
+    :param chunk_size: Read at most size bytes from the file.
+        (Default: ``None``)
     :param progress_callback: Function accepting one argument with number
-        of bytes read.
+        of bytes read. (Default: ``None``)
+    :returns: The checksum.
     """
     bytes_read = 0
     while 1:
@@ -129,7 +159,16 @@ def compute_checksum(stream, algo, message_digest, chunk_size=None,
 
 
 def populate_from_path(bucket, source, checksum=True, key_prefix=''):
-    """Populate a ``bucket`` from all files in path."""
+    """Populate a ``bucket`` from all files in path.
+
+    :param bucket: The bucket (instance or id) to create the object in.
+    :param source: The file or directory path.
+    :param checksum: If ``True`` then a MD5 checksum will be computed for each
+        file. (Default: ``True``)
+    :param key_prefix: The key prefix for the bucket.
+    :returns: A iterator for all
+        :class:`invenio_files_rest.models.ObjectVersion` instances.
+    """
     from .models import FileInstance, ObjectVersion
 
     def create_file(key, path):

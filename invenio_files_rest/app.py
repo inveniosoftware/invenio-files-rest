@@ -45,6 +45,6 @@ from .wrappers import Request
 
 
 class Flask(FlaskBase):
-    """Flask application class neded for using custom request class."""
+    """Flask application class needed to use custom request class."""
 
     request_class = Request

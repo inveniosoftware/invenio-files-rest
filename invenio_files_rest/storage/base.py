@@ -35,7 +35,16 @@ from ..helpers import compute_checksum, send_stream
 
 
 def check_sizelimit(size_limit, bytes_written, total_size):
-    """Check if size limit was exceeded."""
+    """Check if size limit was exceeded.
+
+    :param size_limit: The size limit.
+    :param bytes_written: The total number of bytes written.
+    :param total_size: The total file size.
+    :raises invenio_files_rest.errors.UnexpectedFileSizeError: If the bytes
+        written exceed the total size.
+    :raises invenio_files_rest.errors.FileSizeError: If the bytes
+        written are major than the limit size.
+    """
     if size_limit is not None and bytes_written > size_limit:
         desc = 'File size limit exceeded.' \
             if isinstance(size_limit, int) else size_limit.reason
@@ -48,7 +57,13 @@ def check_sizelimit(size_limit, bytes_written, total_size):
 
 
 def check_size(bytes_written, total_size):
-    """Check if expected amounts of bytes have been written."""
+    """Check if expected amounts of bytes have been written.
+
+    :param bytes_written: The total number of bytes written.
+    :param total_size: The total file size.
+    :raises invenio_files_rest.errors.UnexpectedFileSizeError: If the bytes
+        written exceed the total size.
+    """
     if total_size and bytes_written < total_size:
         raise UnexpectedFileSizeError(
             description='File is smaller than expected.')

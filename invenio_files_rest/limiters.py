@@ -28,7 +28,14 @@ from __future__ import absolute_import, print_function
 
 
 def file_size_limiters(bucket):
-    """Default file size limiters."""
+    """Default file size limiters.
+
+    :param bucket: The :class:`invenio_files_rest.models.Bucket` instance.
+    :returns: A list containing an instance of
+        :class:`invenio_files_rest.limiters.FileSizeLimit` with quota left
+        value and description and another one with max file size value and
+        description.
+    """
     return [
         FileSizeLimit(
             bucket.quota_left,
@@ -49,7 +56,11 @@ class FileSizeLimit(object):
         'FileSizeLimits.')
 
     def __init__(self, limit, reason):
-        """Instantiate a new file size limit."""
+        """Instantiate a new file size limit.
+
+        :param limit: The imposed imposed limit.
+        :param reason: The limit description.
+        """
         self.limit = limit
         self.reason = reason
 

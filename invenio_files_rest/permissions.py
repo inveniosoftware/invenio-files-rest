@@ -34,65 +34,90 @@ from .models import Bucket, Location, MultipartObject, ObjectVersion
 #
 # Action needs
 #
-# Create buckets
+
 LocationUpdate = partial(
     ParameterizedActionNeed, 'files-rest-location-update')
+"""Action needed: location update."""
 
-# List objects in bucket
 BucketRead = partial(
     ParameterizedActionNeed, 'files-rest-bucket-read')
-# List object versions in bucket
+"""Action needed: list objects in bucket."""
+
 BucketReadVersions = partial(
     ParameterizedActionNeed, 'files-rest-bucket-read-versions')
-# Create objects and multipart uploads in bucket
+"""Action needed: list object versions in bucket."""
+
 BucketUpdate = partial(
     ParameterizedActionNeed, 'files-rest-bucket-update')
-# List multipart uploads in bucket
+"""Action needed: create objects and multipart uploads in bucket."""
+
 BucketListMultiparts = partial(
     ParameterizedActionNeed, 'files-rest-bucket-listmultiparts')
+"""Action needed: list multipart uploads in bucket."""
 
-# Get object in bucket
 ObjectRead = partial(
     ParameterizedActionNeed, 'files-rest-object-read')
-# Get object version in bucket
+"""Action needed: get object in bucket."""
+
 ObjectReadVersion = partial(
     ParameterizedActionNeed, 'files-rest-object-read-version')
-# Delete object in bucket
+"""Action needed: get object version in bucket."""
+
 ObjectDelete = partial(
     ParameterizedActionNeed, 'files-rest-object-delete')
-# Permanently delete specific object version in bucket
+"""Action needed: delete object in bucket."""
+
 ObjectDeleteVersion = partial(
     ParameterizedActionNeed, 'files-rest-object-delete-version')
+"""Action needed: permanently delete specific object version in bucket."""
 
-# List parts of a multipart upload in a bucket
 MultipartRead = partial(
     ParameterizedActionNeed, 'files-rest-multipart-read')
-# Abort a multipart upload
+"""Action needed: list parts of a multipart upload in a bucket."""
+
 MultipartDelete = partial(
     ParameterizedActionNeed, 'files-rest-multipart-delete')
+"""Action needed: abort a multipart upload."""
 
 
 #
 # Global action needs
 #
+
 location_update_all = LocationUpdate(None)
+"""Action needed: update all locations."""
 
 bucket_read_all = BucketRead(None)
+"""Action needed: read all buckets."""
+
 bucket_read_versions_all = BucketReadVersions(None)
+"""Action needed: read all buckets versions."""
+
 bucket_update_all = BucketUpdate(None)
+"""Action needed: update all buckets"""
+
 bucket_listmultiparts_all = BucketListMultiparts(None)
+"""Action needed: list all buckets multiparts."""
 
 object_read_all = ObjectRead(None)
+"""Action needed: read all objects."""
+
 object_read_version_all = ObjectReadVersion(None)
+"""Action needed: read all objects versions."""
+
 object_delete_all = ObjectDelete(None)
+"""Action needed: delete all objects."""
+
 object_delete_version_all = ObjectDeleteVersion(None)
+"""Action needed: delete all objects versions."""
 
 multipart_read_all = MultipartRead(None)
-multipart_delete_all = MultipartDelete(None)
+"""Action needed: read all multiparts."""
 
-#
-# Mapping of action names to action needs.
-#
+multipart_delete_all = MultipartDelete(None)
+"""Action needed: delete all multiparts."""
+
+
 _action2need_map = {
     'location-update': LocationUpdate,
     'bucket-read': BucketRead,
@@ -106,10 +131,20 @@ _action2need_map = {
     'multipart-read': MultipartRead,
     'multipart-delete': MultipartDelete,
 }
+"""Mapping of action names to action needs."""
 
 
 def permission_factory(obj, action):
-    """Permission factory."""
+    """Default permission factory.
+
+    :param obj: An instance of :class:`invenio_files_rest.models.Bucket` or
+        :class:`invenio_files_rest.models.ObjectVersion` or
+        :class:`invenio_files_rest.models.MultipartObject` or ``None`` if
+        the action is global.
+    :param action: The required action.
+    :raises RuntimeError: If the object is unknown.
+    :returns: A :class:`invenio_access.permissions.DynamicPermission` instance.
+    """
     need_class = _action2need_map[action]
 
     if obj is None:

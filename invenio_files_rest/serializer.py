@@ -243,6 +243,16 @@ def wait_for_taskresult(task_result, content, interval, max_rounds):
 
     The task will periodically send whitespace to prevent the connection from
     being closed.
+
+    :param task_result: The async task to wait for.
+    :param content: The content to return when the task is ready.
+    :param interval: The duration of a sleep period before check again if the
+        task is ready.
+    :param max_rounds: The maximum number of intervals the function check
+        before returning an Exception.
+    :returns: An iterator on the content or a
+        :class:`invenio_files_rest.errors.FilesException` exception if the
+        timeout happened or the job failed.
     """
     assert max_rounds > 0
 
@@ -277,8 +287,15 @@ def json_serializer(data=None, code=200, headers=None, context=None,
                     etag=None, task_result=None):
     """Build a json flask response using the given data.
 
-    :returns: A flask response with json data.
-    :returns type: :py:class:`flask.Response`
+    :param data: The data to serialize. (Default: ``None``)
+    :param code: The HTTP status code. (Default: ``200``)
+    :param headers: The HTTP headers to include. (Default: ``None``)
+    :param context: The schema class context. (Default: ``None``)
+    :param etag: The ETag header. (Default: ``None``)
+    :param task_result: Optionally you can pass async task to wait for.
+        (Default: ``None``)
+    :returns: A Flask response with json data.
+    :rtype: :py:class:`flask.Response`
     """
     schema_class, many = schema_from_context(context or {})
 

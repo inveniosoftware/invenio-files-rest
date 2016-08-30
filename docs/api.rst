@@ -27,52 +27,74 @@ API Docs
 
 .. automodule:: invenio_files_rest.ext
    :members:
-   :undoc-members:
 
 Models
 ------
 
 .. automodule:: invenio_files_rest.models
    :members:
-   :undoc-members:
 
 Storage
 -------
 
 .. automodule:: invenio_files_rest.storage
    :members:
-   :undoc-members:
 
 Signals
 -------
 
 .. automodule:: invenio_files_rest.signals
    :members:
-   :undoc-members:
 
 File streaming
 --------------
 
 .. automodule:: invenio_files_rest.helpers
    :members:
-   :undoc-members:
 
 Tasks
 -----
 
 .. automodule:: invenio_files_rest.tasks
    :members:
-   :undoc-members:
 
 Exceptions
 ----------
 
 .. automodule:: invenio_files_rest.errors
    :members:
-   :undoc-members:
 
 Configuration
 -------------
 .. automodule:: invenio_files_rest.config
    :members:
-   :undoc-members:
+
+Limiters
+--------
+
+.. automodule:: invenio_files_rest.limiters
+   :members:
+
+Permissions
+-----------
+
+.. automodule:: invenio_files_rest.permissions
+   :members:
+
+Serializers
+-----------
+
+.. automodule:: invenio_files_rest.serializer
+   :members:
+
+Views
+-----
+
+.. automodule:: invenio_files_rest.views
+   :members:
+
+Form parser
+-----------
+
+.. automodule:: invenio_files_rest.formparser
+   :members:
