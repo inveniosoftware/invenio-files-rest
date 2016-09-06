@@ -29,11 +29,12 @@ from __future__ import absolute_import, print_function
 from flask import abort
 from pkg_resources import DistributionNotFound, get_distribution
 from werkzeug.exceptions import UnprocessableEntity
-from werkzeug.utils import cached_property, import_string
+from werkzeug.utils import cached_property
 
 from . import config
 from .cli import files as files_cmd
 from .errors import MultipartNoPart
+from .utils import load_or_import_from_config, obj_or_import_string
 
 
 class _FilesRESTState(object):
@@ -46,9 +47,10 @@ class _FilesRESTState(object):
     @cached_property
     def record_file_factory(self):
         """Load default storage factory."""
-        imp = self.app.config.get("FILES_REST_RECORD_FILE_FACTORY")
-        if imp:
-            return import_string(imp)
+        r = load_or_import_from_config(
+            'FILES_REST_RECORD_FILE_FACTORY', app=self.app)
+        if r is not None:
+            return r
         else:
             try:
                 get_distribution('invenio-records-files')
@@ -60,13 +62,16 @@ class _FilesRESTState(object):
     @cached_property
     def storage_factory(self):
         """Load default storage factory."""
-        return import_string(self.app.config.get('FILES_REST_STORAGE_FACTORY'))
+        return load_or_import_from_config(
+            'FILES_REST_STORAGE_FACTORY', app=self.app
+        )
 
     @cached_property
     def permission_factory(self):
         """Load default permission factory for Buckets collections."""
-        return import_string(
-            self.app.config.get('FILES_REST_PERMISSION_FACTORY'))
+        return load_or_import_from_config(
+            'FILES_REST_PERMISSION_FACTORY', app=self.app
+        )
 
     @cached_property
     def file_size_limiters(self):
@@ -83,13 +88,15 @@ class _FilesRESTState(object):
         An empty list should be returned if there should be no limit. The
         lowest limit will be used.
         """
-        return import_string(self.app.config.get('FILES_REST_SIZE_LIMITERS'))
+        return load_or_import_from_config(
+            'FILES_REST_SIZE_LIMITERS', app=self.app
+        )
 
     @cached_property
     def part_factories(self):
         """Factory getting list of webargs schemas for parsing part number."""
         return [
-            import_string(x) for x in
+            obj_or_import_string(x) for x in
             self.app.config.get('FILES_REST_MULTIPART_PART_FACTORIES', [])
         ]
 
@@ -97,7 +104,7 @@ class _FilesRESTState(object):
     def upload_factories(self):
         """Factory getting list of webargs schemas for parsing part number."""
         return [
-            import_string(x) for x in
+            obj_or_import_string(x) for x in
             self.app.config.get('FILES_REST_UPLOAD_FACTORIES', [])
         ]
 
