@@ -29,7 +29,7 @@ from functools import partial
 from invenio_access.permissions import DynamicPermission, \
     ParameterizedActionNeed
 
-from .models import Bucket, Location, MultipartObject, ObjectVersion
+from .models import Bucket, MultipartObject, ObjectVersion
 
 #
 # Action needs

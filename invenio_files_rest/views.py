@@ -48,37 +48,32 @@ from .tasks import merge_multipartobject, remove_file_data
 blueprint = Blueprint(
     'invenio_files_rest',
     __name__,
-    url_prefix='/files'
+    url_prefix='/files',
 )
 
 
 #
 # Helpers
 #
-def as_uuid(val):
-    """Convert to UUID.
-
-    :param val: The value to convert into UUID.
-    :returns: A UUID.
-    """
+def as_uuid(value):
+    """Convert value to UUID."""
     try:
-        return uuid.UUID(val)
+        return uuid.UUID(value)
     except ValueError:
         abort(404)
 
 
-def minsize_validator(val):
+def minsize_validator(value):
     """Validate Content-Length header.
 
-    :param val: The value to validate.
-    :raises invenio_files_rest.errors.FileSizeError: If the value is less than
-        :data:`invenio_files_rest.config.FILES_REST_MIN_FILE_SIZE` size.
+    :raises invenio_files_rest.errors.FileSizeError: If the value is less
+        than :data:`invenio_files_rest.config.FILES_REST_MIN_FILE_SIZE` size.
     """
-    if val < current_app.config['FILES_REST_MIN_FILE_SIZE']:
+    if value < current_app.config['FILES_REST_MIN_FILE_SIZE']:
         raise FileSizeError()
 
 
-def invalid_subresource_validator(val):
+def invalid_subresource_validator(value):
     """Ensure subresource."""
     abort(405)
 
@@ -144,8 +139,7 @@ def stream_uploadfactory(content_md5=None, content_length=None,
                          content_type=None):
     """Get default put factory.
 
-    .. note:: If Content-Type is``'multipart/form-data'`` then the stream is
-        aborted
+    If Content-Type is ``'multipart/form-data'`` then the stream is aborted.
 
     :param content_md5: The content MD5. (Default: ``None``)
     :param content_length: The content length. (Default: ``None``)
@@ -210,14 +204,12 @@ def ngfileupload_uploadfactory(content_length=None, content_type=None,
                                uploaded_file=None):
     """Get default put factory.
 
-    .. note:: If Content-Type is``'multipart/form-data'`` then the stream is
-        aborted
+    If Content-Type is ``'multipart/form-data'`` then the stream is aborted.
 
     :param content_length: The content length. (Default: ``None``)
     :param content_type: The HTTP Content-Type. (Default: ``None``)
     :param uploaded_file: The upload request. (Default: ``None``)
-    :returns: The stream, content length, ``None``
-        header.
+    :returns: A tuple containing stream, content length, and empty header.
     """
     if not content_type.startswith('multipart/form-data'):
         abort(422)
@@ -260,7 +252,7 @@ def pass_multipart(with_completed=False):
 def check_permission(permission, hidden=True):
     """Check if permission is allowed.
 
-    .. note:: If permission fails then the connection is aborted.
+    If permission fails then the connection is aborted.
 
     :param permission: The permission to check.
     :param hidden: Determine if a 404 error (``True``) or 401/403 error
@@ -278,7 +270,7 @@ def check_permission(permission, hidden=True):
 
 
 def need_permissions(object_getter, action, hidden=True):
-    """"Get permission for buckets or abort.
+    """Get permission for buckets or abort.
 
     :param object_getter: The function used to retrieve the object and pass it
         to the permission factory.
@@ -360,7 +352,7 @@ def file_download_ui(pid, record, **kwargs):
 # REST resources
 #
 class LocationResource(ContentNegotiatedMethodView):
-    """"Service resource."""
+    """Service resource."""
 
     def __init__(self, *args, **kwargs):
         """Instatiate content negotiated view."""
@@ -385,7 +377,7 @@ class LocationResource(ContentNegotiatedMethodView):
 
 
 class BucketResource(ContentNegotiatedMethodView):
-    """"Bucket item resource."""
+    """Bucket item resource."""
 
     get_args = {
         'versions': fields.Raw(
@@ -404,7 +396,7 @@ class BucketResource(ContentNegotiatedMethodView):
     def multipart_listuploads(self, bucket):
         """List objects in a bucket.
 
-        ;param bucket: A :class:`invenio_files_rest.models.Bucket` instance.
+        :param bucket: A :class:`invenio_files_rest.models.Bucket` instance.
         :returns: The Flask response.
         """
         return self.make_response(
@@ -423,7 +415,7 @@ class BucketResource(ContentNegotiatedMethodView):
     def listobjects(self, bucket, versions):
         """List objects in a bucket.
 
-        ;param bucket: A :class:`invenio_files_rest.models.Bucket` instance.
+        :param bucket: A :class:`invenio_files_rest.models.Bucket` instance.
         :returns: The Flask response.
         """
         if versions is not missing:
@@ -446,7 +438,7 @@ class BucketResource(ContentNegotiatedMethodView):
     def get(self, bucket=None, versions=None, uploads=None):
         """Get list of objects in the bucket.
 
-        ;param bucket: A :class:`invenio_files_rest.models.Bucket` instance.
+        :param bucket: A :class:`invenio_files_rest.models.Bucket` instance.
         :returns: The Flask response.
         """
         if uploads is not missing:
@@ -457,14 +449,11 @@ class BucketResource(ContentNegotiatedMethodView):
     @pass_bucket
     @need_bucket_permission('bucket-read')
     def head(self, bucket=None, **kwargs):
-        """Check the existence of the bucket.
-
-        .. note:: Not implemented.
-        """
+        """Check the existence of the bucket."""
 
 
 class ObjectResource(ContentNegotiatedMethodView):
-    """"Object item resource."""
+    """Object item resource."""
 
     get_args = {
         'version_id': fields.UUID(
@@ -525,10 +514,7 @@ class ObjectResource(ContentNegotiatedMethodView):
     #
     @staticmethod
     def check_object_permission(obj):
-        """Retrieve object and abort if it doesn't exists.
-
-        :param obj: The object to check.
-        """
+        """Retrieve object and abort if it doesn't exists."""
         check_permission(current_permission_factory(
             obj,
             'object-read'
@@ -543,8 +529,8 @@ class ObjectResource(ContentNegotiatedMethodView):
     def get_object(cls, bucket, key, version_id):
         """Retrieve object and abort if it doesn't exists.
 
-        .. note:: if the file is not found, the connection is aborted and
-            a 404 error is returned.
+        If the file is not found, the connection is aborted and the 404
+        error is returned.
 
         :param bucket: The bucket (instance or id) to get the object from.
         :param key: The file key.
@@ -683,7 +669,7 @@ class ObjectResource(ContentNegotiatedMethodView):
         :param key: The file key.
         :param size: The total size.
         :param part_size: The part size.
-        :arises invenio_files_rest.errors.MissingQueryParameter: If size or
+        :raises invenio_files_rest.errors.MissingQueryParameter: If size or
             part_size are not defined.
         :returns: A Flask response.
         """

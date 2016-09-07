@@ -36,11 +36,11 @@ class FormDataParser(WerkzeugFormDataParser):
     def parse(self, stream, mimetype, content_length, options=None):
         """Parse the information from the given request.
 
-        :param stream: An input stream
-        :param mimetype: The mimetype of the data
-        :param content_length: The content length of the incoming data
+        :param stream: An input stream.
+        :param mimetype: The mimetype of the data.
+        :param content_length: The content length of the incoming data.
         :param options: Optional mimetype parameters (used for
-                        the multipart boundary for instance)
+                        the multipart boundary for instance).
         :return: A tuple in the form ``(stream, form, files)``.
         """
         if options is None:
