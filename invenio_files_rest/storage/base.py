@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015, 2016 CERN.
+# Copyright (C) 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -166,7 +166,7 @@ class FileStorage(object):
         Overwrite this method if you want to use different checksum
         algorithm for your storage backend.
         """
-        return "md5", hashlib.md5()
+        return 'md5', hashlib.md5()
 
     def _compute_checksum(self, stream, size=None, chunk_size=None,
                           progress_callback=None):
@@ -231,5 +231,5 @@ class FileStorage(object):
 
         check_size(bytes_written, size)
 
-        return bytes_written, "{0}:{1}".format(
+        return bytes_written, '{0}:{1}'.format(
             algo, m.hexdigest()) if m else None

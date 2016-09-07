@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015, 2016 CERN.
+# Copyright (C) 2016 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -37,9 +37,8 @@ from .base import FileStorage
 class PyFSFileStorage(FileStorage):
     """File system storage using PyFilesystem for access the file.
 
-    This storage class will store files according to the following pattern::
-
-        <base_uri>/<file instance uuid>/data
+    This storage class will store files according to the following pattern:
+    ``<base_uri>/<file instance uuid>/data``.
 
     .. warning::
 
@@ -48,10 +47,6 @@ class PyFSFileStorage(FileStorage):
        state. The storage class tries as best as possible to handle errors
        and leave the system in a consistent state.
 
-    :param fileinstance: A file instance.
-    :param base_uri: Base URI for where to store the file. Injected by
-        :py:data:`pyfs_storage_factory`.
-    :param filename: Filename of data file. Default: ``data``.
     """
 
     def __init__(self, fileurl, size=None, modified=None, clean_dir=True):
@@ -61,7 +56,7 @@ class PyFSFileStorage(FileStorage):
         super(PyFSFileStorage, self).__init__(size=size, modified=modified)
 
     def _get_fs(self, create_dir=True):
-        """."""
+        """Return tuple with filesystem and filename."""
         filedir = dirname(self.fileurl)
         filename = basename(self.fileurl)
 

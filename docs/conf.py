@@ -332,7 +332,8 @@ intersphinx_mapping = {
     'flask': ('http://flask.pocoo.org/docs/latest/', None),
     'invenio-access': ('https://pythonhosted.org/invenio-access', None),
     'invenio-pidstore': ('https://pythonhosted.org/invenio-pidstore', None),
-    'python': ('https://docs.python.org/', None),
+    'invenio-rest': ('https://pythonhosted.org/invenio-rest', None),
+    'python': ('https://docs.python.org/3', None),
 }
 
 # Autodoc configuraton.
