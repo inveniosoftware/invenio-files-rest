@@ -113,8 +113,8 @@ def test_multipart_full(app, db, bucket):
 
     # Initial parameters
     chunks = 20
-    chunk_size = 5 * 1024 * 1024  # 5mb
-    last_chunk = 1024 * 1024  # 1mb
+    chunk_size = 5 * 1024 * 1024  # 5 MiB
+    last_chunk = 1024 * 1024  # 1 MiB
     size = (chunks - 1) * chunk_size + last_chunk
 
     # Initiate

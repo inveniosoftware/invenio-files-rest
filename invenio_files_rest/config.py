@@ -121,10 +121,10 @@ FILES_REST_UPLOAD_FACTORIES = [
 FILES_REST_MULTIPART_MAX_PARTS = 10000
 """Maximum number of parts."""
 
-FILES_REST_MULTIPART_CHUNKSIZE_MIN = 5 * 1024 * 1024  # 5mb
+FILES_REST_MULTIPART_CHUNKSIZE_MIN = 5 * 1024 * 1024  # 5 MiB
 """Minimum chunk size of multipart objects."""
 
-FILES_REST_MULTIPART_CHUNKSIZE_MAX = 5 * 1024 * 1024 * 1024  # 5gb
+FILES_REST_MULTIPART_CHUNKSIZE_MAX = 5 * 1024 * 1024 * 1024  # 5 GiB
 """Minimum chunk size of multipart objects."""
 
 FILES_REST_MULTIPART_EXPIRES = timedelta(days=4)
