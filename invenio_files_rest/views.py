@@ -137,6 +137,7 @@ def default_partfactory(part_number=None, content_length=None,
     'content_type': fields.Str(
         load_from='Content-Type',
         location='headers',
+        missing='',
     ),
 })
 def stream_uploadfactory(content_md5=None, content_length=None,
