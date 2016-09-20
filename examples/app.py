@@ -29,32 +29,20 @@ SPHINX-START
 Initialization
 --------------
 
-Initialize database
+Install requirements:
 
 .. code-block:: console
 
+   $ pip install -e .[all]
    $ cd examples
-   $ export FLASK_APP=app.py FLASK_DEBUG=1
-   $ flask db init
-   $ flask db create
-
-Create a user (for accessing admin):
-
-.. code-block:: console
-
-   $ flask users create info@inveniosoftware.org -a
-
-Load some test data (you can re-run the command many times):
-
-.. code-block:: console
-
-   $ flask fixtures files
+   $ ./app-setup.py
+   $ ./app-fixtures.sh
 
 Run example development server:
 
 .. code-block:: console
 
-   $ flask run
+   $ FLASK_APP=app.py flask run --debugger -p 5000
 
 Run example worker:
 
@@ -219,8 +207,6 @@ app.config.update(dict(
     FILES_REST_MULTIPART_CHUNKSIZE_MIN=4,
     REST_ENABLE_CORS=True,
     SECRET_KEY='CHANGEME',
-    SQLALCHEMY_DATABASE_URI=environ.get(
-        'SQLALCHEMY_DATABASE_URI', 'sqlite:///test.db'),
     SQLALCHEMY_ECHO=False,
     SQLALCHEMY_TRACK_MODIFICATIONS=True,
 ))
