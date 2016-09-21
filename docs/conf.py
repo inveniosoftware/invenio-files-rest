@@ -330,9 +330,11 @@ texinfo_documents = [
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
     'flask': ('http://flask.pocoo.org/docs/latest/', None),
-    'invenio-access': ('https://pythonhosted.org/invenio-access', None),
-    'invenio-pidstore': ('https://pythonhosted.org/invenio-pidstore', None),
-    'invenio-rest': ('https://pythonhosted.org/invenio-rest', None),
+    'invenio-access': ('https://invenio-access.readthedocs.io/en/latest/',
+                       None),
+    'invenio-pidstore': ('https://invenio-pidstore.readthedocs.io/en/latest/',
+                         None),
+    'invenio-rest': ('https://invenio-rest.readthedocs.io/en/latest/', None),
     'python': ('https://docs.python.org/3', None),
 }
 

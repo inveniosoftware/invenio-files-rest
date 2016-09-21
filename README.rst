@@ -46,4 +46,4 @@ Files download/upload REST API similar to S3 for Invenio.
 *This is an experimental developer preview release.*
 
 * Free software: GPLv2 license
-* Documentation: https://pythonhosted.org/invenio-files-rest/
+* Documentation: https://invenio-files-rest.readthedocs.io
