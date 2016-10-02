@@ -26,7 +26,7 @@ import uuid
 from flask import current_app, flash, url_for
 from flask_admin.actions import action
 from flask_admin.contrib.sqla import ModelView
-from flask_wtf import Form
+from flask_wtf import FlaskForm
 from invenio_admin.filters import FilterConverter
 from invenio_admin.forms import LazyChoices
 from markupsafe import Markup
@@ -79,7 +79,7 @@ class LocationModelView(ModelView):
     column_filters = ('default', 'created', 'updated', )
     column_searchable_list = ('uri', 'name')
     column_default_sort = 'name'
-    form_base_class = Form
+    form_base_class = FlaskForm
     form_columns = ('name', 'uri', 'default')
     form_args = dict(
         name=dict(validators=[require_slug])
@@ -121,7 +121,7 @@ class BucketModelView(ModelView):
         'created', 'updated',
     )
     column_default_sort = ('updated', True)
-    form_base_class = Form
+    form_base_class = FlaskForm
     form_columns = (
         'default_storage_class', 'locked', 'deleted', 'quota_size',
         'max_file_size'
