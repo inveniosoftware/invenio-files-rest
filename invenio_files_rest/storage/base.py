@@ -28,6 +28,7 @@ from __future__ import absolute_import, print_function
 
 import hashlib
 import time
+from calendar import timegm
 from functools import partial
 
 from ..errors import FileSizeError, StorageError, UnexpectedFileSizeError
@@ -75,8 +76,7 @@ class FileStorage(object):
     def __init__(self, size=None, modified=None):
         """Initialize storage object."""
         self._size = size
-        self._modified = \
-            time.mktime(modified.timetuple()) if modified else None
+        self._modified = timegm(modified.timetuple()) if modified else None
 
     def open(self, mode=None):
         """Open the file.

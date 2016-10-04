@@ -42,7 +42,7 @@ def send_stream(stream, filename, size, mtime, mimetype=None, restricted=True,
     :param stream: The file stream to send.
     :param filename: The file name.
     :param size: The file size.
-    :param mtime: A Unix timestamp that represents last modified time.
+    :param mtime: A Unix timestamp that represents last modified time (UTC).
     :param mimetype: The file mimetype. If ``None``, the module will try to
         guess. (Default: ``None``)
     :param restricted: If the file is not restricted, the module will set the

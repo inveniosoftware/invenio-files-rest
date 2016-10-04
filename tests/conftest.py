@@ -139,13 +139,13 @@ def dummy_location(db):
 
 @pytest.fixture()
 def pyfs_testpath(dummy_location):
-    """PyFS test temporary path."""
+    """Temporary path for PyFS."""
     return os.path.join(dummy_location.uri, 'subpath/data')
 
 
 @pytest.fixture()
 def pyfs(dummy_location, pyfs_testpath):
-    """PyFSFileStorage instance."""
+    """Instance of PyFSFileStorage."""
     return PyFSFileStorage(pyfs_testpath)
 
 

@@ -26,6 +26,8 @@
 
 from __future__ import absolute_import, print_function
 
+from datetime import timedelta
+
 import pytest
 from flask import url_for
 from fs.opener import opener
@@ -94,6 +96,29 @@ def test_get(client, headers, bucket, objects, permissions):
                 # Strips prefix 'md5:' from checksum value.
                 assert resp.content_md5 == obj.file.checksum[4:]
                 assert resp.get_etag()[0] == obj.file.checksum
+
+
+def test_last_modified_utc_conversion(client, headers, bucket, permissions):
+    """Test date conversion of the DB object 'updated' timestamp (UTC) to a
+    correct Last-Modified date (also UTC) in the response header.
+
+    This test makes sure that DB timestamps are not treated as localtime.
+    """
+    key = 'last_modified_test.txt'
+    data = b'some_new_content'
+    object_url = url_for(
+        'invenio_files_rest.object_api', bucket_id=bucket.id, key=key)
+    login_user(client, permissions['bucket'])
+
+    # Make a new PUT and get the DB object 'updated' datetime
+    put_resp = client.put(object_url, input_stream=BytesIO(data))
+    updated = ObjectVersion.get(bucket, key).updated
+    assert put_resp.status_code == 200
+    # GET the object and make sure the Last-Modified parameter in the header
+    # is the same (sans the microseconds resolution) timestamp
+    get_resp = client.get(object_url)
+    assert get_resp.status_code == 200
+    assert abs(get_resp.last_modified - updated) < timedelta(seconds=1)
 
 
 def test_get_unreadable_file(client, headers, bucket, objects, db):
