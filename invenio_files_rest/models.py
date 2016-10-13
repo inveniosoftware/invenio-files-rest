@@ -845,7 +845,7 @@ class ObjectVersion(db.Model, Timestamp):
 
     @property
     def basename(self):
-        """Determine if object version is a delete marker."""
+        """Return filename of the object."""
         return basename(self.key)
 
     @property
