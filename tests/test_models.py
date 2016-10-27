@@ -32,12 +32,13 @@ from os.path import getsize
 import pytest
 from fs.errors import ResourceNotFoundError
 from six import BytesIO, b
+from sqlalchemy.exc import IntegrityError
 
 from invenio_files_rest.errors import BucketLockedError, \
     FileInstanceAlreadySetError, FileInstanceUnreadableError, \
     InvalidKeyError, InvalidOperationError
 from invenio_files_rest.models import Bucket, BucketTag, FileInstance, \
-    Location, ObjectVersion
+    Location, ObjectVersion, ObjectVersionTag
 
 
 def test_location(app, db):
@@ -818,3 +819,55 @@ def test_fileinstance_validation(app, db, dummy_location):
     f = FileInstance.create()
     f.set_uri('x' * 255, 1000, 1000)  # Should not raise
     pytest.raises(ValueError, f.set_uri, 'x' * 256, 1000, 1000)
+
+
+def test_object_version_tags(app, db, dummy_location):
+    """Test object version tags."""
+    f = FileInstance(uri="f1", size=1, checksum="mychecksum")
+    db.session.add(f)
+    db.session.commit()
+    b = Bucket.create()
+    obj1 = ObjectVersion.create(b, "test").set_file(f)
+    ObjectVersionTag.create(obj1, "mykey", "testvalue")
+    ObjectVersionTag.create(obj1, "another_key", "another value")
+    db.session.commit()
+
+    # Duplicate key
+    pytest.raises(
+        IntegrityError, ObjectVersionTag.create, obj1, "mykey", "newvalue")
+
+    # Test get
+    assert ObjectVersionTag.query.count() == 2
+    assert ObjectVersionTag.get(obj1, "mykey").value == "testvalue"
+    assert ObjectVersionTag.get_value(obj1.version_id, "another_key") \
+        == "another value"
+    assert ObjectVersionTag.get_value(obj1, "invalid") is None
+
+    # Test delete
+    ObjectVersionTag.delete(obj1, "mykey")
+    assert ObjectVersionTag.query.count() == 1
+    ObjectVersionTag.delete(obj1, "invalid")
+    assert ObjectVersionTag.query.count() == 1
+
+    # Create or update
+    ObjectVersionTag.create_or_update(obj1, "another_key", "newval")
+    ObjectVersionTag.create_or_update(obj1.version_id, "newkey", "testval")
+    db.session.commit()
+    assert ObjectVersionTag.get_value(obj1, "another_key") == "newval"
+    assert ObjectVersionTag.get_value(obj1, "newkey") == "testval"
+
+    # Get tags as dictionary
+    assert obj1.get_tags() == dict(another_key="newval", newkey="testval")
+    obj2 = ObjectVersion.create(b, 'test2')
+    assert obj2.get_tags() == dict()
+
+    # Copy object version
+    obj_copy = obj1.copy()
+    db.session.commit()
+    assert obj_copy.get_tags() == dict(another_key="newval", newkey="testval")
+    assert ObjectVersionTag.query.count() == 4
+
+    # Cascade delete
+    ObjectVersion.query.delete()
+    db.session.commit()
+    assert ObjectVersionTag.query.count() == 0
