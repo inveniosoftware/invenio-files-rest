@@ -789,23 +789,21 @@ class ObjectVersion(db.Model, Timestamp):
 
     __tablename__ = 'files_object'
 
-    bucket_id = db.Column(
-        UUIDType,
-        db.ForeignKey(Bucket.id, ondelete='RESTRICT'),
-        default=uuid.uuid4,
-        primary_key=True, )
-    """Bucket identifier."""
-
-    key = db.Column(
-        db.Text().with_variant(mysql.VARCHAR(255), 'mysql'),
-        primary_key=True, )
-    """Key identifying the object."""
-
     version_id = db.Column(
         UUIDType,
         primary_key=True,
         default=uuid.uuid4, )
     """Identifier for the specific version of an object."""
+
+    key = db.Column(
+        db.Text().with_variant(mysql.VARCHAR(255), 'mysql'), )
+    """Key identifying the object."""
+
+    bucket_id = db.Column(
+        UUIDType,
+        db.ForeignKey(Bucket.id, ondelete='RESTRICT'),
+        default=uuid.uuid4, )
+    """Bucket identifier."""
 
     file_id = db.Column(
         UUIDType,
@@ -832,6 +830,10 @@ class ObjectVersion(db.Model, Timestamp):
 
     file = db.relationship(FileInstance, backref='objects')
     """Relationship to file instance."""
+
+    __table_args__ = (
+        db.UniqueConstraint('bucket_id', 'version_id', 'key'),
+    )
 
     @validates('key')
     def validate_key(self, key, key_):
