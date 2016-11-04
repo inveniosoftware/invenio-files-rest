@@ -34,10 +34,11 @@ history = open('CHANGES.rst').read()
 tests_require = [
     'Flask-BabelEx>=0.9.3',
     'Flask-Menu>=0.2.1',
+    'SQLAlchemy-Continuum>=1.2.1',
     'check-manifest>=0.25',
     'coverage>=4.0',
-    'invenio-access>=1.0.0a6',
-    'invenio-accounts>=1.0.0a15',
+    'invenio-access>=1.0.0a11',
+    'invenio-accounts>=1.0.0b1',
     'invenio-admin>=1.0.0a3',
     'invenio-celery>=1.0.0a4',
     'isort>=4.2.2',
@@ -55,13 +56,13 @@ extras_require = {
         'sphinxcontrib-httpdomain>=1.4.0',
     ],
     'postgresql': [
-        'invenio-db[postgresql]>=1.0.0a6',
+        'invenio-db[postgresql]>=1.0.0b3',
     ],
     'mysql': [
-        'invenio-db[mysql]>=1.0.0a6',
+        'invenio-db[mysql]>=1.0.0b3',
     ],
     'sqlite': [
-        'invenio-db>=1.0.0a6',
+        'invenio-db>=1.0.0b3',
     ],
     'tests': tests_require,
 }
@@ -111,30 +112,6 @@ setup(
     include_package_data=True,
     platforms='any',
     entry_points={
-        'invenio_base.api_apps': [
-            'invenio_files_rest = invenio_files_rest:InvenioFilesREST',
-        ],
-        'invenio_base.apps': [
-            'invenio_files_rest = invenio_files_rest:InvenioFilesREST',
-        ],
-        'invenio_base.api_blueprints': [
-            'invenio_files_rest = invenio_files_rest.views:blueprint',
-        ],
-        'invenio_db.models': [
-            'invenio_files_rest = invenio_files_rest.models',
-        ],
-        'invenio_celery.tasks': [
-            'invenio_files_rest = invenio_files_rest.tasks',
-        ],
-        'invenio_admin.views': [
-            'location_adminview = invenio_files_rest.admin:location_adminview',
-            'bucket_adminview = invenio_files_rest.admin:bucket_adminview',
-            'object_adminview = invenio_files_rest.admin:object_adminview',
-            'fileinstance_adminview'
-            ' = invenio_files_rest.admin:fileinstance_adminview',
-            'multipartobject_adminview'
-            ' = invenio_files_rest.admin:multipartobject_adminview',
-        ],
         'invenio_access.actions': [
             # Location related permissions
             'location_update_all'
@@ -162,7 +139,33 @@ setup(
             ' = invenio_files_rest.permissions:multipart_read_all',
             'multipart_delete_all'
             ' = invenio_files_rest.permissions:multipart_delete_all',
-
+        ],
+        'invenio_admin.views': [
+            'location_adminview = invenio_files_rest.admin:location_adminview',
+            'bucket_adminview = invenio_files_rest.admin:bucket_adminview',
+            'object_adminview = invenio_files_rest.admin:object_adminview',
+            'fileinstance_adminview'
+            ' = invenio_files_rest.admin:fileinstance_adminview',
+            'multipartobject_adminview'
+            ' = invenio_files_rest.admin:multipartobject_adminview',
+        ],
+        'invenio_base.api_apps': [
+            'invenio_files_rest = invenio_files_rest:InvenioFilesREST',
+        ],
+        'invenio_base.api_blueprints': [
+            'invenio_files_rest = invenio_files_rest.views:blueprint',
+        ],
+        'invenio_base.apps': [
+            'invenio_files_rest = invenio_files_rest:InvenioFilesREST',
+        ],
+        'invenio_celery.tasks': [
+            'invenio_files_rest = invenio_files_rest.tasks',
+        ],
+        'invenio_db.alembic': [
+            'invenio_files_rest = invenio_files_rest:alembic',
+        ],
+        'invenio_db.models': [
+            'invenio_files_rest = invenio_files_rest.models',
         ],
     },
     extras_require=extras_require,

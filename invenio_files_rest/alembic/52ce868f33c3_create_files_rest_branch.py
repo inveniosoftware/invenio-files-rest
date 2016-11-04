@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
 # Copyright (C) 2016 CERN.
@@ -22,4 +21,21 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-invenio-db[versioning]>=1.0.0b2
+"""Create files_rest branch."""
+
+import sqlalchemy as sa
+from alembic import op
+
+# revision identifiers, used by Alembic.
+revision = '52ce868f33c3'
+down_revision = None
+branch_labels = (u'invenio_files_rest',)
+depends_on = 'dbdbc1b19cf2'
+
+
+def upgrade():
+    """Upgrade database."""
+
+
+def downgrade():
+    """Downgrade database."""

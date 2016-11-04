@@ -45,6 +45,8 @@ from invenio_accounts.views import blueprint as accounts_blueprint
 from invenio_db import db as db_
 from invenio_db import InvenioDB
 from six import BytesIO
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.schema import DropConstraint, DropSequence, DropTable
 from sqlalchemy_utils.functions import create_database, database_exists
 
 from invenio_files_rest import InvenioFilesREST
@@ -59,7 +61,22 @@ from invenio_files_rest.storage import PyFSFileStorage
 from invenio_files_rest.views import blueprint
 
 
-@pytest.fixture(scope='session', autouse=True)
+@compiles(DropTable, 'postgresql')
+def _compile_drop_table(element, compiler, **kwargs):
+    return compiler.visit_drop_table(element) + ' CASCADE'
+
+
+@compiles(DropConstraint, 'postgresql')
+def _compile_drop_constraint(element, compiler, **kwargs):
+    return compiler.visit_drop_constraint(element) + ' CASCADE'
+
+
+@compiles(DropSequence, 'postgresql')
+def _compile_drop_sequence(element, compiler, **kwargs):
+    return compiler.visit_drop_sequence(element) + ' CASCADE'
+
+
+@pytest.fixture()
 def base_app():
     """Flask application fixture."""
     app_ = Flask('testapp')
@@ -88,7 +105,7 @@ def base_app():
     return app_
 
 
-@pytest.yield_fixture(scope='session', autouse=True)
+@pytest.yield_fixture()
 def app(base_app):
     """Flask application fixture."""
     InvenioAccounts(base_app)

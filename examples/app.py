@@ -178,6 +178,7 @@ SPHINX-END
 
 from __future__ import absolute_import, print_function
 
+import os
 import shutil
 from os import environ, makedirs
 from os.path import dirname, exists, join
@@ -208,6 +209,9 @@ app.config.update(dict(
     REST_ENABLE_CORS=True,
     SECRET_KEY='CHANGEME',
     SQLALCHEMY_ECHO=False,
+    SQLALCHEMY_DATABASE_URI=os.environ.get(
+        'SQLALCHEMY_DATABASE_URI', 'sqlite:///test.db'
+    ),
     SQLALCHEMY_TRACK_MODIFICATIONS=True,
 ))
 
