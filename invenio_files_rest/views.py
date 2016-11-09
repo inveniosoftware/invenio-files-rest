@@ -303,52 +303,6 @@ need_bucket_permission = partial(
 
 
 #
-# Records-UI integration
-#
-def file_download_ui(pid, record, **kwargs):
-    """File download view for a given record.
-
-    Plug this method into your ``RECORDS_UI_ENDPOINTS`` configuration:
-
-    .. code-block:: python
-
-        RECORDS_UI_ENDPOINTS = dict(
-            recid=dict(
-                # ...
-                route='/records/<pid_value/files/<filename>',
-                view_imp='invenio_files_rest.views.file_download_ui',
-                record_class='invenio_records_files.api:Record',
-            )
-        )
-
-    :param pid: The :class:`invenio_pidstore.models.PersistentIdentifier`
-        instance.
-    :param record: The record metadata.
-    """
-    # Extract file from record.
-    fileobj = current_files_rest.record_file_factory(
-        pid, record, request.view_args.get('filename'))
-
-    if not fileobj:
-        abort(404)
-
-    obj = fileobj.obj
-
-    # Check permissions
-    ObjectResource.check_object_permission(obj)
-
-    # Send file.
-    return ObjectResource.send_object(
-        obj.bucket, obj,
-        expected_chksum=fileobj.get('checksum'),
-        logger_data=dict(
-            bucket_id=obj.bucket_id,
-            pid_type=pid.pid_type,
-            pid_value=pid.pid_value,
-        ))
-
-
-#
 # REST resources
 #
 class LocationResource(ContentNegotiatedMethodView):

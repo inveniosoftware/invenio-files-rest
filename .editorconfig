@@ -38,7 +38,7 @@ indent_size = 4
 # isort plugin configuration
 known_standard_library = mimetypes
 known_first_party = invenio_files_rest
-known_third_party = invenio_access, invenio_admin, invenio_accounts, invenio_db, invenio_records, invenio_rest, invenio_records_files, invenio_records_ui
+known_third_party = invenio_access, invenio_admin, invenio_accounts, invenio_db, invenio_rest
 multi_line_output = 2
 default_section = THIRDPARTY
 

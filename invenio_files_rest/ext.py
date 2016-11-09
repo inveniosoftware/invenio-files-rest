@@ -45,21 +45,6 @@ class _FilesRESTState(object):
         self.app = app
 
     @cached_property
-    def record_file_factory(self):
-        """Load default storage factory."""
-        r = load_or_import_from_config(
-            'FILES_REST_RECORD_FILE_FACTORY', app=self.app)
-        if r is not None:
-            return r
-        else:
-            try:
-                get_distribution('invenio-records-files')
-                from invenio_records_files.utils import record_file_factory
-                return record_file_factory
-            except DistributionNotFound:
-                return lambda pid, record, filename: None
-
-    @cached_property
     def storage_factory(self):
         """Load default storage factory."""
         return load_or_import_from_config(

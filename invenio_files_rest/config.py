@@ -91,9 +91,6 @@ FILES_REST_FILE_URI_MAX_LEN = 255
    with PostgreSQL database.
 """
 
-FILES_REST_RECORD_FILE_FACTORY = None
-"""Import path of factory used to extract file from record."""
-
 FILES_REST_STORAGE_PATH_SPLIT_LENGTH = 2
 """Length of the filename that should be taken to create its root dir."""
 
