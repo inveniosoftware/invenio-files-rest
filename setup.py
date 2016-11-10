@@ -32,10 +32,10 @@ readme = open('README.rst').read()
 history = open('CHANGES.rst').read()
 
 tests_require = [
-    'check-manifest>=0.25',
-    'coverage>=4.0',
     'Flask-BabelEx>=0.9.3',
     'Flask-Menu>=0.2.1',
+    'check-manifest>=0.25',
+    'coverage>=4.0',
     'invenio-access>=1.0.0a6',
     'invenio-accounts>=1.0.0a15',
     'invenio-admin>=1.0.0a3',
@@ -73,15 +73,15 @@ for name, reqs in extras_require.items():
     extras_require['all'].extend(reqs)
 
 install_requires = [
-    'Flask>=0.11.1',
-    'celery>=3.1.18',
+    'Flask-CeleryExt>=0.2.2',
     'Flask-Login>=0.3.2',
     'Flask-WTF>=0.13',
+    'Flask>=0.11.1',
+    'SQLAlchemy-Utils>=0.31.0',
+    'WTForms>=2.0',
     'fs>=0.5.4,<2.0',
     'invenio-rest[cors]>=1.0.0a8',
-    'SQLAlchemy-Utils>=0.31.0',
     'webargs>=1.1.1',
-    'WTForms>=2.0',
 ]
 
 setup_requires = [
