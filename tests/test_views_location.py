@@ -65,3 +65,16 @@ def test_post_bucket(app, client, headers, dummy_location, permissions,
             for key in expected_keys:
                 assert key in resp_json
             assert Bucket.get(resp_json['id'])
+
+
+@pytest.mark.parametrize('user, expected', [
+    (None, 405),
+    ('auth', 405),
+    ('location', 405),
+])
+def test_get_location(app, client, headers, dummy_location, permissions,
+                      user, expected):
+    """Test GET a location."""
+    login_user(client, permissions[user])
+    r = client.get(url_for('invenio_files_rest.location_api'), headers=headers)
+    assert r.status_code == expected

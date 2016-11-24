@@ -827,15 +827,12 @@ object_view = ObjectResource.as_view(
 blueprint.add_url_rule(
     '',
     view_func=location_view,
-    methods=['GET', 'POST']
 )
 blueprint.add_url_rule(
     '/<string:bucket_id>',
     view_func=bucket_view,
-    methods=['GET', 'PUT', 'DELETE', 'HEAD']
 )
 blueprint.add_url_rule(
     '/<string:bucket_id>/<path:key>',
     view_func=object_view,
-    methods=['GET', 'POST', 'PUT', 'DELETE', 'HEAD']
 )
