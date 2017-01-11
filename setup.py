@@ -33,7 +33,7 @@ history = open('CHANGES.rst').read()
 
 tests_require = [
     'Flask-BabelEx>=0.9.3',
-    'Flask-Menu>=0.2.1',
+    'Flask-Menu>=0.4.0',
     'SQLAlchemy-Continuum>=1.2.1',
     'check-manifest>=0.25',
     'coverage>=4.0',
@@ -76,7 +76,7 @@ for name, reqs in extras_require.items():
 install_requires = [
     'Flask-CeleryExt>=0.2.2',
     'Flask-Login>=0.3.2',
-    'Flask-WTF>=0.13',
+    'Flask-WTF>=0.13.1',
     'Flask>=0.11.1',
     'SQLAlchemy-Utils>=0.31.0',
     'WTForms>=2.0',
