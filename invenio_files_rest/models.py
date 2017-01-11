@@ -231,7 +231,9 @@ class Location(db.Model, Timestamp):
     uri = db.Column(db.String(255), nullable=False)
     """URI of the location."""
 
-    default = db.Column(db.Boolean, nullable=False, default=False)
+    default = db.Column(db.Boolean(name='default'),
+                        nullable=False,
+                        default=False)
     """True if the location is the default location.
 
     At least one location should be the default location.
@@ -331,13 +333,17 @@ class Bucket(db.Model, Timestamp):
     Usage of this property depends on which file size limiters are installed.
     """
 
-    locked = db.Column(db.Boolean, default=False, nullable=False)
+    locked = db.Column(db.Boolean(name='locked'),
+                       default=False,
+                       nullable=False)
     """Lock state of bucket.
 
     Modifications are not allowed on a locked bucket.
     """
 
-    deleted = db.Column(db.Boolean, default=False, nullable=False)
+    deleted = db.Column(db.Boolean(name='deleted'),
+                        default=False,
+                        nullable=False)
     """Delete state of bucket."""
 
     location = db.relationship(Location, backref='buckets')
@@ -586,10 +592,14 @@ class FileInstance(db.Model, Timestamp):
     checksum = db.Column(db.String(255), nullable=True)
     """String representing the checksum of the object."""
 
-    readable = db.Column(db.Boolean, default=True, nullable=False)
+    readable = db.Column(db.Boolean(name='readable'),
+                         default=True,
+                         nullable=False)
     """Defines if the file is read only."""
 
-    writable = db.Column(db.Boolean, default=True, nullable=False)
+    writable = db.Column(db.Boolean(name='writable'),
+                         default=True,
+                         nullable=False)
     """Defines if file is writable.
 
     This property is used to create a file instance prior to having the actual
@@ -599,7 +609,9 @@ class FileInstance(db.Model, Timestamp):
     last_check_at = db.Column(db.DateTime, nullable=True)
     """Timestamp of last fixity check."""
 
-    last_check = db.Column(db.Boolean, default=True, nullable=False)
+    last_check = db.Column(db.Boolean(name='last_check'),
+                           default=True,
+                           nullable=False)
     """Result of last fixity check."""
 
     @validates('uri')
@@ -809,7 +821,9 @@ class ObjectVersion(db.Model, Timestamp):
         nullable=True, )
     """MIME type of the object."""
 
-    is_head = db.Column(db.Boolean, nullable=False, default=True)
+    is_head = db.Column(db.Boolean(name='is_head'),
+                        nullable=False,
+                        default=True)
     """Defines if object is the latest version."""
 
     # Relationships definitions
@@ -1161,7 +1175,9 @@ class MultipartObject(db.Model, Timestamp):
     size = db.Column(db.BigInteger, nullable=True)
     """Size of file."""
 
-    completed = db.Column(db.Boolean, nullable=False, default=False)
+    completed = db.Column(db.Boolean(name='completed'),
+                          nullable=False,
+                          default=False)
     """Defines if object is the completed."""
 
     # Relationships definitions

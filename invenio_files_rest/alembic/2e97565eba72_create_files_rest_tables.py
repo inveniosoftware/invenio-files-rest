@@ -82,10 +82,10 @@ def upgrade():
         sa.Column('storage_class', sa.String(length=1), nullable=True),
         sa.Column('size', sa.BigInteger(), nullable=True),
         sa.Column('checksum', sa.String(length=255), nullable=True),
-        sa.Column('readable', sa.Boolean(), nullable=False),
-        sa.Column('writable', sa.Boolean(), nullable=False),
+        sa.Column('readable', sa.Boolean(name='readable'), nullable=False),
+        sa.Column('writable', sa.Boolean(name='writable'), nullable=False),
         sa.Column('last_check_at', sa.DateTime(), nullable=True),
-        sa.Column('last_check', sa.Boolean(), nullable=False),
+        sa.Column('last_check', sa.Boolean(name='last_check'), nullable=False),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('uri')
     )
@@ -96,7 +96,7 @@ def upgrade():
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('name', sa.String(length=20), nullable=False),
         sa.Column('uri', sa.String(length=255), nullable=False),
-        sa.Column('default', sa.Boolean(), nullable=False),
+        sa.Column('default', sa.Boolean(name='default'), nullable=False),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('name')
     )
@@ -117,8 +117,8 @@ def upgrade():
         sa.Column('size', sa.BigInteger(), nullable=False),
         sa.Column('quota_size', sa.BigInteger(), nullable=True),
         sa.Column('max_file_size', sa.BigInteger(), nullable=True),
-        sa.Column('locked', sa.Boolean(), nullable=False),
-        sa.Column('deleted', sa.Boolean(), nullable=False),
+        sa.Column('locked', sa.Boolean(name='locked'), nullable=False),
+        sa.Column('deleted', sa.Boolean(name='deleted'), nullable=False),
         sa.ForeignKeyConstraint(
             ['default_location'],
             [u'files_location.id'],
@@ -158,7 +158,7 @@ def upgrade():
             nullable=False),
         sa.Column('chunk_size', sa.Integer(), nullable=True),
         sa.Column('size', sa.BigInteger(), nullable=True),
-        sa.Column('completed', sa.Boolean(), nullable=False),
+        sa.Column('completed', sa.Boolean(name='completed'), nullable=False),
         sa.ForeignKeyConstraint(
             ['bucket_id'],
             [u'files_bucket.id'],
@@ -190,7 +190,7 @@ def upgrade():
         sa.Column(
             '_mimetype', sa.String(
                 length=255), nullable=True),
-        sa.Column('is_head', sa.Boolean(), nullable=False),
+        sa.Column('is_head', sa.Boolean(name='is_head'), nullable=False),
         sa.ForeignKeyConstraint(
             ['bucket_id'],
             [u'files_bucket.id'],
