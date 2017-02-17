@@ -111,7 +111,10 @@ class FileStorage(object):
         """Send the file to the client."""
         try:
             fp = self.open(mode='rb')
+        except Exception as e:
+            raise StorageError('Could not send file: {}'.format(e))
 
+        try:
             md5_checksum = None
             if checksum:
                 algo, value = checksum.split(':')
