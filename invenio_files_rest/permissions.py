@@ -135,7 +135,7 @@ _action2need_map = {
 
 
 def permission_factory(obj, action):
-    """Default permission factory.
+    """Get default permission factory.
 
     :param obj: An instance of :class:`invenio_files_rest.models.Bucket` or
         :class:`invenio_files_rest.models.ObjectVersion` or

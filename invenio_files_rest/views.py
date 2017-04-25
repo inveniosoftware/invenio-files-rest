@@ -104,7 +104,7 @@ def invalid_subresource_validator(value):
 })
 def default_partfactory(part_number=None, content_length=None,
                         content_type=None, content_md5=None):
-    """Default part factory.
+    """Get default part factory.
 
     :param part_number: The part number. (Default: ``None``)
     :param content_length: The content length. (Default: ``None``)
@@ -221,7 +221,7 @@ def ngfileupload_uploadfactory(content_length=None, content_type=None,
 # Object retrieval
 #
 def pass_bucket(f):
-    """Decorator to retrieve a bucket."""
+    """Decorate to retrieve a bucket."""
     @wraps(f)
     def decorate(*args, **kwargs):
         bucket_id = kwargs.pop('bucket_id')
@@ -233,7 +233,7 @@ def pass_bucket(f):
 
 
 def pass_multipart(with_completed=False):
-    """Decorator to retrieve an object."""
+    """Decorate to retrieve an object."""
     def decorate(f):
         @wraps(f)
         def inner(self, bucket, key, upload_id, *args, **kwargs):
@@ -617,7 +617,7 @@ class ObjectResource(ContentNegotiatedMethodView):
 
     @use_kwargs(multipart_init_args)
     def multipart_init(self, bucket, key, size=None, part_size=None):
-        """Initiate a multipart upload.
+        """Initialize a multipart upload.
 
         :param bucket: The bucket (instance or id) to get the object from.
         :param key: The file key.

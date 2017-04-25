@@ -147,7 +147,7 @@ class PyFSFileStorage(FileStorage):
 def pyfs_storage_factory(fileinstance=None, default_location=None,
                          default_storage_class=None,
                          filestorage_class=PyFSFileStorage):
-    """Factory function for creating a PyFS file storage instance."""
+    """Get factory function for creating a PyFS file storage instance."""
     assert fileinstance
 
     fileurl = None
