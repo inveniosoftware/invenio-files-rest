@@ -441,6 +441,12 @@ def test_object_snapshot(app, db, dummy_location):
     assert ObjectVersion.get_by_bucket(b1).count() == 3
     assert ObjectVersion.get_by_bucket(b2).count() == 1
 
+    # check that for 'undeleted' key there is only one HEAD
+    heads = [o for o in ObjectVersion.query.filter_by(
+        bucket_id=b1.id, key='undeleted').all() if o.is_head]
+    assert len(heads) == 1
+    assert heads[0].file.uri == 'b1u2'
+
     b3 = b1.snapshot(lock=True)
     db.session.commit()
 

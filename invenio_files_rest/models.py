@@ -1014,7 +1014,9 @@ class ObjectVersion(db.Model, Timestamp):
             raise BucketLockedError()
 
         with db.session.begin_nested():
-            latest_obj = cls.get(bucket.id, key)
+            latest_obj = cls.query.filter(
+                cls.bucket == bucket, cls.key == key, cls.is_head.is_(True)
+            ).one_or_none()
             if latest_obj is not None:
                 latest_obj.is_head = False
                 db.session.add(latest_obj)
