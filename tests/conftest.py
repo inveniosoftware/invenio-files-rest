@@ -120,7 +120,7 @@ def app(base_app):
 
 @pytest.yield_fixture()
 def db(app):
-    """Setup database."""
+    """Get setup database."""
     if not database_exists(str(db_.engine.url)):
         create_database(str(db_.engine.url))
     db_.create_all()
@@ -286,7 +286,7 @@ def users(db, users_data):
 
 @pytest.fixture()
 def headers():
-    """Standard Invenio REST API headers."""
+    """Get standard Invenio REST API headers."""
     return {
         'Content-Type': 'application/json',
         'Accept': '*/*',

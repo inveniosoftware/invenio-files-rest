@@ -27,7 +27,6 @@
 from __future__ import absolute_import, print_function
 
 import hashlib
-import time
 from calendar import timegm
 from functools import partial
 
@@ -173,7 +172,7 @@ class FileStorage(object):
 
     def _compute_checksum(self, stream, size=None, chunk_size=None,
                           progress_callback=None):
-        """Helper method to compute checksum from a stream.
+        """Get helper method to compute checksum from a stream.
 
         Naive implementation that can be overwritten by subclasses in order to
         provide more efficient implementation.
@@ -197,7 +196,7 @@ class FileStorage(object):
 
     def _write_stream(self, src, dst, size=None, size_limit=None,
                       chunk_size=None, progress_callback=None):
-        """Helper method to save stream from src to dest + compute checksum.
+        """Get helper to save stream from src to dest + compute checksum.
 
         :param src: Source stream.
         :param dst: Destination stream.

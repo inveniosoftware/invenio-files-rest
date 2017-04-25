@@ -42,7 +42,7 @@ class BaseSchema(Schema):
     links = fields.Method('dump_links', dump_only=True)
 
     def dump_links(self, o):
-        """Base links."""
+        """Get base links."""
         return missing
 
 
@@ -239,7 +239,7 @@ def _format_args():
 
 
 def wait_for_taskresult(task_result, content, interval, max_rounds):
-    """Helper to wait for async task result to finish.
+    """Get helper to wait for async task result to finish.
 
     The task will periodically send whitespace to prevent the connection from
     being closed.

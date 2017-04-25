@@ -118,7 +118,7 @@ def as_bucket_id(value):
 # Decorators to validate state.
 #
 def update_bucket_size(f):
-    """Decorator to update bucket size after operation."""
+    """Decorate to update bucket size after operation."""
     @wraps(f)
     def inner(self, *args, **kwargs):
         res = f(self, *args, **kwargs)
@@ -209,7 +209,7 @@ class Timestamp(object):
 
 @db.event.listens_for(Timestamp, 'before_update', propagate=True)
 def timestamp_before_update(mapper, connection, target):
-    """Listener for updating updated field."""
+    """Listen for updating updated field."""
     target.updated = datetime.utcnow()
 
 
@@ -910,7 +910,7 @@ class ObjectVersion(db.Model, Timestamp):
         return self
 
     def send_file(self, restricted=True, **kwargs):
-        """Wrapper around FileInstance's send file."""
+        """Wrap around FileInstance's send file."""
         return self.file.send_file(
             self.basename,
             restricted=restricted,
