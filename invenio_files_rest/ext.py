@@ -27,7 +27,6 @@
 from __future__ import absolute_import, print_function
 
 from flask import abort
-from pkg_resources import DistributionNotFound, get_distribution
 from werkzeug.exceptions import UnprocessableEntity
 from werkzeug.utils import cached_property
 
@@ -79,7 +78,7 @@ class _FilesRESTState(object):
 
     @cached_property
     def part_factories(self):
-        """Factory getting list of webargs schemas for parsing part number."""
+        """Get factory for list of webargs schemas for parsing part number."""
         return [
             obj_or_import_string(x) for x in
             self.app.config.get('FILES_REST_MULTIPART_PART_FACTORIES', [])
@@ -87,14 +86,14 @@ class _FilesRESTState(object):
 
     @cached_property
     def upload_factories(self):
-        """Factory getting list of webargs schemas for parsing part number."""
+        """Get factory for list of webargs schemas for parsing part number."""
         return [
             obj_or_import_string(x) for x in
             self.app.config.get('FILES_REST_UPLOAD_FACTORIES', [])
         ]
 
     def multipart_partfactory(self):
-        """Factory to get content length, part number and stream for a part."""
+        """Get factory for content length, part number, stream for a part."""
         for factory in self.part_factories:
             try:
                 return factory()
@@ -103,7 +102,7 @@ class _FilesRESTState(object):
         raise MultipartNoPart()
 
     def upload_factory(self):
-        """Factory to get stream, content length and checksum for a file."""
+        """Get factory to get stream, content length, checksum for a file."""
         for factory in self.upload_factories:
             try:
                 return factory()

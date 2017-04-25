@@ -123,7 +123,7 @@ def make_path(base_uri, path, filename, path_dimensions, split_length):
 
 
 def compute_md5_checksum(stream, **kwargs):
-    """Helper method to compute MD5 checksum from a stream.
+    """Get helper method to compute MD5 checksum from a stream.
 
     :param stream: The input stream.
     :returns: The MD5 checksum.
@@ -133,7 +133,7 @@ def compute_md5_checksum(stream, **kwargs):
 
 def compute_checksum(stream, algo, message_digest, chunk_size=None,
                      progress_callback=None):
-    """Helper method to compute checksum from a stream.
+    """Get helper method to compute checksum from a stream.
 
     :param stream: File-like object.
     :param algo: Identifier for checksum algorithm.

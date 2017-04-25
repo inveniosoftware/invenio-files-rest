@@ -38,9 +38,9 @@ tests_require = [
     'check-manifest>=0.25',
     'coverage>=4.0',
     'invenio-access>=1.0.0a11',
-    'invenio-accounts>=1.0.0b1',
-    'invenio-admin>=1.0.0a3',
-    'invenio-celery>=1.0.0a4',
+    'invenio-accounts>=1.0.0b3',
+    'invenio-admin>=1.0.0b1',
+    'invenio-celery>=1.0.0b2',
     'isort>=4.2.2',
     'mock>=1.3.0',
     'pydocstyle>=1.0.0',
@@ -81,7 +81,7 @@ install_requires = [
     'SQLAlchemy-Utils>=0.31.0',
     'WTForms>=2.0',
     'fs>=0.5.4,<2.0',
-    'invenio-rest[cors]>=1.0.0a8',
+    'invenio-rest[cors]>=1.0.0a10',
     'webargs>=1.1.1',
 ]
 

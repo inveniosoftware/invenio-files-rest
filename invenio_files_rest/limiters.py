@@ -28,7 +28,7 @@ from __future__ import absolute_import, print_function
 
 
 def file_size_limiters(bucket):
-    """Default file size limiters.
+    """Get default file size limiters.
 
     :param bucket: The :class:`invenio_files_rest.models.Bucket` instance.
     :returns: A list containing an instance of
