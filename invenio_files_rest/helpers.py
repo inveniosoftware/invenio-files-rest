@@ -69,7 +69,7 @@ MIMETYPE_PLAINTEXT = {
 
 
 def send_stream(stream, filename, size, mtime, mimetype=None, restricted=True,
-                as_attachment=True, etag=None, content_md5=None,
+                as_attachment=False, etag=None, content_md5=None,
                 chunk_size=8192, conditional=True, trusted=False):
     """Send the contents of a file to the client.
 
@@ -115,10 +115,6 @@ def send_stream(stream, filename, size, mtime, mimetype=None, restricted=True,
 
     # Construct headers
     headers = Headers()
-    if as_attachment:
-        headers.add('Content-Disposition', 'attachment', filename=filename)
-    else:
-        headers.add('Content-Disposition', 'inline')
     headers['Content-Length'] = size
     if content_md5:
         headers['Content-MD5'] = content_md5
@@ -126,10 +122,6 @@ def send_stream(stream, filename, size, mtime, mimetype=None, restricted=True,
     if not trusted:
         # Sanitize MIME type
         mimetype = sanitize_mimetype(mimetype, filename=filename)
-        # Force Content-Disposition for application/octet-stream to prevent
-        # Content-Type sniffing.
-        if mimetype == 'application/octet-stream' and not as_attachment:
-            headers.add('Content-Disposition', 'attachment', filename=filename)
         # See https://www.owasp.org/index.php/OWASP_Secure_Headers_Project
         # Prevent JavaScript execution
         headers['Content-Security-Policy'] = "default-src 'none';"
@@ -143,6 +135,13 @@ def send_stream(stream, filename, size, mtime, mimetype=None, restricted=True,
         headers['X-Frame-Options'] = 'deny'
         # Enable XSS protection (IE, Chrome, Safari)
         headers['X-XSS-Protection'] = '1; mode=block'
+
+    # Force Content-Disposition for application/octet-stream to prevent
+    # Content-Type sniffing.
+    if as_attachment or mimetype == 'application/octet-stream':
+        headers.add('Content-Disposition', 'attachment', filename=filename)
+    else:
+        headers.add('Content-Disposition', 'inline')
 
     # Construct response object.
     rv = current_app.response_class(
