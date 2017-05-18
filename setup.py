@@ -56,13 +56,13 @@ extras_require = {
         'sphinxcontrib-httpdomain>=1.4.0',
     ],
     'postgresql': [
-        'invenio-db[postgresql]>=1.0.0b3',
+        'invenio-db[postgresql]==1.0.0b3',
     ],
     'mysql': [
-        'invenio-db[mysql]>=1.0.0b3',
+        'invenio-db[mysql]==1.0.0b3',
     ],
     'sqlite': [
-        'invenio-db>=1.0.0b3',
+        'invenio-db==1.0.0b3',
     ],
     'tests': tests_require,
 }
