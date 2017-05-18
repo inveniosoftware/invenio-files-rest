@@ -33,11 +33,58 @@ from flask import current_app, request
 from werkzeug.datastructures import Headers
 from werkzeug.wsgi import FileWrapper
 
+MIMETYPE_TEXTFILES = {
+    'readme'
+}
+
+MIMETYPE_WHITELIST = {
+    'audio/mpeg',
+    'audio/ogg',
+    'audio/wav',
+    'audio/webm',
+    'image/gif',
+    'image/jpeg',
+    'image/png',
+    'image/tiff',
+    'text/plain',
+}
+"""List of whitelisted MIME types.
+
+.. warning::
+
+   Do not add new types to this list unless you know what you are doing. You
+   could potentially open up for XSS attacks.
+"""
+
+MIMETYPE_PLAINTEXT = {
+    'application/javascript',
+    'application/json',
+    'application/xhtml+xml',
+    'application/xml',
+    'text/css',
+    'text/csv',
+    'text/html',
+    'image/svg+xml',
+}
+
 
 def send_stream(stream, filename, size, mtime, mimetype=None, restricted=True,
-                as_attachment=False, etag=None, content_md5=None,
-                chunk_size=8192, conditional=True):
+                as_attachment=True, etag=None, content_md5=None,
+                chunk_size=8192, conditional=True, trusted=False):
     """Send the contents of a file to the client.
+
+    .. warning::
+
+        It is very easy to be exposed to Cross-Site Scripting (XSS) attacks if
+        you serve user uploaded files. Here are some recommendations:
+
+            1. Serve user uploaded files from a separate domain
+               (not a subdomain). This way a malicious file can only attack
+               other user uploaded files.
+            2. Prevent the browser from rendering and executing HTML files (by
+               setting ``trusted=False``).
+            3. Force the browser to download the file as an attachment
+               (``as_attachment=True``).
 
     :param stream: The file stream to send.
     :param filename: The file name.
@@ -53,6 +100,11 @@ def send_stream(stream, filename, size, mtime, mimetype=None, restricted=True,
     :param chunk_size: The chunk size. (Default: ``8192``)
     :param conditional: Make the response conditional to the request.
         (Default: ``True``)
+    :param trusted: Do not enable this option unless you know what you are
+        doing. By default this function will send HTTP headers and MIME types
+        that prevents your browser from rendering e.g. a HTML file which could
+        contain a malicious script tag.
+        (Default: ``False``)
     :returns: A Flask response instance.
     """
     # Guess mimetype from filename if not provided.
@@ -70,6 +122,27 @@ def send_stream(stream, filename, size, mtime, mimetype=None, restricted=True,
     headers['Content-Length'] = size
     if content_md5:
         headers['Content-MD5'] = content_md5
+
+    if not trusted:
+        # Sanitize MIME type
+        mimetype = sanitize_mimetype(mimetype, filename=filename)
+        # Force Content-Disposition for application/octet-stream to prevent
+        # Content-Type sniffing.
+        if mimetype == 'application/octet-stream' and not as_attachment:
+            headers.add('Content-Disposition', 'attachment', filename=filename)
+        # See https://www.owasp.org/index.php/OWASP_Secure_Headers_Project
+        # Prevent JavaScript execution
+        headers['Content-Security-Policy'] = "default-src 'none';"
+        # Prevent MIME type sniffing for browser.
+        headers['X-Content-Type-Options'] = 'nosniff'
+        # Prevent opening of downloaded file by IE
+        headers['X-Download-Options'] = 'noopen'
+        # Prevent cross domain requests from Flash/Acrobat.
+        headers['X-Permitted-Cross-Domain-Policies'] = 'none'
+        # Prevent files from being embedded in frame, iframe and object tags.
+        headers['X-Frame-Options'] = 'deny'
+        # Enable XSS protection (IE, Chrome, Safari)
+        headers['X-XSS-Protection'] = '1; mode=block'
 
     # Construct response object.
     rv = current_app.response_class(
@@ -99,6 +172,19 @@ def send_stream(stream, filename, size, mtime, mimetype=None, restricted=True,
         rv = rv.make_conditional(request)
 
     return rv
+
+
+def sanitize_mimetype(mimetype, filename=None):
+    """Sanitize a MIME type so the browser does not render the file."""
+    # Allow some few mime type like plain text, images and audio.
+    if mimetype in MIMETYPE_WHITELIST:
+        return mimetype
+    # Rewrite HTML, JavaScript, CSS etc to text/plain.
+    if mimetype in MIMETYPE_PLAINTEXT or \
+            (filename and filename.lower() in MIMETYPE_TEXTFILES):
+        return 'text/plain'
+    # Default
+    return 'application/octet-stream'
 
 
 def make_path(base_uri, path, filename, path_dimensions, split_length):

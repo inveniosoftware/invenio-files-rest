@@ -728,13 +728,15 @@ class FileInstance(db.Model, Timestamp):
                 progress_callback=progress_callback))
 
     @ensure_readable()
-    def send_file(self, filename, restricted=True, mimetype=None, **kwargs):
+    def send_file(self, filename, restricted=True, mimetype=None,
+                  trusted=False, **kwargs):
         """Send file to client."""
         return self.storage(**kwargs).send_file(
             filename,
             mimetype=mimetype,
             restricted=restricted,
             checksum=self.checksum,
+            trusted=trusted,
         )
 
     def set_uri(self, uri, size, checksum, readable=True, writable=False,
@@ -909,12 +911,13 @@ class ObjectVersion(db.Model, Timestamp):
         self.file = fileinstance
         return self
 
-    def send_file(self, restricted=True, **kwargs):
+    def send_file(self, restricted=True, trusted=False, **kwargs):
         """Wrap around FileInstance's send file."""
         return self.file.send_file(
             self.basename,
             restricted=restricted,
             mimetype=self.mimetype,
+            trusted=trusted,
             **kwargs
         )
 
