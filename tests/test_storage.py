@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
@@ -264,7 +265,7 @@ def test_pyfs_send_file_xss_prevention(app, pyfs):
 
     with app.test_request_context():
         res = pyfs.send_file(
-            'myfilename.html', mimetype='text/plain', checksum=checksum)
+            'myfilename.html', mimetype='text/html', checksum=checksum)
         assert res.status_code == 200
         h = res.headers
         assert h['Content-Type'] == 'text/plain; charset=utf-8'
@@ -278,19 +279,27 @@ def test_pyfs_send_file_xss_prevention(app, pyfs):
         assert h['X-Permitted-Cross-Domain-Policies'] == 'none'
         assert h['X-Frame-Options'] == 'deny'
         assert h['X-XSS-Protection'] == '1; mode=block'
+        assert h['Content-Disposition'] == 'inline'
 
-        # Content-Type: application/octet-stream
-        # ETag: "b234ee4d69f5fce4486a80fdaf4a4263"
-        # Last-Modified: Sat, 23 Jan 2016 06:21:04 GMT
-        # Cache-Control: max-age=43200, public
-        # Expires: Sat, 23 Jan 2016 19:21:04 GMT
-        # Date: Sat, 23 Jan 2016 07:21:04 GMT
-        # Content-Security-Policy: default-src 'none';
-        # X-Content-Type-Options: nosniff
-        # X-Download-Options: noopen
-        # X-Permitted-Cross-Domain-Policies: none
-        # X-Frame-Options: deny
-        # X-XSS-Protection: 1; mode=block
+        # Image
+        h = pyfs.send_file('image.png', mimetype='image/png').headers
+        assert h['Content-Type'] == 'image/png'
+        assert h['Content-Disposition'] == 'inline'
+
+        # README text file
+        h = pyfs.send_file('README').headers
+        assert h['Content-Type'] == 'text/plain; charset=utf-8'
+        assert h['Content-Disposition'] == 'inline'
+
+        # Zip
+        h = pyfs.send_file('archive.zip').headers
+        assert h['Content-Type'] == 'application/octet-stream'
+        assert h['Content-Disposition'] == 'attachment; filename=archive.zip'
+
+        # PDF
+        h = pyfs.send_file('doc.pdf').headers
+        assert h['Content-Type'] == 'application/octet-stream'
+        assert h['Content-Disposition'] == 'attachment; filename=doc.pdf'
 
 
 def test_pyfs_send_file_fail(app, pyfs):
