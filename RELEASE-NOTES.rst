@@ -1,8 +1,8 @@
 ==============================
- Invenio-Files-REST v1.0.0a15
+ Invenio-Files-REST v1.0.0a16
 ==============================
 
-Invenio-Files-REST v1.0.0a15 was released on May 15, 2017.
+Invenio-Files-REST v1.0.0a16 was released on May 18, 2017.
 
 About
 -----
