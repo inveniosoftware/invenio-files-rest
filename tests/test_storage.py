@@ -257,6 +257,42 @@ def test_pyfs_send_file(app, pyfs):
         assert 'Content-MD5' not in dict(res.headers)
 
 
+def test_pyfs_send_file_xss_prevention(app, pyfs):
+    """Test send file."""
+    data = b'<html><body><script>alert("xss");</script></body></html>'
+    uri, size, checksum = pyfs.save(BytesIO(data))
+
+    with app.test_request_context():
+        res = pyfs.send_file(
+            'myfilename.html', mimetype='text/plain', checksum=checksum)
+        assert res.status_code == 200
+        h = res.headers
+        assert h['Content-Type'] == 'text/plain; charset=utf-8'
+        assert h['Content-Length'] == str(size)
+        assert h['Content-MD5'] == checksum[4:]
+        assert h['ETag'] == '"{0}"'.format(checksum)
+        # XSS prevention
+        assert h['Content-Security-Policy'] == 'default-src \'none\';'
+        assert h['X-Content-Type-Options'] == 'nosniff'
+        assert h['X-Download-Options'] == 'noopen'
+        assert h['X-Permitted-Cross-Domain-Policies'] == 'none'
+        assert h['X-Frame-Options'] == 'deny'
+        assert h['X-XSS-Protection'] == '1; mode=block'
+
+        # Content-Type: application/octet-stream
+        # ETag: "b234ee4d69f5fce4486a80fdaf4a4263"
+        # Last-Modified: Sat, 23 Jan 2016 06:21:04 GMT
+        # Cache-Control: max-age=43200, public
+        # Expires: Sat, 23 Jan 2016 19:21:04 GMT
+        # Date: Sat, 23 Jan 2016 07:21:04 GMT
+        # Content-Security-Policy: default-src 'none';
+        # X-Content-Type-Options: nosniff
+        # X-Download-Options: noopen
+        # X-Permitted-Cross-Domain-Policies: none
+        # X-Frame-Options: deny
+        # X-XSS-Protection: 1; mode=block
+
+
 def test_pyfs_send_file_fail(app, pyfs):
     """Test send file."""
     pyfs.save(BytesIO(b'content'))
