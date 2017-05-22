@@ -320,3 +320,24 @@ def test_pyfs_copy(pyfs, dummy_location):
     pyfs.copy(s)
     fp = pyfs.open()
     assert fp.read() == b'otherdata'
+
+
+def test_non_unicode_filename(app, pyfs):
+    """Test sending the non-unicode filename in the header."""
+    data = b'HelloWorld'
+    uri, size, checksum = pyfs.save(BytesIO(data))
+
+    with app.test_request_context():
+        res = pyfs.send_file(
+            u'żółć.dat', mimetype='application/octet-stream',
+            checksum=checksum)
+        assert res.status_code == 200
+        assert set(res.headers['Content-Disposition'].split('; ')) == \
+            set(["attachment", "filename=zoc.dat",
+                 "filename*=UTF-8''%C5%BC%C3%B3%C5%82%C4%87.dat"])
+
+    with app.test_request_context():
+        res = pyfs.send_file(
+            'żółć.txt', mimetype='text/plain', checksum=checksum)
+        assert res.status_code == 200
+        assert res.headers['Content-Disposition'] == 'inline'

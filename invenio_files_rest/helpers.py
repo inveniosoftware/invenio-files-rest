@@ -27,10 +27,12 @@ from __future__ import absolute_import, print_function
 import hashlib
 import mimetypes
 import os
+import unicodedata
 from time import time
 
 from flask import current_app, request
 from werkzeug.datastructures import Headers
+from werkzeug.urls import url_quote
 from werkzeug.wsgi import FileWrapper
 
 MIMETYPE_TEXTFILES = {
@@ -139,7 +141,16 @@ def send_stream(stream, filename, size, mtime, mimetype=None, restricted=True,
     # Force Content-Disposition for application/octet-stream to prevent
     # Content-Type sniffing.
     if as_attachment or mimetype == 'application/octet-stream':
-        headers.add('Content-Disposition', 'attachment', filename=filename)
+        # See https://github.com/pallets/flask/commit/0049922f2e690a6d
+        try:
+            filenames = {'filename': filename.encode('latin-1')}
+        except UnicodeEncodeError:
+            filenames = {'filename*': "UTF-8''%s" % url_quote(filename)}
+            encoded_filename = (unicodedata.normalize('NFKD', filename)
+                                .encode('latin-1', 'ignore'))
+            if encoded_filename:
+                filenames['filename'] = encoded_filename
+        headers.add('Content-Disposition', 'attachment', **filenames)
     else:
         headers.add('Content-Disposition', 'inline')
 
