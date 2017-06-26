@@ -23,8 +23,13 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 """Implementention of various utility functions."""
+try:
+    import urlparse
+except ImportError:
+    import urllib.parse as urlparse
 
 import six
+from marshmallow.fields import Field
 from werkzeug.utils import import_string
 
 
@@ -50,3 +55,17 @@ def load_or_import_from_config(key, app=None, default=None):
     app = app or current_app
     imp = app.config.get(key)
     return obj_or_import_string(imp, default=default)
+
+
+class QueryString(Field):
+    """Field for deserializing query string-like headers."""
+
+    def _deserialize(self, value, attr, data):
+        """Deserialize a query string into a dictionary.
+
+        :returns: The deserialized dictionary.
+        """
+        if not isinstance(value, six.string_types):
+            return None
+        return {key: (value[0] if len(value) > 0 else None) for key, value
+                in urlparse.parse_qs(value).items()}

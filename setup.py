@@ -41,13 +41,13 @@ tests_require = [
     'invenio-accounts>=1.0.0b3',
     'invenio-admin>=1.0.0b1',
     'invenio-celery>=1.0.0b2',
-    'isort>=4.2.2',
+    'isort>=4.2.15',
     'mock>=1.3.0',
     'pydocstyle>=1.0.0',
     'pytest-cache>=1.0',
     'pytest-cov>=1.8.0',
     'pytest-pep8>=1.0.6',
-    'pytest>=2.8.0',
+    'pytest>=2.8.3',
 ]
 
 extras_require = {
@@ -56,13 +56,13 @@ extras_require = {
         'sphinxcontrib-httpdomain>=1.4.0',
     ],
     'postgresql': [
-        'invenio-db[postgresql]>=1.0.0b3',
+        'invenio-db[postgresql]>=1.0.0b7',
     ],
     'mysql': [
-        'invenio-db[mysql]>=1.0.0b3',
+        'invenio-db[mysql]>=1.0.0b7',
     ],
     'sqlite': [
-        'invenio-db>=1.0.0b3',
+        'invenio-db>=1.0.0b7',
     ],
     'tests': tests_require,
 }
