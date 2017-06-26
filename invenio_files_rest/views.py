@@ -39,7 +39,7 @@ from webargs.flaskparser import use_kwargs
 
 from .errors import FileSizeError, MissingQueryParameter, \
     MultipartInvalidChunkSize
-from .models import Bucket, MultipartObject, ObjectVersion, Part
+from .models import Bucket, MultipartObject, ObjectVersion, Part, ObjectVersionTag
 from .proxies import current_files_rest, current_permission_factory
 from .serializer import json_serializer
 from .signals import file_downloaded
@@ -101,9 +101,15 @@ def invalid_subresource_validator(value):
         load_from='Content-MD5',
         location='headers',
     ),
+    'x_invenio_tags': fields.Str(
+        load_from='X-Invenio-Tags',
+        location='headers',
+        missing=None,
+    ),
 })
 def default_partfactory(part_number=None, content_length=None,
-                        content_type=None, content_md5=None):
+                        content_type=None, content_md5=None,
+                        x_invenio_tags=None):
     """Get default part factory.
 
     :param part_number: The part number. (Default: ``None``)
@@ -114,7 +120,7 @@ def default_partfactory(part_number=None, content_length=None,
         type, MD5 of the content.
     """
     return content_length, part_number, request.stream, content_type, \
-        content_md5
+        content_md5, x_invenio_tags
 
 
 @use_kwargs({
@@ -134,9 +140,14 @@ def default_partfactory(part_number=None, content_length=None,
         location='headers',
         missing='',
     ),
+    'x_invenio_tags': fields.Str(
+        load_from='X-Invenio-Tags',
+        location='headers',
+        missing=None,
+    ),
 })
 def stream_uploadfactory(content_md5=None, content_length=None,
-                         content_type=None):
+                         content_type=None, x_invenio_tags=None):
     """Get default put factory.
 
     If Content-Type is ``'multipart/form-data'`` then the stream is aborted.
@@ -148,7 +159,7 @@ def stream_uploadfactory(content_md5=None, content_length=None,
     """
     if content_type.startswith('multipart/form-data'):
         abort(422)
-    return request.stream, content_length, content_md5
+    return request.stream, content_length, content_md5, x_invenio_tags
 
 
 @use_kwargs({
@@ -168,9 +179,14 @@ def stream_uploadfactory(content_md5=None, content_length=None,
         location='files',
         required=True,
     ),
+    'x_invenio_tags': fields.Str(
+        load_from='X-Invenio-Tags',
+        location='headers',
+        missing=None,
+    ),
 })
 def ngfileupload_partfactory(part_number=None, content_length=None,
-                             uploaded_file=None):
+                             uploaded_file=None, x_invenio_tags=None):
     """Part factory for ng-file-upload.
 
     :param part_number: The part number. (Default: ``None``)
@@ -180,7 +196,7 @@ def ngfileupload_partfactory(part_number=None, content_length=None,
         header.
     """
     return content_length, part_number, uploaded_file.stream, \
-        uploaded_file.headers.get('Content-Type'), None
+        uploaded_file.headers.get('Content-Type'), None, x_invenio_tags
 
 
 @use_kwargs({
@@ -199,9 +215,14 @@ def ngfileupload_partfactory(part_number=None, content_length=None,
         location='files',
         required=True,
     ),
+    'x_invenio_tags': fields.Str(
+        load_from='X-Invenio-Tags',
+        location='headers',
+        missing=None,
+    ),
 })
 def ngfileupload_uploadfactory(content_length=None, content_type=None,
-                               uploaded_file=None):
+                               uploaded_file=None, x_invenio_tags=None):
     """Get default put factory.
 
     If Content-Type is ``'multipart/form-data'`` then the stream is aborted.
@@ -214,7 +235,7 @@ def ngfileupload_uploadfactory(content_length=None, content_type=None,
     if not content_type.startswith('multipart/form-data'):
         abort(422)
 
-    return uploaded_file.stream, content_length, None
+    return uploaded_file.stream, content_length, None, x_invenio_tags
 
 
 #
@@ -510,7 +531,7 @@ class ObjectResource(ContentNegotiatedMethodView):
         # User can tamper with Content-Length, so this is just an initial up
         # front check. The storage subsystem must validate the size limit as
         # well.
-        stream, content_length, content_md5 = \
+        stream, content_length, content_md5, tags = \
             current_files_rest.upload_factory()
 
         size_limit = bucket.size_limit
@@ -523,6 +544,11 @@ class ObjectResource(ContentNegotiatedMethodView):
             obj = ObjectVersion.create(bucket, key)
             obj.set_contents(
                 stream, size=content_length, size_limit=size_limit)
+            # Check add/update tags
+            if tags:
+                for key, value in tags.items():
+                    ObjectVersionTag.create_or_update(obj, key, value)
+
         db.session.commit()
         return self.make_response(
             data=obj,
