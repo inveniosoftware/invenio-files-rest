@@ -102,7 +102,7 @@ def test_get(client, headers, permissions, bucket, objects, get_json):
 
             assert set(data['contents'][0].keys()) == {
                 'checksum', 'created', 'delete_marker', 'is_head', 'key',
-                'links', 'mimetype', 'size', 'updated', 'version_id',
+                'links', 'mimetype', 'size', 'updated', 'version_id', 'tags'
             }
             assert set(data.keys()) == {
                 'contents', 'created', 'id', 'links', 'locked',
