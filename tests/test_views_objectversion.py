@@ -524,3 +524,30 @@ def test_delete_unwritable(client, db, bucket, versions):
     FileInstance.query.count() == 4
     remove_file_data(obj.file_id)
     FileInstance.query.count() == 4
+
+
+def test_put_header_tags(client, bucket, permissions, get_md5, get_json):
+    """Test upload of an object with tags in the headers."""
+
+    key = 'test.txt'
+    data = b'updated_content'
+    checksum = get_md5(data, prefix=True)
+    object_url = url_for(
+        'invenio_files_rest.object_api', bucket_id=bucket.id, key=key)
+    headers = {
+        'X-Invenio-File-Tags': 'key1=val1;key2=val2;key3=val3;key1=invalid'
+    }
+
+    login_user(client, permissions['bucket'])
+    resp = client.put(
+        object_url,
+        input_stream=BytesIO(data),
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    assert resp.get_etag()[0] == checksum
+
+    tags = ObjectVersion.get(bucket, key).get_tags()
+    assert tags['key1'] == 'val1'
+    assert tags['key2'] == 'val2'
+    assert tags['key3'] == 'val3'
