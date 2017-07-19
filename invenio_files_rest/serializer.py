@@ -76,6 +76,11 @@ class ObjectVersionSchema(BaseSchema):
     size = fields.Integer(attribute='file.size')
     checksum = fields.String(attribute='file.checksum')
     delete_marker = fields.Boolean(attribute='deleted')
+    tags = fields.Method('dump_tags', dump_only=True)
+
+    def dump_tags(self, o):
+        """Dump tags."""
+        return o.get_tags()
 
     def dump_links(self, o):
         """Dump links."""
