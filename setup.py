@@ -47,7 +47,7 @@ tests_require = [
     'pytest-cache>=1.0',
     'pytest-cov>=1.8.0',
     'pytest-pep8>=1.0.6',
-    'pytest>=2.8.0',
+    'pytest>=2.8.3',
 ]
 
 extras_require = {
@@ -56,13 +56,13 @@ extras_require = {
         'sphinxcontrib-httpdomain>=1.4.0',
     ],
     'postgresql': [
-        'invenio-db[postgresql]>=1.0.0b3',
+        'invenio-db[postgresql]>=1.0.0b7',
     ],
     'mysql': [
-        'invenio-db[mysql]>=1.0.0b3',
+        'invenio-db[mysql]>=1.0.0b7',
     ],
     'sqlite': [
-        'invenio-db>=1.0.0b3',
+        'invenio-db>=1.0.0b7',
     ],
     'tests': tests_require,
 }

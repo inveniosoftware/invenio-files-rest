@@ -70,7 +70,7 @@ from sqlalchemy_utils.types import UUIDType
 
 from .errors import BucketLockedError, FileInstanceAlreadySetError, \
     FileInstanceUnreadableError, FileSizeError, InvalidKeyError, \
-    InvalidOperationError, MultipartAlreadyCompleted, \
+    InvalidOperationError, MergeConflict, MultipartAlreadyCompleted, \
     MultipartInvalidChunkSize, MultipartInvalidPartNumber, \
     MultipartInvalidSize, MultipartMissingParts, MultipartNotCompleted
 from .proxies import current_files_rest
@@ -112,6 +112,27 @@ def as_bucket_id(value):
     :returns: The :class:`invenio_files_rest.models.Bucket` ID.
     """
     return value.id if isinstance(value, Bucket) else value
+
+
+def as_object_version(value):
+    """Get a object version object from a object version id or object version.
+
+    :param value: A :class:`invenio_files_rest.models.ObjectVersion` or an
+        object version ID.
+    :returns: A :class:`invenio_files_rest.models.ObjectVersion` instance.
+    """
+    return value if isinstance(value, ObjectVersion) \
+        else ObjectVersion.query.filter_by(version_id=value).one_or_none()
+
+
+def as_object_version_id(value):
+    """Get a object version id from a object version id or object version.
+
+    :param value: A :class:`invenio_files_rest.models.ObjectVersion` instance
+        of a object version id.
+    :returns: The :class:`invenio_files_rest.models.ObjectVersion` version_id.
+    """
+    return value.version_id if isinstance(value, ObjectVersion) else value
 
 
 #
@@ -380,7 +401,6 @@ class Bucket(db.Model, Timestamp):
             raise ValueError('Invalid storage class.')
         return default_storage_class
 
-    @ensure_not_deleted()
     def snapshot(self, lock=False):
         """Create a snapshot of latest objects in bucket.
 
@@ -388,19 +408,23 @@ class Bucket(db.Model, Timestamp):
         :returns: Newly created bucket with the snapshot.
         """
         with db.session.begin_nested():
-            b = Bucket(
+            bucket = Bucket(
                 default_location=self.default_location,
                 default_storage_class=self.default_storage_class,
                 quota_size=self.quota_size,
             )
-            db.session.add(b)
+            db.session.add(bucket)
+        return self.merge(lock=lock, bucket=bucket)
 
-        for o in ObjectVersion.get_by_bucket(self):
-            o.copy(bucket=b)
+    @ensure_not_deleted()
+    def merge(self, bucket, lock=False):
+        """Sync self to the destination bucket."""
+        for o in ObjectVersion.get_heads_by_bucket(self):
+            o.merge(bucket=bucket, key=o.key)
 
-        b.locked = True if lock else self.locked
+        bucket.locked = True if lock else self.locked
 
-        return b
+        return bucket
 
     def get_tags(self):
         """Get tags for bucket as dictionary."""
@@ -791,23 +815,21 @@ class ObjectVersion(db.Model, Timestamp):
 
     __tablename__ = 'files_object'
 
-    bucket_id = db.Column(
-        UUIDType,
-        db.ForeignKey(Bucket.id, ondelete='RESTRICT'),
-        default=uuid.uuid4,
-        primary_key=True, )
-    """Bucket identifier."""
-
-    key = db.Column(
-        db.Text().with_variant(mysql.VARCHAR(255), 'mysql'),
-        primary_key=True, )
-    """Key identifying the object."""
-
     version_id = db.Column(
         UUIDType,
         primary_key=True,
         default=uuid.uuid4, )
     """Identifier for the specific version of an object."""
+
+    key = db.Column(
+        db.Text().with_variant(mysql.VARCHAR(255), 'mysql'), )
+    """Key identifying the object."""
+
+    bucket_id = db.Column(
+        UUIDType,
+        db.ForeignKey(Bucket.id, ondelete='RESTRICT'),
+        default=uuid.uuid4, )
+    """Bucket identifier."""
 
     file_id = db.Column(
         UUIDType,
@@ -834,6 +856,10 @@ class ObjectVersion(db.Model, Timestamp):
 
     file = db.relationship(FileInstance, backref='objects')
     """Relationship to file instance."""
+
+    __table_args__ = (
+        db.UniqueConstraint('bucket_id', 'version_id', 'key'),
+    )
 
     @validates('key')
     def validate_key(self, key, key_):
@@ -952,9 +978,12 @@ class ObjectVersion(db.Model, Timestamp):
         actual data on disk is not copied. Instead, the two object versions
         will point to the same physical file (via the same FileInstance).
 
+        All the tags associated with the current object version are copied over
+        to the new instance.
+
         .. warning::
 
-           If the destination object exists, it will be replaced by  the new
+           If the destination object exists, it will be replaced by the new
            object version which will become the latest version.
 
         :param bucket: The bucket (instance or id) to copy the object to.
@@ -963,11 +992,35 @@ class ObjectVersion(db.Model, Timestamp):
             Default: current object key.
         :returns: The copied object version.
         """
-        return ObjectVersion.create(
-            self.bucket if bucket is None else as_bucket(bucket),
-            key or self.key,
-            _file_id=self.file_id
-        )
+        # get (if exists) the latest version
+        latest_obj = self.query.filter(
+            ObjectVersion.bucket == bucket, ObjectVersion.key == key,
+            ObjectVersion.is_head.is_(True)
+        ).one_or_none()
+        # copy only if necessary
+        if latest_obj != self:
+            latest_obj = ObjectVersion.create(
+                self.bucket if bucket is None else as_bucket(bucket),
+                key or self.key,
+                _file_id=self.file_id
+            )
+
+        self.synchronize_tags(object_version=latest_obj)
+
+        return latest_obj
+
+    def synchronize_tags(self, object_version):
+        """Sync tags of the two objects."""
+        # create/update all source tags
+        for t in self.tags:
+            ObjectVersionTag.create_or_update(object_version=object_version,
+                                              key=t.key, value=t.value)
+        # remove tags that are in destionation but not in source
+        source_keys = [o.key for o in self.tags]
+        to_remove = [o.key for o in object_version.tags
+                     if o.key not in source_keys]
+        for key in to_remove:
+            ObjectVersionTag.delete(object_version=object_version, key=key)
 
     @ensure_unlocked(getter=lambda o: not o.bucket.locked)
     def remove(self):
@@ -1067,7 +1120,7 @@ class ObjectVersion(db.Model, Timestamp):
         return cls.query.filter(*filters).one_or_none()
 
     @classmethod
-    def get_versions(cls, bucket, key):
+    def get_versions(cls, bucket, key, desc=True):
         """Fetch all versions of a specific object.
 
         :param bucket: The bucket (instance or id) to get the object from.
@@ -1078,7 +1131,9 @@ class ObjectVersion(db.Model, Timestamp):
             cls.key == key,
         ]
 
-        return cls.query.filter(*filters).order_by(cls.key, cls.created.desc())
+        order = cls.created.desc() if desc else cls.created.asc()
+
+        return cls.query.filter(*filters).order_by(cls.key, order)
 
     @classmethod
     def delete(cls, bucket, key):
@@ -1100,19 +1155,41 @@ class ObjectVersion(db.Model, Timestamp):
         return None
 
     @classmethod
-    def get_by_bucket(cls, bucket, versions=False):
-        """Return query that fetches all the objects in a bucket."""
+    def query_by_bucket(cls, bucket):
+        """Create a query by bucket."""
         bucket_id = bucket.id if isinstance(bucket, Bucket) else bucket
 
         filters = [
             cls.bucket_id == bucket_id,
         ]
 
+        return cls.query.filter(*filters)
+
+    @classmethod
+    def query_heads_by_bucket(cls, bucket):
+        """Create a query to get only HEAD filtered by bucket."""
+        return cls.query_by_bucket(bucket=bucket).filter(
+            cls.is_head.is_(True)
+        )
+
+    @classmethod
+    def get_heads_by_bucket(cls, bucket):
+        """Return all objects (also deleted) in a bucket."""
+        return cls.query_heads_by_bucket(
+            bucket=bucket).order_by(cls.key, cls.created.desc())
+
+    @classmethod
+    def get_by_bucket(cls, bucket, versions=False):
+        """Return query that fetches all the objects in a bucket."""
+        filters = []
+
         if not versions:
             filters.append(cls.file_id.isnot(None))
             filters.append(cls.is_head.is_(True))
 
-        return cls.query.filter(*filters).order_by(cls.key, cls.created.desc())
+        return cls.query_by_bucket(bucket=bucket).filter(
+            *filters
+        ).order_by(cls.key, cls.created.desc())
 
     @classmethod
     def relink_all(cls, old_file, new_file):
@@ -1129,6 +1206,118 @@ class ObjectVersion(db.Model, Timestamp):
         with db.session.begin_nested():
             ObjectVersion.query.filter_by(file_id=str(old_file.id)).update({
                 ObjectVersion.file_id: str(new_file.id)})
+
+    def get_tags(self):
+        """Get tags for object version as dictionary."""
+        return {t.key: t.value for t in self.tags}
+
+    def __eq__(self, other):
+        """Check if the two object are equals."""
+        return other and isinstance(other, self.__class__) and \
+            self.key == other.key and self.file_id == other.file_id
+
+    def __ne__(self, other):
+        """Check if are not equal."""
+        return not self.__eq__(other=other)
+
+    def merge(self, bucket, key=None):
+        """Merge the object inside the bucket."""
+        # check no new version is added while the object is modified
+        orig_ancestor = ObjectVersion.get_versions(
+            bucket=self.bucket, key=key, desc=True)
+        dest_head = ObjectVersion.query_heads_by_bucket(bucket=bucket).filter(
+            ObjectVersion.key == key).one_or_none()
+        if dest_head and all(orig.file_id != dest_head.file_id
+                             for orig in orig_ancestor):
+            # there are two branch, I can't merge!
+            raise MergeConflict()
+        # delete or copy
+        if self.deleted:
+            self.delete(bucket=bucket, key=self.key)
+        else:
+            self.copy(bucket=bucket, key=self.key)
+
+
+class ObjectVersionTag(db.Model):
+    """Model for storing tags associated to object versions.
+
+    This is useful to store extra technical information for an object version.
+    """
+
+    __tablename__ = 'files_objecttags'
+
+    version_id = db.Column(
+        UUIDType,
+        db.ForeignKey(ObjectVersion.version_id, ondelete='CASCADE'),
+        default=uuid.uuid4,
+        primary_key=True, )
+    """Object version id."""
+
+    key = db.Column(db.String(255), primary_key=True)
+    """Tag key."""
+
+    value = db.Column(db.Text, nullable=False)
+    """Tag value."""
+
+    object_version = db.relationship(ObjectVersion, backref='tags')
+    """Relationship to object versions."""
+
+    def copy(self, object_version=None, key=None):
+        """Copy a tag to a given object version.
+
+        :param object_version: The object version instance to copy the tag to.
+            Default: current object version.
+        :param key: Key of destination tag.
+            Default: current tag key.
+        :return: The copied object version tag.
+        """
+        return ObjectVersionTag.create(
+            self.object_version if object_version is None else object_version,
+            key or self.key,
+            self.value
+        )
+
+    @classmethod
+    def get(cls, object_version, key):
+        """Get tag object."""
+        return cls.query.filter_by(
+            version_id=as_object_version_id(object_version),
+            key=key,
+        ).one_or_none()
+
+    @classmethod
+    def create(cls, object_version, key, value):
+        """Create a new tag for a given object version."""
+        with db.session.begin_nested():
+            obj = cls(version_id=as_object_version_id(object_version),
+                      key=key,
+                      value=value)
+            db.session.add(obj)
+        return obj
+
+    @classmethod
+    def create_or_update(cls, object_version, key, value):
+        """Create or update a new tag for given object version."""
+        obj = cls.get(object_version, key)
+        if obj:
+            obj.value = value
+        else:
+            cls.create(object_version, key, value)
+
+    @classmethod
+    def get_value(cls, object_version, key):
+        """Get tag value."""
+        obj = cls.get(object_version, key)
+        return obj.value if obj else None
+
+    @classmethod
+    def delete(cls, object_version, key):
+        """Delete a tag."""
+        with db.session.begin_nested():
+            cls.query.filter_by(
+                version_id=as_object_version_id(object_version),
+                key=key
+            ).delete()
 
 
 class MultipartObject(db.Model, Timestamp):

@@ -29,7 +29,7 @@ from __future__ import absolute_import, print_function
 import uuid
 from functools import partial, wraps
 
-from flask import Blueprint, abort, current_app, request
+from flask import Blueprint, abort, current_app, json, request
 from flask_login import current_user
 from invenio_db import db
 from invenio_rest import ContentNegotiatedMethodView
@@ -37,9 +37,12 @@ from marshmallow import missing
 from webargs import fields
 from webargs.flaskparser import use_kwargs
 
+from invenio_files_rest.utils import QueryString
+
 from .errors import FileSizeError, MissingQueryParameter, \
     MultipartInvalidChunkSize
-from .models import Bucket, MultipartObject, ObjectVersion, Part
+from .models import Bucket, MultipartObject, ObjectVersion, ObjectVersionTag, \
+    Part
 from .proxies import current_files_rest, current_permission_factory
 from .serializer import json_serializer
 from .signals import file_downloaded
@@ -101,20 +104,27 @@ def invalid_subresource_validator(value):
         load_from='Content-MD5',
         location='headers',
     ),
+    'x_invenio_file_tags': QueryString(
+        load_from='X-Invenio-File-Tags',
+        location='headers',
+        missing=None,
+    ),
 })
 def default_partfactory(part_number=None, content_length=None,
-                        content_type=None, content_md5=None):
+                        content_type=None, content_md5=None,
+                        x_invenio_file_tags=None):
     """Get default part factory.
 
     :param part_number: The part number. (Default: ``None``)
     :param content_length: The content length. (Default: ``None``)
     :param content_type: The HTTP Content-Type. (Default: ``None``)
     :param content_md5: The content MD5. (Default: ``None``)
+    :param x_invenio_file_tags: The file tags. (Default: ``None``)
     :returns: The content length, the part number, the stream, the content
         type, MD5 of the content.
     """
     return content_length, part_number, request.stream, content_type, \
-        content_md5
+        content_md5, x_invenio_file_tags
 
 
 @use_kwargs({
@@ -134,9 +144,14 @@ def default_partfactory(part_number=None, content_length=None,
         location='headers',
         missing='',
     ),
+    'x_invenio_file_tags': QueryString(
+        load_from='X-Invenio-File-Tags',
+        location='headers',
+        missing=None,
+    ),
 })
 def stream_uploadfactory(content_md5=None, content_length=None,
-                         content_type=None):
+                         content_type=None, x_invenio_file_tags=None):
     """Get default put factory.
 
     If Content-Type is ``'multipart/form-data'`` then the stream is aborted.
@@ -144,11 +159,12 @@ def stream_uploadfactory(content_md5=None, content_length=None,
     :param content_md5: The content MD5. (Default: ``None``)
     :param content_length: The content length. (Default: ``None``)
     :param content_type: The HTTP Content-Type. (Default: ``None``)
+    :param x_invenio_file_tags: The file tags. (Default: ``None``)
     :returns: The stream, content length, MD5 of the content.
     """
     if content_type.startswith('multipart/form-data'):
         abort(422)
-    return request.stream, content_length, content_md5
+    return request.stream, content_length, content_md5, x_invenio_file_tags
 
 
 @use_kwargs({
@@ -168,19 +184,25 @@ def stream_uploadfactory(content_md5=None, content_length=None,
         location='files',
         required=True,
     ),
+    'x_invenio_file_tags': QueryString(
+        load_from='X-Invenio-File-Tags',
+        location='headers',
+        missing=None,
+    ),
 })
 def ngfileupload_partfactory(part_number=None, content_length=None,
-                             uploaded_file=None):
+                             uploaded_file=None, x_invenio_file_tags=None):
     """Part factory for ng-file-upload.
 
     :param part_number: The part number. (Default: ``None``)
     :param content_length: The content length. (Default: ``None``)
     :param uploaded_file: The upload request. (Default: ``None``)
+    :param x_invenio_file_tags: The file tags. (Default: ``None``)
     :returns: The content length, part number, stream, HTTP Content-Type
         header.
     """
     return content_length, part_number, uploaded_file.stream, \
-        uploaded_file.headers.get('Content-Type'), None
+        uploaded_file.headers.get('Content-Type'), None, x_invenio_file_tags
 
 
 @use_kwargs({
@@ -199,9 +221,14 @@ def ngfileupload_partfactory(part_number=None, content_length=None,
         location='files',
         required=True,
     ),
+    'x_invenio_file_tags': QueryString(
+        load_from='X-Invenio-File-Tags',
+        location='headers',
+        missing=None,
+    ),
 })
 def ngfileupload_uploadfactory(content_length=None, content_type=None,
-                               uploaded_file=None):
+                               uploaded_file=None, x_invenio_file_tags=None):
     """Get default put factory.
 
     If Content-Type is ``'multipart/form-data'`` then the stream is aborted.
@@ -209,12 +236,13 @@ def ngfileupload_uploadfactory(content_length=None, content_type=None,
     :param content_length: The content length. (Default: ``None``)
     :param content_type: The HTTP Content-Type. (Default: ``None``)
     :param uploaded_file: The upload request. (Default: ``None``)
+    :param x_invenio_file_tags: The file tags. (Default: ``None``)
     :returns: A tuple containing stream, content length, and empty header.
     """
     if not content_type.startswith('multipart/form-data'):
         abort(422)
 
-    return uploaded_file.stream, content_length, None
+    return uploaded_file.stream, content_length, None, x_invenio_file_tags
 
 
 #
@@ -309,7 +337,7 @@ class LocationResource(ContentNegotiatedMethodView):
     """Service resource."""
 
     def __init__(self, *args, **kwargs):
-        """Instatiate content negotiated view."""
+        """Instantiate content negotiated view."""
         super(LocationResource, self).__init__(*args, **kwargs)
 
     @need_location_permission('location-update', hidden=False)
@@ -343,7 +371,7 @@ class BucketResource(ContentNegotiatedMethodView):
     }
 
     def __init__(self, *args, **kwargs):
-        """Instatiate content negotiated view."""
+        """Instantiate content negotiated view."""
         super(BucketResource, self).__init__(*args, **kwargs)
 
     @need_permissions(lambda self, bucket: bucket, 'bucket-listmultiparts')
@@ -460,7 +488,7 @@ class ObjectResource(ContentNegotiatedMethodView):
     }
 
     def __init__(self, *args, **kwargs):
-        """Instatiate content negotiated view."""
+        """Instantiate content negotiated view."""
         super(ObjectResource, self).__init__(*args, **kwargs)
 
     #
@@ -510,7 +538,7 @@ class ObjectResource(ContentNegotiatedMethodView):
         # User can tamper with Content-Length, so this is just an initial up
         # front check. The storage subsystem must validate the size limit as
         # well.
-        stream, content_length, content_md5 = \
+        stream, content_length, content_md5, tags = \
             current_files_rest.upload_factory()
 
         size_limit = bucket.size_limit
@@ -523,6 +551,11 @@ class ObjectResource(ContentNegotiatedMethodView):
             obj = ObjectVersion.create(bucket, key)
             obj.set_contents(
                 stream, size=content_length, size_limit=size_limit)
+            # Check add tags
+            if tags:
+                for key, value in tags.items():
+                    ObjectVersionTag.create(obj, key, value)
+
         db.session.commit()
         return self.make_response(
             data=obj,
@@ -649,7 +682,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             instance.
         :returns: A Flask response.
         """
-        content_length, part_number, stream, content_type, content_md5 = \
+        content_length, part_number, stream, content_type, content_md5, tags =\
             current_files_rest.multipart_partfactory()
 
         if content_length:
@@ -802,6 +835,49 @@ class ObjectResource(ContentNegotiatedMethodView):
             obj = self.get_object(bucket, key, version_id)
             return self.delete_object(bucket, obj, version_id)
 
+
+class TagResource(ContentNegotiatedMethodView):
+    """Tag resource."""
+
+    def __init__(self, *args, **kwargs):
+        """Instantiate content negotiated view."""
+        super(TagResource, self).__init__(*args, **kwargs)
+
+    @pass_bucket
+    @need_bucket_permission('bucket-update')
+    def put(self, key=None, bucket=None):
+        """Create or update tags."""
+        tags = request.get_json()
+        obj = ObjectVersion.get(bucket, key)
+        if tags is not None:
+            with db.session.begin_nested():
+                for key, value in tags.items():
+                    ObjectVersionTag.create_or_update(obj, key, value)
+            db.session.commit()
+        return self.make_response(
+            data=obj,
+            context={
+                'class': ObjectVersion,
+            }
+        )
+
+    @pass_bucket
+    @need_bucket_permission('bucket-update')
+    def delete(self, key=None, bucket=None):
+        """Delete a tag by its name."""
+        tags = request.get_json()
+        obj = ObjectVersion.get(bucket, key)
+        with db.session.begin_nested():
+            for tag in tags:
+                ObjectVersionTag.delete(obj, tag)
+        db.session.commit()
+        return self.make_response(
+            data=obj,
+            context={
+                'class': ObjectVersion,
+            }
+        )
+
 #
 # Blueprint definition
 #
@@ -823,6 +899,12 @@ object_view = ObjectResource.as_view(
         'application/json': json_serializer,
     }
 )
+tag_view = TagResource.as_view(
+    'tag_api',
+    serializers={
+        'application/json': json_serializer,
+    }
+)
 
 blueprint.add_url_rule(
     '',
@@ -835,4 +917,8 @@ blueprint.add_url_rule(
 blueprint.add_url_rule(
     '/<string:bucket_id>/<path:key>',
     view_func=object_view,
+)
+blueprint.add_url_rule(
+    '/<string:bucket_id>/<path:key>/tags',
+    view_func=tag_view,
 )
