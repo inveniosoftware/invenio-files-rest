@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015, 2016 CERN.
+# Copyright (C) 2015, 2016, 2017 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -609,9 +609,7 @@ class FileInstance(db.Model, Timestamp):
     last_check_at = db.Column(db.DateTime, nullable=True)
     """Timestamp of last fixity check."""
 
-    last_check = db.Column(db.Boolean(name='last_check'),
-                           default=True,
-                           nullable=False)
+    last_check = db.Column(db.Boolean(name='last_check'), default=True)
     """Result of last fixity check."""
 
     @validates('uri')
@@ -679,12 +677,33 @@ class FileInstance(db.Model, Timestamp):
         self.checksum = self.storage(**kwargs).checksum(
             progress_callback=progress_callback)
 
-    def verify_checksum(self, progress_callback=None, **kwargs):
-        """Verify checksum of file instance."""
-        real_checksum = self.storage(**kwargs).checksum(
-            progress_callback=progress_callback)
+    def clear_last_check(self):
+        """Clear the checksum of the file."""
         with db.session.begin_nested():
-            self.last_check = (self.checksum == real_checksum)
+            self.last_check = None
+            self.last_check_at = datetime.utcnow()
+        return self
+
+    def verify_checksum(self, progress_callback=None, throws=True, **kwargs):
+        """Verify checksum of file instance.
+
+        :param bool throws: If `True`, exceptions raised during checksum
+            calculation will be re-raised after logging. If set to `False`, and
+            an exception occurs, the `last_check` field is set to `None`
+            (`last_check_at` of course is updated), since no check actually was
+            performed.
+        """
+        try:
+            real_checksum = self.storage(**kwargs).checksum(
+                progress_callback=progress_callback)
+        except Exception as exc:
+            current_app.logger.exception(str(exc))
+            if throws:
+                raise
+            real_checksum = None
+        with db.session.begin_nested():
+            self.last_check = (None if real_checksum is None
+                               else (self.checksum == real_checksum))
             self.last_check_at = datetime.utcnow()
         return self.last_check
 
