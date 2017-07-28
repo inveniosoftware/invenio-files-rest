@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2016 CERN.
+# Copyright (C) 2016, 2017 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -30,6 +30,7 @@ import uuid
 from os.path import getsize
 
 import pytest
+from fs.errors import ResourceNotFoundError
 from six import BytesIO, b
 
 from invenio_files_rest.errors import BucketLockedError, \
@@ -402,8 +403,22 @@ def test_object_set_contents(app, db, dummy_location):
     obj2.file.verify_checksum()
     assert obj2.file.last_check_at
     assert obj2.file.last_check is True
+    old_checksum = obj2.file.checksum
     obj2.file.checksum = "md5:invalid"
     assert obj2.file.verify_checksum() is False
+
+    previous_last_check = obj2.file.last_check
+    previous_last_check_date = obj2.file.last_check_at
+    with db.session.begin_nested():
+        obj2.file.checksum = old_checksum
+        obj2.file.uri = 'invalid'
+    pytest.raises(ResourceNotFoundError, obj2.file.verify_checksum)
+    assert obj2.file.last_check == previous_last_check
+    assert obj2.file.last_check_at == previous_last_check_date
+
+    obj2.file.verify_checksum(throws=False)
+    assert obj2.file.last_check is None
+    assert obj2.file.last_check_at != previous_last_check_date
 
 
 def test_object_set_location(app, db, dummy_location):
