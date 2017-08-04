@@ -146,27 +146,33 @@ class PyFSFileStorage(FileStorage):
 
 def pyfs_storage_factory(fileinstance=None, default_location=None,
                          default_storage_class=None,
-                         filestorage_class=PyFSFileStorage):
+                         filestorage_class=PyFSFileStorage, fileurl=None,
+                         size=None, modified=None, clean_dir=True):
     """Get factory function for creating a PyFS file storage instance."""
-    assert fileinstance
+    # Either the FileInstance needs to be specified or all filestorage
+    # class parameters need to be specified
+    assert fileinstance or (fileurl and size)
 
-    fileurl = None
-    size = fileinstance.size
-    modified = fileinstance.updated
+    if fileinstance:
+        # FIXME: Code here should be refactored since it assumes a lot on the
+        # directory structure where the file instances are written
+        fileurl = None
+        size = fileinstance.size
+        modified = fileinstance.updated
 
-    if fileinstance.uri:
-        # Use already existing URL.
-        fileurl = fileinstance.uri
-    else:
-        assert default_location
-        # Generate a new URL.
-        fileurl = make_path(
-            default_location,
-            str(fileinstance.id),
-            'data',
-            current_app.config['FILES_REST_STORAGE_PATH_DIMENSIONS'],
-            current_app.config['FILES_REST_STORAGE_PATH_SPLIT_LENGTH'],
-        )
+        if fileinstance.uri:
+            # Use already existing URL.
+            fileurl = fileinstance.uri
+        else:
+            assert default_location
+            # Generate a new URL.
+            fileurl = make_path(
+                default_location,
+                str(fileinstance.id),
+                'data',
+                current_app.config['FILES_REST_STORAGE_PATH_DIMENSIONS'],
+                current_app.config['FILES_REST_STORAGE_PATH_SPLIT_LENGTH'],
+            )
 
     return filestorage_class(
-        fileurl, size=size, modified=modified, clean_dir=True)
+        fileurl, size=size, modified=modified, clean_dir=clean_dir)
