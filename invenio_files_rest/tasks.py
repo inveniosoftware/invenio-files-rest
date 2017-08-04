@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015, 2016 CERN.
+# Copyright (C) 2015, 2016, 2017 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -26,10 +26,13 @@
 
 from __future__ import absolute_import, print_function
 
+import math
 import uuid
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
-from celery import current_task, shared_task
+import sqlalchemy as sa
+from celery import current_app as current_celery
+from celery import current_task, group, shared_task
 from celery.states import state
 from celery.utils.log import get_task_logger
 from flask import current_app
@@ -37,6 +40,7 @@ from invenio_db import db
 from sqlalchemy.exc import IntegrityError
 
 from .models import FileInstance, Location, MultipartObject, ObjectVersion
+from .utils import load_or_import_from_config
 
 logger = get_task_logger(__name__)
 
@@ -50,14 +54,108 @@ def progress_updater(size, total):
 
 
 @shared_task(ignore_result=True)
-def verify_checksum(file_id):
+def verify_checksum(file_id, pessimistic=False, throws=True):
     """Verify checksum of a file instance.
 
     :param file_id: The file ID.
     """
     f = FileInstance.query.get(uuid.UUID(file_id))
-    f.verify_checksum(progress_callback=progress_updater)
+
+    # Anything might happen during the task, so being pessimistic and marking
+    # the file as unchecked is a reasonable precaution
+    if pessimistic:
+        f.clear_last_check()
+        db.session.commit()
+    f.verify_checksum(progress_callback=progress_updater, throws=throws)
     db.session.commit()
+
+
+def default_checksum_verification_files_query():
+    """Return a query of valid FileInstances for checksum verficiation."""
+    return FileInstance.query
+
+
+@shared_task(ignore_result=True)
+def schedule_checksum_verification(frequency=None, batch_interval=None,
+                                   max_count=None, max_size=None):
+    """Schedule a batch of files for checksum verification.
+
+    The purpose of this task is to be periodically called through `celerybeat`,
+    in order achieve a repeated verification cycle of all file checksums, while
+    following a set of constraints in order to throttle the execution rate of
+    the checks.
+
+    :param dict frequency: Time period over which a full check of all files
+        should be performed. The argument is a dictionary that will be passed
+        as arguments to the `datetime.timedelta` class. Defaults to a month (30
+        days).
+    :param dict batch_interval: How often a batch is sent. If not supplied,
+        this information will be extracted, if possible, from the
+        celery.conf['CELERYBEAT_SCHEDULE'] entry of this task. The argument is
+        a dictionary that will be passed as arguments to the
+        `datetime.timedelta` class.
+    :param int max_count: Max count of files of a single batch. When set to `0`
+        it's automatically calculated to be distributed equally through the
+        number of total batches.
+    :param int max_size: Max size of a single batch in bytes. When set to `0`
+        it's automatically calculated to be distributed equally through the
+        number of total batches.
+    """
+    assert max_count is not None or max_size is not None
+    frequency = timedelta(**frequency) if frequency else timedelta(days=30)
+    if batch_interval:
+        batch_interval = timedelta(**batch_interval)
+    else:
+        celery_schedule = current_celery.conf.get('CELERYBEAT_SCHEDULE', {})
+        batch_interval = batch_interval or next(
+            (v['schedule'] for v in celery_schedule.values()
+             if v.get('task') == schedule_checksum_verification.name), None)
+    if not batch_interval or not isinstance(batch_interval, timedelta):
+        raise Exception(u'No "batch_interval" could be decided')
+
+    total_batches = int(
+        frequency.total_seconds() / batch_interval.total_seconds())
+
+    files = load_or_import_from_config(
+        'FILES_REST_CHECKSUM_VERIFICATION_FILES_QUERY')()
+    files = files.order_by(
+        sa.func.coalesce(FileInstance.last_check_at, date.min))
+
+    if max_count is not None:
+        all_files_count = files.count()
+        min_count = int(math.ceil(all_files_count / total_batches))
+        max_count = min_count if max_count == 0 else max_count
+        if max_count < min_count:
+            current_app.logger.warning(
+                 u'The "max_count" you specified ({0}) is smaller than the '
+                 'minimum batch file count required ({1}) in order to achieve '
+                 'the file checks over the specified period ({2}).'
+                 .format(max_count, min_count, frequency))
+        files = files.limit(max_count)
+
+    if max_size is not None:
+        all_files_size = db.session.query(
+            sa.func.sum(FileInstance.size)).scalar()
+        min_size = int(math.ceil(all_files_size / total_batches))
+        max_size = min_size if max_size == 0 else max_size
+        if max_size < min_size:
+            current_app.logger.warning(
+                 u'The "max_size" you specified ({0}) is smaller than the '
+                 'minimum batch total file size required ({1}) in order to '
+                 'achieve the file checks over the specified period ({2}).'
+                 .format(max_size, min_size, frequency))
+
+    files = files.yield_per(1000)
+    scheduled_file_ids = []
+    total_size = 0
+    for f in files:
+        # Add at least the first file, since it might be larger than "max_size"
+        scheduled_file_ids.append(str(f.id))
+        total_size += f.size
+        if max_size and max_size <= total_size:
+            break
+    group(verify_checksum.s(f, pessimistic=True, throws=False)
+          for f in scheduled_file_ids).apply_async()
 
 
 @shared_task(ignore_result=True, max_retries=3, default_retry_delay=20 * 60)

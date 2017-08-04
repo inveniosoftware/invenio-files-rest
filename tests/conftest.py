@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015, 2016 CERN.
+# Copyright (C) 2015, 2016, 2017 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -82,6 +82,8 @@ def base_app():
     app_ = Flask('testapp')
     app_.config.update(
         TESTING=True,
+        CELERY_ALWAYS_EAGER=True,
+        CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
         SQLALCHEMY_TRACK_MODIFICATIONS=True,
         SQLALCHEMY_DATABASE_URI=os.environ.get(
             'SQLALCHEMY_DATABASE_URI',

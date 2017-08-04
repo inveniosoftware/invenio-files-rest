@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015, 2016 CERN.
+# Copyright (C) 2015, 2016, 2017 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -27,15 +27,17 @@
 from __future__ import absolute_import, print_function
 
 import errno
+import logging
 from os.path import exists, join
 
 import pytest
-from fs.errors import FSError
+from fs.errors import FSError, ResourceNotFoundError
 from mock import MagicMock, patch
+from six import BytesIO
 
 from invenio_files_rest.models import Bucket, FileInstance, ObjectVersion
 from invenio_files_rest.tasks import migrate_file, remove_file_data, \
-    verify_checksum
+    schedule_checksum_verification, verify_checksum
 
 
 def test_verify_checksum(app, db, dummy_location):
@@ -44,12 +46,82 @@ def test_verify_checksum(app, db, dummy_location):
     with open('README.rst', 'rb') as fp:
         obj = ObjectVersion.create(b1, 'README.rst', stream=fp)
     db.session.commit()
+    file_id = obj.file_id
 
-    verify_checksum(str(obj.file_id))
+    verify_checksum(str(file_id))
 
-    f = FileInstance.query.get(obj.file_id)
+    f = FileInstance.query.get(file_id)
     assert f.last_check_at
     assert f.last_check is True
+
+    f.uri = 'invalid'
+    db.session.add(f)
+    db.session.commit()
+    pytest.raises(ResourceNotFoundError, verify_checksum, str(file_id),
+                  throws=True)
+
+    f = FileInstance.query.get(file_id)
+    assert f.last_check is True
+
+    verify_checksum(str(file_id), throws=False)
+    f = FileInstance.query.get(file_id)
+    assert f.last_check is None
+
+    f.last_check = True
+    db.session.add(f)
+    db.session.commit()
+    with pytest.raises(ResourceNotFoundError):
+        verify_checksum(str(file_id), pessimistic=True)
+    f = FileInstance.query.get(file_id)
+    assert f.last_check is None
+
+
+def test_schedule_checksum_verification(app, db, dummy_location):
+    """Test file checksum verification scheduling celery task."""
+    b1 = Bucket.create()
+    objects = []
+    for i in range(100):
+        objects.append(
+            ObjectVersion.create(b1, str(i), stream=BytesIO(b'tests')))
+    db.session.commit()
+
+    # 100 files of the 5-byte content 'tests' should be 500 bytes in total
+    assert sum(o.file.size for o in objects) == 500
+
+    for obj in objects:
+        assert obj.file.last_check is True
+        assert obj.file.last_check_at is None
+
+    schedule_task = schedule_checksum_verification.s(
+        frequency={'minutes': 20},
+        batch_interval={'minutes': 1}
+    )
+
+    def checked_files():
+        return len([o for o in ObjectVersion.get_by_bucket(b1)
+                    if o.file.last_check_at])
+
+    # Scheduling for 100 files, for all of them to be checked every 20 minutes,
+    # with batches of equal number of file being sent out every minute
+    # should total to 20 batches with 5 files per batch.
+    schedule_task.apply(kwargs={'max_count': 0})
+    assert checked_files() == 5
+
+    # Repeat the schedule
+    schedule_task.apply(kwargs={'max_count': 0})
+    assert checked_files() == 10
+
+    schedule_task.apply(kwargs={'max_count': 3})  # 3 files are checked
+    assert checked_files() == 13
+
+    # Scheduling for 500 bytes of files, for all of them to be checked every 20
+    # minutes, with equal in size batches being sent out every minute should
+    # total to 20 batches of 25 bytes per batch (5 files).
+    schedule_task.apply(kwargs={'max_size': 0})
+    assert checked_files() == 18
+
+    schedule_task.apply(kwargs={'max_size': 15})  # 3 files are checked
+    assert checked_files() == 21
 
 
 def test_migrate_file(app, db, dummy_location, extra_location, bucket,
