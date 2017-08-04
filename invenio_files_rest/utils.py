@@ -25,6 +25,7 @@
 """Implementention of various utility functions."""
 
 import six
+from flask import current_app
 from werkzeug.utils import import_string
 
 
