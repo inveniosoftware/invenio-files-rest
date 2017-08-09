@@ -30,9 +30,6 @@ language: python
 
 matrix:
   fast_finish: true
-  allow_failures:
-    # TODO: Allowed failuers temporarily due to errors with invenio-access devel branch
-    - env: REQUIREMENTS=devel EXTRAS=all,mysql SQLALCHEMY_DATABASE_URI="mysql+pymysql://root@localhost:3306/invenio"
 
 cache:
   directories:
