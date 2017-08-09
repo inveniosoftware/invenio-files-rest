@@ -28,6 +28,7 @@ from __future__ import absolute_import, print_function
 
 import pytest
 from flask import Flask
+from invenio_db.utils import drop_alembic_version_table
 
 from invenio_files_rest import InvenioFilesREST
 
@@ -60,6 +61,7 @@ def test_alembic(app, db):
 
     assert not ext.alembic.compare_metadata()
     db.drop_all()
+    drop_alembic_version_table()
     ext.alembic.upgrade()
 
     assert not ext.alembic.compare_metadata()
@@ -68,3 +70,4 @@ def test_alembic(app, db):
     ext.alembic.upgrade()
 
     assert not ext.alembic.compare_metadata()
+    drop_alembic_version_table()
