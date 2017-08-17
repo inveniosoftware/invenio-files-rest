@@ -70,9 +70,14 @@ MIMETYPE_PLAINTEXT = {
 }
 
 
+def chunk_size_or_default(chunk_size):
+    """Use default chunksize if not configured."""
+    return chunk_size or 5 * 1024 * 1024  # 5MiB
+
+
 def send_stream(stream, filename, size, mtime, mimetype=None, restricted=True,
                 as_attachment=False, etag=None, content_md5=None,
-                chunk_size=8192, conditional=True, trusted=False):
+                chunk_size=None, conditional=True, trusted=False):
     """Send the contents of a file to the client.
 
     .. warning::
@@ -99,7 +104,7 @@ def send_stream(stream, filename, size, mtime, mimetype=None, restricted=True,
     :param as_attachment: If the file is an attachment. (Default: ``False``)
     :param etag: If defined, it will be set as HTTP E-Tag.
     :param content_md5: If defined, a HTTP Content-MD5 header will be set.
-    :param chunk_size: The chunk size. (Default: ``8192``)
+    :param chunk_size: The chunk size.
     :param conditional: Make the response conditional to the request.
         (Default: ``True``)
     :param trusted: Do not enable this option unless you know what you are
@@ -109,6 +114,8 @@ def send_stream(stream, filename, size, mtime, mimetype=None, restricted=True,
         (Default: ``False``)
     :returns: A Flask response instance.
     """
+    chunk_size = chunk_size_or_default(chunk_size)
+
     # Guess mimetype from filename if not provided.
     if mimetype is None and filename:
         mimetype = mimetypes.guess_type(filename)[0]
@@ -234,12 +241,13 @@ def compute_checksum(stream, algo, message_digest, chunk_size=None,
     :param stream: File-like object.
     :param algo: Identifier for checksum algorithm.
     :param messsage_digest: A message digest instance.
-    :param chunk_size: Read at most size bytes from the file.
-        (Default: ``None``)
+    :param chunk_size: Read at most size bytes from the file at a time.
     :param progress_callback: Function accepting one argument with number
         of bytes read. (Default: ``None``)
     :returns: The checksum.
     """
+    chunk_size = chunk_size_or_default(chunk_size)
+
     bytes_read = 0
     while 1:
         chunk = stream.read(chunk_size)
@@ -254,7 +262,8 @@ def compute_checksum(stream, algo, message_digest, chunk_size=None,
     return "{0}:{1}".format(algo, message_digest.hexdigest())
 
 
-def populate_from_path(bucket, source, checksum=True, key_prefix=''):
+def populate_from_path(bucket, source, checksum=True, key_prefix='',
+                       chunk_size=None):
     """Populate a ``bucket`` from all files in path.
 
     :param bucket: The bucket (instance or id) to create the object in.
@@ -262,6 +271,7 @@ def populate_from_path(bucket, source, checksum=True, key_prefix=''):
     :param checksum: If ``True`` then a MD5 checksum will be computed for each
         file. (Default: ``True``)
     :param key_prefix: The key prefix for the bucket.
+    :param chunk_size: Chunk size to read from file.
     :returns: A iterator for all
         :class:`invenio_files_rest.models.ObjectVersion` instances.
     """
@@ -275,8 +285,8 @@ def populate_from_path(bucket, source, checksum=True, key_prefix=''):
         key = key_prefix + key
 
         if checksum:
-            file_checksum = compute_md5_checksum(open(path, 'rb'),
-                                                 chunk_size=80960)
+            file_checksum = compute_md5_checksum(
+                    open(path, 'rb'), chunk_size=chunk_size)
             file_instance = FileInstance.query.filter_by(
                 checksum=file_checksum, size=os.path.getsize(path)
             ).first()
