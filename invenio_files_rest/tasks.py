@@ -54,7 +54,7 @@ def progress_updater(size, total):
 
 
 @shared_task(ignore_result=True)
-def verify_checksum(file_id, pessimistic=False, throws=True):
+def verify_checksum(file_id, pessimistic=False, chunk_size=None, throws=True):
     """Verify checksum of a file instance.
 
     :param file_id: The file ID.
@@ -66,7 +66,9 @@ def verify_checksum(file_id, pessimistic=False, throws=True):
     if pessimistic:
         f.clear_last_check()
         db.session.commit()
-    f.verify_checksum(progress_callback=progress_updater, throws=throws)
+    f.verify_checksum(
+        progress_callback=progress_updater, chunk_size=chunk_size,
+        throws=throws)
     db.session.commit()
 
 
@@ -77,7 +79,8 @@ def default_checksum_verification_files_query():
 
 @shared_task(ignore_result=True)
 def schedule_checksum_verification(frequency=None, batch_interval=None,
-                                   max_count=None, max_size=None):
+                                   max_count=None, max_size=None,
+                                   chunk_size=None):
     """Schedule a batch of files for checksum verification.
 
     The purpose of this task is to be periodically called through `celerybeat`,
@@ -100,6 +103,7 @@ def schedule_checksum_verification(frequency=None, batch_interval=None,
     :param int max_size: Max size of a single batch in bytes. When set to `0`
         it's automatically calculated to be distributed equally through the
         number of total batches.
+    :param int chunk_size: The amount of bytes to read per iteration.
     """
     assert max_count is not None or max_size is not None
     frequency = timedelta(**frequency) if frequency else timedelta(days=30)
@@ -154,8 +158,11 @@ def schedule_checksum_verification(frequency=None, batch_interval=None,
         total_size += f.size
         if max_size and max_size <= total_size:
             break
-    group(verify_checksum.s(f, pessimistic=True, throws=False)
-          for f in scheduled_file_ids).apply_async()
+    group(
+        verify_checksum.s(
+            f, pessimistic=True, chunk_size=chunk_size, throws=False)
+        for f in scheduled_file_ids
+    ).apply_async()
 
 
 @shared_task(ignore_result=True, max_retries=3, default_retry_delay=20 * 60)

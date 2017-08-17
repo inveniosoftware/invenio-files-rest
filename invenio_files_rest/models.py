@@ -672,10 +672,11 @@ class FileInstance(db.Model, Timestamp):
         return current_files_rest.storage_factory(fileinstance=self, **kwargs)
 
     @ensure_readable()
-    def update_checksum(self, progress_callback=None, **kwargs):
+    def update_checksum(self, progress_callback=None, chunk_size=None,
+                        **kwargs):
         """Update checksum based on file."""
         self.checksum = self.storage(**kwargs).checksum(
-            progress_callback=progress_callback)
+            progress_callback=progress_callback, chunk_size=chunk_size)
 
     def clear_last_check(self):
         """Clear the checksum of the file."""
@@ -684,7 +685,8 @@ class FileInstance(db.Model, Timestamp):
             self.last_check_at = datetime.utcnow()
         return self
 
-    def verify_checksum(self, progress_callback=None, throws=True, **kwargs):
+    def verify_checksum(self, progress_callback=None, chunk_size=None,
+                        throws=True, **kwargs):
         """Verify checksum of file instance.
 
         :param bool throws: If `True`, exceptions raised during checksum
@@ -695,7 +697,7 @@ class FileInstance(db.Model, Timestamp):
         """
         try:
             real_checksum = self.storage(**kwargs).checksum(
-                progress_callback=progress_callback)
+                progress_callback=progress_callback, chunk_size=chunk_size)
         except Exception as exc:
             current_app.logger.exception(str(exc))
             if throws:
@@ -725,7 +727,7 @@ class FileInstance(db.Model, Timestamp):
         """
         self.checksum = None
         return self.storage(**kwargs).update(
-            stream, seek=seek, size=size, chunk_size=None,
+            stream, seek=seek, size=size, chunk_size=chunk_size,
             progress_callback=progress_callback
         )
 
@@ -755,12 +757,12 @@ class FileInstance(db.Model, Timestamp):
         self.set_uri(
             *self.storage(**kwargs).copy(
                 fileinstance.storage(**kwargs),
-                chunk_size=None,
+                chunk_size=chunk_size,
                 progress_callback=progress_callback))
 
     @ensure_readable()
     def send_file(self, filename, restricted=True, mimetype=None,
-                  trusted=False, **kwargs):
+                  trusted=False, chunk_size=None, **kwargs):
         """Send file to client."""
         return self.storage(**kwargs).send_file(
             filename,
@@ -768,6 +770,7 @@ class FileInstance(db.Model, Timestamp):
             restricted=restricted,
             checksum=self.checksum,
             trusted=trusted,
+            chunk_size=chunk_size,
         )
 
     def set_uri(self, uri, size, checksum, readable=True, writable=False,

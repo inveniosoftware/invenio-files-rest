@@ -31,7 +31,7 @@ from calendar import timegm
 from functools import partial
 
 from ..errors import FileSizeError, StorageError, UnexpectedFileSizeError
-from ..helpers import compute_checksum, send_stream
+from ..helpers import chunk_size_or_default, compute_checksum, send_stream
 
 
 def check_sizelimit(size_limit, bytes_written, total_size):
@@ -106,7 +106,7 @@ class FileStorage(object):
     # Default implementation
     #
     def send_file(self, filename, mimetype=None, restricted=True,
-                  checksum=None, trusted=False):
+                  checksum=None, trusted=False, chunk_size=None):
         """Send the file to the client."""
         try:
             fp = self.open(mode='rb')
@@ -130,6 +130,7 @@ class FileStorage(object):
                 restricted=restricted,
                 etag=checksum,
                 content_md5=md5_checksum,
+                chunk_size=chunk_size,
                 trusted=trusted,
             )
         except Exception as e:
@@ -141,7 +142,8 @@ class FileStorage(object):
         fp = self.open(mode='rb')
         try:
             value = self._compute_checksum(
-                fp, size=self._size, progress_callback=progress_callback)
+                fp, size=self._size, chunk_size=None,
+                progress_callback=progress_callback)
         except StorageError:
             raise
         finally:
@@ -207,7 +209,7 @@ class FileStorage(object):
         :param size_limit: ``FileSizeLimit`` instance to limit number of bytes
             to write.
         """
-        chunk_size = chunk_size or 1024 * 1024 * 5
+        chunk_size = chunk_size_or_default(chunk_size)
 
         algo, m = self._init_hash()
         bytes_written = 0
