@@ -673,10 +673,11 @@ class FileInstance(db.Model, Timestamp):
 
     @ensure_readable()
     def update_checksum(self, progress_callback=None, chunk_size=None,
-                        **kwargs):
+                        checksum_kwargs=None, **kwargs):
         """Update checksum based on file."""
         self.checksum = self.storage(**kwargs).checksum(
-            progress_callback=progress_callback, chunk_size=chunk_size)
+            progress_callback=progress_callback, chunk_size=chunk_size,
+            **(checksum_kwargs or {}))
 
     def clear_last_check(self):
         """Clear the checksum of the file."""
@@ -686,7 +687,7 @@ class FileInstance(db.Model, Timestamp):
         return self
 
     def verify_checksum(self, progress_callback=None, chunk_size=None,
-                        throws=True, **kwargs):
+                        throws=True, checksum_kwargs=None, **kwargs):
         """Verify checksum of file instance.
 
         :param bool throws: If `True`, exceptions raised during checksum
@@ -694,10 +695,13 @@ class FileInstance(db.Model, Timestamp):
             an exception occurs, the `last_check` field is set to `None`
             (`last_check_at` of course is updated), since no check actually was
             performed.
+        :param dict checksum_kwargs: Passed as `**kwargs`` to
+            ``storage().checksum``.
         """
         try:
             real_checksum = self.storage(**kwargs).checksum(
-                progress_callback=progress_callback, chunk_size=chunk_size)
+                progress_callback=progress_callback, chunk_size=chunk_size,
+                **(checksum_kwargs or {}))
         except Exception as exc:
             current_app.logger.exception(str(exc))
             if throws:

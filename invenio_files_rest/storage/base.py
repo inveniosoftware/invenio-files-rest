@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2016 CERN.
+# Copyright (C) 2016, 2017 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -137,7 +137,7 @@ class FileStorage(object):
             fp.close()
             raise StorageError('Could not send file: {}'.format(e))
 
-    def checksum(self, chunk_size=None, progress_callback=None):
+    def checksum(self, chunk_size=None, progress_callback=None, **kwargs):
         """Compute checksum of file."""
         fp = self.open(mode='rb')
         try:
@@ -175,7 +175,7 @@ class FileStorage(object):
         return 'md5', hashlib.md5()
 
     def _compute_checksum(self, stream, size=None, chunk_size=None,
-                          progress_callback=None):
+                          progress_callback=None, **kwargs):
         """Get helper method to compute checksum from a stream.
 
         Naive implementation that can be overwritten by subclasses in order to
@@ -192,7 +192,7 @@ class FileStorage(object):
                 stream, algo, m,
                 chunk_size=chunk_size,
                 progress_callback=progress_callback,
-
+                **kwargs
             )
         except Exception as e:
             raise StorageError(
