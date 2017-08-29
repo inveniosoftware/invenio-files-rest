@@ -44,6 +44,7 @@ from invenio_accounts.testutils import create_test_user
 from invenio_accounts.views import blueprint as accounts_blueprint
 from invenio_db import InvenioDB
 from invenio_db import db as db_
+from invenio_db.utils import drop_alembic_version_table
 from six import BytesIO
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.schema import DropConstraint, DropSequence, DropTable
@@ -129,6 +130,7 @@ def db(app):
     yield db_
     db_.session.remove()
     db_.drop_all()
+    drop_alembic_version_table()
 
 
 @pytest.yield_fixture()

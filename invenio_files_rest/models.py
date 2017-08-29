@@ -874,17 +874,17 @@ class ObjectVersion(db.Model, Timestamp):
     version_id = db.Column(
         UUIDType,
         primary_key=True,
-        default=uuid.uuid4, )
+        default=uuid.uuid4)
     """Identifier for the specific version of an object."""
 
     key = db.Column(
-        db.Text().with_variant(mysql.VARCHAR(255), 'mysql'), )
+        db.Text().with_variant(mysql.VARCHAR(255), 'mysql'), nullable=False)
     """Key identifying the object."""
 
     bucket_id = db.Column(
         UUIDType,
         db.ForeignKey(Bucket.id, ondelete='RESTRICT'),
-        default=uuid.uuid4, )
+        default=uuid.uuid4, nullable=False)
     """Bucket identifier."""
 
     file_id = db.Column(
