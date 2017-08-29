@@ -33,14 +33,14 @@ history = open('CHANGES.rst').read()
 
 tests_require = [
     'Flask-BabelEx>=0.9.3',
-    'Flask-Menu>=0.4.0',
+    'Flask-Menu>=0.5.0',
     'SQLAlchemy-Continuum>=1.2.1',
     'check-manifest>=0.25',
     'coverage>=4.0',
     'invenio-access>=1.0.0a11',
-    'invenio-accounts>=1.0.0b3',
-    'invenio-admin>=1.0.0b1',
-    'invenio-celery>=1.0.0b2',
+    'invenio-accounts>=1.0.0b9',
+    'invenio-admin>=1.0.0b4',
+    'invenio-celery>=1.0.0b3',
     'isort>=4.3.4',
     'mock>=1.3.0',
     'pydocstyle>=1.0.0',
@@ -56,13 +56,13 @@ extras_require = {
         'sphinxcontrib-httpdomain>=1.4.0',
     ],
     'postgresql': [
-        'invenio-db[postgresql]>=1.0.0b7',
+        'invenio-db[postgresql]>=1.0.0b8',
     ],
     'mysql': [
-        'invenio-db[mysql]>=1.0.0b7',
+        'invenio-db[mysql]>=1.0.0b8',
     ],
     'sqlite': [
-        'invenio-db>=1.0.0b7',
+        'invenio-db>=1.0.0b8',
     ],
     'tests': tests_require,
 }
@@ -81,7 +81,7 @@ install_requires = [
     'SQLAlchemy-Utils>=0.31.0',
     'WTForms>=2.0',
     'fs>=0.5.4,<2.0',
-    'invenio-rest[cors]>=1.0.0a10',
+    'invenio-rest[cors]>=1.0.0b1',
     'webargs>=1.1.1',
     'simplejson>=3.0.0',
 ]
