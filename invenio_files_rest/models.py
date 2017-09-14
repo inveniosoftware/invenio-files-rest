@@ -96,7 +96,7 @@ def validate_key(key):
 
 
 def as_bucket(value):
-    """Get a bucket object from a bucket id or bucket.
+    """Get a bucket object from a bucket ID or a bucket object.
 
     :param value: A :class:`invenio_files_rest.models.Bucket` or a Bucket ID.
     :returns: A :class:`invenio_files_rest.models.Bucket` instance.
@@ -105,7 +105,7 @@ def as_bucket(value):
 
 
 def as_bucket_id(value):
-    """Get a bucket id from a bucket id or bucket.
+    """Get a bucket ID from a bucket ID or a bucket object.
 
     :param value: A :class:`invenio_files_rest.models.Bucket` instance of a
         bucket ID.
@@ -115,7 +115,7 @@ def as_bucket_id(value):
 
 
 def as_object_version(value):
-    """Get a object version object from a object version id or object version.
+    """Get an object version object from an object version ID or an object version.
 
     :param value: A :class:`invenio_files_rest.models.ObjectVersion` or an
         object version ID.
@@ -126,10 +126,10 @@ def as_object_version(value):
 
 
 def as_object_version_id(value):
-    """Get a object version id from a object version id or object version.
+    """Get an object version ID from an object version ID or an object version.
 
     :param value: A :class:`invenio_files_rest.models.ObjectVersion` instance
-        of a object version id.
+        of a object version ID.
     :returns: The :class:`invenio_files_rest.models.ObjectVersion` version_id.
     """
     return value.version_id if isinstance(value, ObjectVersion) else value
@@ -450,7 +450,7 @@ class Bucket(db.Model, Timestamp):
         for o in ObjectVersion.get_heads_by_bucket(self):
             o.merge(bucket=bucket, key=o.key)
 
-        bucket.locked = True if lock else self.locked
+        bucket.locked = lock or self.locked
 
         return bucket
 
@@ -462,9 +462,9 @@ class Bucket(db.Model, Timestamp):
     def create(cls, location=None, storage_class=None, **kwargs):
         r"""Create a bucket.
 
-        :param location: Location of bucket (instance or name).
+        :param location: Location of a bucket (instance or name).
             Default: Default location.
-        :param storage_class: Storage class of bucket.
+        :param storage_class: Storage class of a bucket.
             Default: Default storage class.
         :param \**kwargs: Keyword arguments are forwarded to the class
             constructor.
@@ -487,7 +487,7 @@ class Bucket(db.Model, Timestamp):
 
     @classmethod
     def get(cls, bucket_id):
-        """Get bucket object (excluding deleted).
+        """Get a bucket object (excluding deleted).
 
         :param bucket_id: Bucket identifier.
         :returns: Bucket instance.
@@ -1298,7 +1298,7 @@ class ObjectVersion(db.Model, Timestamp):
 class ObjectVersionTag(db.Model):
     """Model for storing tags associated to object versions.
 
-    This is useful to store extra technical information for an object version.
+    Used for storing extra technical information for an object version.
     """
 
     __tablename__ = 'files_objecttags'
@@ -1336,7 +1336,7 @@ class ObjectVersionTag(db.Model):
 
     @classmethod
     def get(cls, object_version, key):
-        """Get tag object."""
+        """Get the tag object."""
         return cls.query.filter_by(
             version_id=as_object_version_id(object_version),
             key=key,
@@ -1354,7 +1354,7 @@ class ObjectVersionTag(db.Model):
 
     @classmethod
     def create_or_update(cls, object_version, key, value):
-        """Create or update a new tag for given object version."""
+        """Create or update a new tag for a given object version."""
         obj = cls.get(object_version, key)
         if obj:
             obj.value = value
@@ -1363,13 +1363,13 @@ class ObjectVersionTag(db.Model):
 
     @classmethod
     def get_value(cls, object_version, key):
-        """Get tag value."""
+        """Get the tag value."""
         obj = cls.get(object_version, key)
         return obj.value if obj else None
 
     @classmethod
     def delete(cls, object_version, key):
-        """Delete a tag."""
+        """Delete the tag."""
         with db.session.begin_nested():
             cls.query.filter_by(
                 version_id=as_object_version_id(object_version),
