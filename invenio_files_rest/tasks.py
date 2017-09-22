@@ -40,7 +40,7 @@ from invenio_db import db
 from sqlalchemy.exc import IntegrityError
 
 from .models import FileInstance, Location, MultipartObject, ObjectVersion
-from .utils import load_or_import_from_config
+from .utils import obj_or_import_string
 
 logger = get_task_logger(__name__)
 
@@ -81,6 +81,7 @@ def default_checksum_verification_files_query():
 @shared_task(ignore_result=True)
 def schedule_checksum_verification(frequency=None, batch_interval=None,
                                    max_count=None, max_size=None,
+                                   files_query=None,
                                    checksum_kwargs=None):
     """Schedule a batch of files for checksum verification.
 
@@ -104,8 +105,9 @@ def schedule_checksum_verification(frequency=None, batch_interval=None,
     :param int max_size: Max size of a single batch in bytes. When set to `0`
         it's automatically calculated to be distributed equally through the
         number of total batches.
-    :param dict checksum_kwargs: Passed as ``**kwargs`` to
-        ``FileInstance.verify_checksum``.
+    :param str files_query: Import path for a function returning a
+        FileInstance query for files that should be checked.
+    :param dict checksum_kwargs: Passed to ``FileInstance.verify_checksum``.
     """
     assert max_count is not None or max_size is not None
     frequency = timedelta(**frequency) if frequency else timedelta(days=30)
@@ -122,8 +124,8 @@ def schedule_checksum_verification(frequency=None, batch_interval=None,
     total_batches = int(
         frequency.total_seconds() / batch_interval.total_seconds())
 
-    files = load_or_import_from_config(
-        'FILES_REST_CHECKSUM_VERIFICATION_FILES_QUERY')()
+    files = obj_or_import_string(
+        files_query, default=default_checksum_verification_files_query)()
     files = files.order_by(
         sa.func.coalesce(FileInstance.last_check_at, date.min))
 
@@ -162,7 +164,8 @@ def schedule_checksum_verification(frequency=None, batch_interval=None,
             break
     group(
         verify_checksum.s(
-            file_id, pessimistic=True, throws=False, **(checksum_kwargs or {}))
+            file_id, pessimistic=True, throws=False,
+            checksum_kwargs=(checksum_kwargs or {}))
         for file_id in scheduled_file_ids
     ).apply_async()
 
