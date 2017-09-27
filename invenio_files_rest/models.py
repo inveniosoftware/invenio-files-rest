@@ -425,7 +425,7 @@ class Bucket(db.Model, Timestamp):
                 location = Location.get_by_name(location)
 
             obj = cls(
-                location=location,
+                default_location=location.id,
                 default_storage_class=storage_class or current_app.config[
                     'FILES_REST_DEFAULT_STORAGE_CLASS'],
                 **kwargs
