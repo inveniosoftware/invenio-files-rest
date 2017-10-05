@@ -1,8 +1,8 @@
 ==============================
- Invenio-Files-REST v1.0.0a20
+ Invenio-Files-REST v1.0.0a21
 ==============================
 
-Invenio-Files-REST v1.0.0a20 was released on September 27, 2017.
+Invenio-Files-REST v1.0.0a21 was released on October 5, 2017.
 
 About
 -----
@@ -19,7 +19,7 @@ What's new
 Installation
 ------------
 
-   $ pip install invenio-files-rest==1.0.0a20
+   $ pip install invenio-files-rest==1.0.0a21
 
 Documentation
 -------------
