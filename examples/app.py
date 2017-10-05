@@ -255,6 +255,7 @@ def files():
 
     # Create location
     loc = Location(name='local', uri=d, default=True)
+    db.session.add(loc)
     db.session.commit()
 
     # Bucket 0
