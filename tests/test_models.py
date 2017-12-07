@@ -491,7 +491,9 @@ def test_object_snapshot_deleted(app, db, dummy_location):
     assert b3.locked is False
 
     # b2 is deleted.
-    pytest.raises(InvalidOperationError, b2.snapshot)
+    with pytest.raises(InvalidOperationError) as excinfo:
+        b2.snapshot()
+    assert excinfo.value.get_body() != {}
 
 
 def test_object_copy(app, db, dummy_location):
@@ -504,7 +506,9 @@ def test_object_copy(app, db, dummy_location):
 
     # Delete markers cannot be copied
     obj_deleted = ObjectVersion.create(b1, "deleted")
-    assert pytest.raises(InvalidOperationError, obj_deleted.copy, b2)
+    with pytest.raises(InvalidOperationError) as excinfo:
+        obj_deleted.copy(b2)
+    assert excinfo.value.get_body() != {}
 
     # Copy onto self.
     obj = ObjectVersion.create(b1, "selftest").set_file(f)
@@ -577,7 +581,9 @@ def test_object_restore(app, db, dummy_location):
 
     assert ObjectVersion.query.count() == 3
     # Cannot restore a deleted version.
-    pytest.raises(InvalidOperationError, obj_deleted.restore)
+    with pytest.raises(InvalidOperationError) as excinfo:
+        obj_deleted.restore()
+    assert excinfo.value.get_body() != {}
 
     # Restore first version
     obj_new = obj1.restore()

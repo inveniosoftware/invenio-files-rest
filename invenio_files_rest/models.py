@@ -141,6 +141,32 @@ def ensure_state(default_getter, exc_class, default_msg=None):
     return decorator
 
 
+class BucketError(object):
+    """Represents a bucket level error.
+
+    .. note:: This is not an actual exception.
+    """
+
+    def __init__(self, message):
+        self.res = dict(message=message)
+
+    def to_dict(self):
+        return self.res
+
+
+class ObjectVersionError(object):
+    """Represents an object version level error.
+
+    .. note:: This is not an actual exception.
+    """
+
+    def __init__(self, message):
+        self.res = dict(message=message)
+
+    def to_dict(self):
+        return self.res
+
+
 ensure_readable = ensure_state(
     lambda o: o.readable,
     FileInstanceUnreadableError)
@@ -163,7 +189,8 @@ ensure_uncompleted = ensure_state(
 
 ensure_not_deleted = ensure_state(
     lambda o: not o.deleted,
-    InvalidOperationError, 'Cannot make snapshot of a deleted bucket.')
+    InvalidOperationError,
+    [BucketError('Cannot make snapshot of a deleted bucket.')])
 """Ensure file is not deleted."""
 
 ensure_unlocked = ensure_state(
@@ -178,7 +205,8 @@ ensure_no_file = ensure_state(
 
 ensure_is_previous_version = ensure_state(
     lambda o: not o.is_head,
-    InvalidOperationError, 'Cannot restore latest version.')
+    InvalidOperationError,
+    [ObjectVersionError('Cannot restore latest version.')])
 """Ensure file is the previous version."""
 
 
@@ -970,7 +998,8 @@ class ObjectVersion(db.Model, Timestamp):
         # Note, copy calls create which will fail if bucket is locked.
         return self.copy()
 
-    @ensure_not_deleted(msg='Cannot copy a delete marker.')
+    @ensure_not_deleted(
+        msg=[ObjectVersionError('Cannot copy a delete marker.')])
     def copy(self, bucket=None, key=None):
         """Copy an object version to a given bucket + object key.
 
