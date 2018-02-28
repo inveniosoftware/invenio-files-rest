@@ -526,7 +526,7 @@ def test_delete_unwritable(client, db, bucket, versions):
     FileInstance.query.count() == 4
 
 
-def test_put_header_tags(client, bucket, permissions, get_md5, get_json):
+def test_put_header_tags(app, client, bucket, permissions, get_md5, get_json):
     """Test upload of an object with tags in the headers."""
 
     key = 'test.txt'
@@ -534,8 +534,9 @@ def test_put_header_tags(client, bucket, permissions, get_md5, get_json):
     checksum = get_md5(data, prefix=True)
     object_url = url_for(
         'invenio_files_rest.object_api', bucket_id=bucket.id, key=key)
+    file_tags_header = app.config['FILES_REST_FILE_TAGS_HEADER']
     headers = {
-        'X-Invenio-File-Tags': 'key1=val1;key2=val2;key3=val3;key1=invalid'
+        file_tags_header: 'key1=val1;key2=val2;key3=val3;key1=invalid'
     }
 
     login_user(client, permissions['bucket'])
