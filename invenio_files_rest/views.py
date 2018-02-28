@@ -848,12 +848,12 @@ class ObjectResource(ContentNegotiatedMethodView):
             return self.delete_object(bucket, obj, version_id)
 
 
-class TagResource(ContentNegotiatedMethodView):
+class ObjectVersionTagResource(ContentNegotiatedMethodView):
     """Tag resource."""
 
     def __init__(self, *args, **kwargs):
         """Instantiate content negotiated view."""
-        super(TagResource, self).__init__(*args, **kwargs)
+        super(ObjectVersionTagResource, self).__init__(*args, **kwargs)
 
     @pass_bucket
     @need_bucket_permission('bucket-update')
@@ -911,7 +911,7 @@ object_view = ObjectResource.as_view(
         'application/json': json_serializer,
     }
 )
-tag_view = TagResource.as_view(
+tag_view = ObjectVersionTagResource.as_view(
     'tag_api',
     serializers={
         'application/json': json_serializer,
