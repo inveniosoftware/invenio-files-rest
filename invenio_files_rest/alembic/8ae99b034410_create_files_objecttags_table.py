@@ -21,7 +21,7 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-"""Revision message."""
+"""Create files_objecttags table."""
 
 import sqlalchemy as sa
 import sqlalchemy_utils
