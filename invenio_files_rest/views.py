@@ -37,7 +37,7 @@ from marshmallow import missing
 from webargs import fields
 from webargs.flaskparser import use_kwargs
 
-from invenio_files_rest.utils import QueryString
+from invenio_files_rest.utils import deserialize_query_string
 
 from .errors import FileSizeError, MissingQueryParameter, \
     MultipartInvalidChunkSize
@@ -104,27 +104,24 @@ def invalid_subresource_validator(value):
         load_from='Content-MD5',
         location='headers',
     ),
-    'x_invenio_file_tags': QueryString(
-        load_from='X-Invenio-File-Tags',
-        location='headers',
-        missing=None,
-    ),
 })
 def default_partfactory(part_number=None, content_length=None,
-                        content_type=None, content_md5=None,
-                        x_invenio_file_tags=None):
+                        content_type=None, content_md5=None):
     """Get default part factory.
 
     :param part_number: The part number. (Default: ``None``)
     :param content_length: The content length. (Default: ``None``)
     :param content_type: The HTTP Content-Type. (Default: ``None``)
     :param content_md5: The content MD5. (Default: ``None``)
-    :param x_invenio_file_tags: The file tags. (Default: ``None``)
+    :param file_tags_header: The file tags. (Default: ``None``)
     :returns: The content length, the part number, the stream, the content
         type, MD5 of the content.
     """
+    header = current_app.config['FILES_REST_FILE_TAGS_HEADER']
+    file_tags_header = deserialize_query_string(request.headers.get(header))
+
     return content_length, part_number, request.stream, content_type, \
-        content_md5, x_invenio_file_tags
+        content_md5, file_tags_header
 
 
 @use_kwargs({
@@ -144,14 +141,9 @@ def default_partfactory(part_number=None, content_length=None,
         location='headers',
         missing='',
     ),
-    'x_invenio_file_tags': QueryString(
-        load_from='X-Invenio-File-Tags',
-        location='headers',
-        missing=None,
-    ),
 })
 def stream_uploadfactory(content_md5=None, content_length=None,
-                         content_type=None, x_invenio_file_tags=None):
+                         content_type=None):
     """Get default put factory.
 
     If Content-Type is ``'multipart/form-data'`` then the stream is aborted.
@@ -159,12 +151,16 @@ def stream_uploadfactory(content_md5=None, content_length=None,
     :param content_md5: The content MD5. (Default: ``None``)
     :param content_length: The content length. (Default: ``None``)
     :param content_type: The HTTP Content-Type. (Default: ``None``)
-    :param x_invenio_file_tags: The file tags. (Default: ``None``)
+    :param file_tags_header: The file tags. (Default: ``None``)
     :returns: The stream, content length, MD5 of the content.
     """
     if content_type.startswith('multipart/form-data'):
         abort(422)
-    return request.stream, content_length, content_md5, x_invenio_file_tags
+
+    header = current_app.config['FILES_REST_FILE_TAGS_HEADER']
+    file_tags_header = deserialize_query_string(request.headers.get(header))
+
+    return request.stream, content_length, content_md5, file_tags_header
 
 
 @use_kwargs({
@@ -184,25 +180,23 @@ def stream_uploadfactory(content_md5=None, content_length=None,
         location='files',
         required=True,
     ),
-    'x_invenio_file_tags': QueryString(
-        load_from='X-Invenio-File-Tags',
-        location='headers',
-        missing=None,
-    ),
 })
 def ngfileupload_partfactory(part_number=None, content_length=None,
-                             uploaded_file=None, x_invenio_file_tags=None):
+                             uploaded_file=None):
     """Part factory for ng-file-upload.
 
     :param part_number: The part number. (Default: ``None``)
     :param content_length: The content length. (Default: ``None``)
     :param uploaded_file: The upload request. (Default: ``None``)
-    :param x_invenio_file_tags: The file tags. (Default: ``None``)
+    :param file_tags_header: The file tags. (Default: ``None``)
     :returns: The content length, part number, stream, HTTP Content-Type
         header.
     """
+    header = current_app.config['FILES_REST_FILE_TAGS_HEADER']
+    file_tags_header = deserialize_query_string(request.headers.get(header))
+
     return content_length, part_number, uploaded_file.stream, \
-        uploaded_file.headers.get('Content-Type'), None, x_invenio_file_tags
+        uploaded_file.headers.get('Content-Type'), None, file_tags_header
 
 
 @use_kwargs({
@@ -221,14 +215,9 @@ def ngfileupload_partfactory(part_number=None, content_length=None,
         location='files',
         required=True,
     ),
-    'x_invenio_file_tags': QueryString(
-        load_from='X-Invenio-File-Tags',
-        location='headers',
-        missing=None,
-    ),
 })
 def ngfileupload_uploadfactory(content_length=None, content_type=None,
-                               uploaded_file=None, x_invenio_file_tags=None):
+                               uploaded_file=None):
     """Get default put factory.
 
     If Content-Type is ``'multipart/form-data'`` then the stream is aborted.
@@ -236,13 +225,16 @@ def ngfileupload_uploadfactory(content_length=None, content_type=None,
     :param content_length: The content length. (Default: ``None``)
     :param content_type: The HTTP Content-Type. (Default: ``None``)
     :param uploaded_file: The upload request. (Default: ``None``)
-    :param x_invenio_file_tags: The file tags. (Default: ``None``)
+    :param file_tags_header: The file tags. (Default: ``None``)
     :returns: A tuple containing stream, content length, and empty header.
     """
     if not content_type.startswith('multipart/form-data'):
         abort(422)
 
-    return uploaded_file.stream, content_length, None, x_invenio_file_tags
+    header = current_app.config['FILES_REST_FILE_TAGS_HEADER']
+    file_tags_header = deserialize_query_string(request.headers.get(header))
+
+    return uploaded_file.stream, content_length, None, file_tags_header
 
 
 #
