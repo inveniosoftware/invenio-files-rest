@@ -71,6 +71,14 @@ ObjectDeleteVersion = partial(
     ParameterizedActionNeed, 'files-rest-object-delete-version')
 """Action needed: permanently delete specific object version in bucket."""
 
+ObjectVersionTagUpdate = partial(
+    ParameterizedActionNeed, 'files-rest-objectversion-tag-update')
+"""Action needed: permanently update specific object version tag."""
+
+ObjectVersionTagDelete = partial(
+    ParameterizedActionNeed, 'files-rest-objectversion-tag-delete')
+"""Action needed: permanently delete specific object version tag."""
+
 MultipartRead = partial(
     ParameterizedActionNeed, 'files-rest-multipart-read')
 """Action needed: list parts of a multipart upload in a bucket."""
@@ -111,6 +119,12 @@ object_delete_all = ObjectDelete(None)
 object_delete_version_all = ObjectDeleteVersion(None)
 """Action needed: delete all objects versions."""
 
+objectversion_tag_update_all = ObjectVersionTagUpdate(None)
+"""Action needed: update all object version tags."""
+
+objectversion_tag_delete_all = ObjectVersionTagDelete(None)
+"""Action needed: delete all object version tags."""
+
 multipart_read_all = MultipartRead(None)
 """Action needed: read all multiparts."""
 
@@ -128,6 +142,8 @@ _action2need_map = {
     'object-read-version': ObjectReadVersion,
     'object-delete': ObjectDelete,
     'object-delete-version': ObjectDeleteVersion,
+    'objectversion-tag-update': ObjectVersionTagUpdate,
+    'objectversion-tag-delete': ObjectVersionTagDelete,
     'multipart-read': MultipartRead,
     'multipart-delete': MultipartDelete,
 }
