@@ -794,7 +794,8 @@ class FileInstance(db.Model, Timestamp):
 
     @ensure_readable()
     def send_file(self, filename, restricted=True, mimetype=None,
-                  trusted=False, chunk_size=None, **kwargs):
+                  trusted=False, chunk_size=None, as_attachment=False,
+                  **kwargs):
         """Send file to client."""
         return self.storage(**kwargs).send_file(
             filename,
@@ -803,6 +804,7 @@ class FileInstance(db.Model, Timestamp):
             checksum=self.checksum,
             trusted=trusted,
             chunk_size=chunk_size,
+            as_attachment=as_attachment,
         )
 
     def set_uri(self, uri, size, checksum, readable=True, writable=False,
