@@ -106,7 +106,8 @@ class FileStorage(object):
     # Default implementation
     #
     def send_file(self, filename, mimetype=None, restricted=True,
-                  checksum=None, trusted=False, chunk_size=None):
+                  checksum=None, trusted=False, chunk_size=None,
+                  as_attachment=False):
         """Send the file to the client."""
         try:
             fp = self.open(mode='rb')
@@ -132,6 +133,7 @@ class FileStorage(object):
                 content_md5=md5_checksum,
                 chunk_size=chunk_size,
                 trusted=trusted,
+                as_attachment=as_attachment,
             )
         except Exception as e:
             fp.close()

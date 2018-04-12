@@ -98,6 +98,28 @@ def test_get(client, headers, bucket, objects, permissions):
                 assert resp.get_etag()[0] == obj.file.checksum
 
 
+def test_get_download(client, headers, bucket, objects, permissions):
+    """Test getting an object."""
+    login_user(client, permissions['objects'])
+
+    for obj in objects:
+        object_url = url_for(
+            'invenio_files_rest.object_api',
+            bucket_id=bucket.id,
+            key=obj.key)
+
+        # Get specifying version (of latest obj).
+        resp = client.get(
+            object_url,
+            query_string=dict(versionId=obj.version_id, download=True),
+            headers=headers)
+        assert resp.status_code == 200
+
+        # Check if the 'Content-Disposition' is an attachment
+        assert (resp.headers['Content-Disposition'] ==
+                'attachment; filename={0}'.format(obj.key))
+
+
 def test_last_modified_utc_conversion(client, headers, bucket, permissions):
     """Test date conversion of the DB object 'updated' timestamp (UTC) to a
     correct Last-Modified date (also UTC) in the response header.

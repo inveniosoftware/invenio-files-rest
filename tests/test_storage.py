@@ -255,7 +255,30 @@ def test_pyfs_send_file(app, pyfs):
 
         res = pyfs.send_file(
             'myfilename.txt', mimetype='text/plain', checksum='crc32:test')
+        assert res.status_code == 200
         assert 'Content-MD5' not in dict(res.headers)
+
+        # Test for absence of Content-Disposition header to make sure that
+        # it's not present when as_attachment=False
+        res = pyfs.send_file('myfilename.txt', mimetype='text/plain',
+                             checksum=checksum, as_attachment=False)
+        assert res.status_code == 200
+        assert 'attachment' not in res.headers['Content-Disposition']
+
+
+def test_pyfs_send_file_for_download(app, pyfs):
+    """Test send file."""
+    data = b'sendthis'
+    uri, size, checksum = pyfs.save(BytesIO(data))
+
+    with app.test_request_context():
+        # Test for presence of Content-Disposition header to make sure that
+        # it's present when as_attachment=True
+        res = pyfs.send_file('myfilename.txt', mimetype='text/plain',
+                             checksum=checksum, as_attachment=True)
+        assert res.status_code == 200
+        assert (res.headers['Content-Disposition'] ==
+                'attachment; filename=myfilename.txt')
 
 
 def test_pyfs_send_file_xss_prevention(app, pyfs):
