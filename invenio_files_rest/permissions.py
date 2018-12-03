@@ -24,10 +24,7 @@
 
 """Permissions for files using Invenio-Access."""
 
-from functools import partial
-
-from invenio_access.permissions import DynamicPermission, \
-    ParameterizedActionNeed
+from invenio_access import DynamicPermission, action_factory
 
 from .models import Bucket, MultipartObject, ObjectVersion
 
@@ -35,56 +32,49 @@ from .models import Bucket, MultipartObject, ObjectVersion
 # Action needs
 #
 
-LocationUpdate = partial(
-    ParameterizedActionNeed, 'files-rest-location-update')
+LocationUpdate = action_factory('files-rest-location-update', parameter=True)
 """Action needed: location update."""
 
-BucketRead = partial(
-    ParameterizedActionNeed, 'files-rest-bucket-read')
+BucketRead = action_factory('files-rest-bucket-read', parameter=True)
 """Action needed: list objects in bucket."""
 
-BucketReadVersions = partial(
-    ParameterizedActionNeed, 'files-rest-bucket-read-versions')
+BucketReadVersions = action_factory(
+    'files-rest-bucket-read-versions', parameter=True)
 """Action needed: list object versions in bucket."""
 
-BucketUpdate = partial(
-    ParameterizedActionNeed, 'files-rest-bucket-update')
+BucketUpdate = action_factory('files-rest-bucket-update', parameter=True)
 """Action needed: create objects and multipart uploads in bucket."""
 
-BucketListMultiparts = partial(
-    ParameterizedActionNeed, 'files-rest-bucket-listmultiparts')
+BucketListMultiparts = action_factory(
+    'files-rest-bucket-listmultiparts', parameter=True)
 """Action needed: list multipart uploads in bucket."""
 
-ObjectRead = partial(
-    ParameterizedActionNeed, 'files-rest-object-read')
+ObjectRead = action_factory('files-rest-object-read', parameter=True)
 """Action needed: get object in bucket."""
 
-ObjectReadVersion = partial(
-    ParameterizedActionNeed, 'files-rest-object-read-version')
+ObjectReadVersion = action_factory(
+    'files-rest-object-read-version', parameter=True)
 """Action needed: get object version in bucket."""
 
-ObjectDelete = partial(
-    ParameterizedActionNeed, 'files-rest-object-delete')
+ObjectDelete = action_factory('files-rest-object-delete', parameter=True)
 """Action needed: delete object in bucket."""
 
-ObjectDeleteVersion = partial(
-    ParameterizedActionNeed, 'files-rest-object-delete-version')
+ObjectDeleteVersion = action_factory(
+    'files-rest-object-delete-version', parameter=True)
 """Action needed: permanently delete specific object version in bucket."""
 
-ObjectVersionTagUpdate = partial(
-    ParameterizedActionNeed, 'files-rest-objectversion-tag-update')
+ObjectVersionTagUpdate = action_factory(
+    'files-rest-objectversion-tag-update', parameter=True)
 """Action needed: permanently update specific object version tag."""
 
-ObjectVersionTagDelete = partial(
-    ParameterizedActionNeed, 'files-rest-objectversion-tag-delete')
+ObjectVersionTagDelete = action_factory(
+    'files-rest-objectversion-tag-delete', parameter=True)
 """Action needed: permanently delete specific object version tag."""
 
-MultipartRead = partial(
-    ParameterizedActionNeed, 'files-rest-multipart-read')
+MultipartRead = action_factory('files-rest-multipart-read', parameter=True)
 """Action needed: list parts of a multipart upload in a bucket."""
 
-MultipartDelete = partial(
-    ParameterizedActionNeed, 'files-rest-multipart-delete')
+MultipartDelete = action_factory('files-rest-multipart-delete', parameter=True)
 """Action needed: abort a multipart upload."""
 
 
