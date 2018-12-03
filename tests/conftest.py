@@ -82,8 +82,12 @@ def base_app():
     app_ = Flask('testapp')
     app_.config.update(
         TESTING=True,
+        # Celery 3
         CELERY_ALWAYS_EAGER=True,
         CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+        # Celery 4
+        CELERY_TASK_ALWAYS_EAGER=True,
+        CELERY_TASK_EAGER_PROPAGATES=True,
         SQLALCHEMY_TRACK_MODIFICATIONS=True,
         SQLALCHEMY_DATABASE_URI=os.environ.get(
             'SQLALCHEMY_DATABASE_URI',
