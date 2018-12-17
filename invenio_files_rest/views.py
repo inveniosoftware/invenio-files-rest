@@ -37,8 +37,6 @@ from marshmallow import missing
 from webargs import fields
 from webargs.flaskparser import use_kwargs
 
-from invenio_files_rest.utils import deserialize_query_string
-
 from .errors import FileSizeError, MissingQueryParameter, \
     MultipartInvalidChunkSize
 from .models import Bucket, MultipartObject, ObjectVersion, ObjectVersionTag, \
@@ -47,6 +45,7 @@ from .proxies import current_files_rest, current_permission_factory
 from .serializer import json_serializer
 from .signals import file_downloaded
 from .tasks import merge_multipartobject, remove_file_data
+from .utils import deserialize_query_string
 
 blueprint = Blueprint(
     'invenio_files_rest',
@@ -840,48 +839,6 @@ class ObjectResource(ContentNegotiatedMethodView):
             return self.delete_object(bucket, obj, version_id)
 
 
-class ObjectVersionTagResource(ContentNegotiatedMethodView):
-    """Tag resource."""
-
-    def __init__(self, *args, **kwargs):
-        """Instantiate content negotiated view."""
-        super(ObjectVersionTagResource, self).__init__(*args, **kwargs)
-
-    @pass_bucket
-    @need_bucket_permission('bucket-update')
-    def put(self, key=None, bucket=None):
-        """Create or update tags."""
-        tags = request.get_json()
-        obj = ObjectVersion.get(bucket, key)
-        if tags is not None:
-            with db.session.begin_nested():
-                for key, value in tags.items():
-                    ObjectVersionTag.create_or_update(obj, key, value)
-            db.session.commit()
-        return self.make_response(
-            data=obj,
-            context={
-                'class': ObjectVersion,
-            }
-        )
-
-    @pass_bucket
-    @need_bucket_permission('bucket-update')
-    def delete(self, key=None, bucket=None):
-        """Delete a tag by its name."""
-        tags = request.get_json()
-        obj = ObjectVersion.get(bucket, key)
-        with db.session.begin_nested():
-            for tag in tags:
-                ObjectVersionTag.delete(obj, tag)
-        db.session.commit()
-        return self.make_response(
-            data=obj,
-            context={
-                'class': ObjectVersion,
-            }
-        )
-
 #
 # Blueprint definition
 #
@@ -903,12 +860,6 @@ object_view = ObjectResource.as_view(
         'application/json': json_serializer,
     }
 )
-tag_view = ObjectVersionTagResource.as_view(
-    'tag_api',
-    serializers={
-        'application/json': json_serializer,
-    }
-)
 
 blueprint.add_url_rule(
     '',
@@ -921,8 +872,4 @@ blueprint.add_url_rule(
 blueprint.add_url_rule(
     '/<string:bucket_id>/<path:key>',
     view_func=object_view,
-)
-blueprint.add_url_rule(
-    '/<string:bucket_id>/<path:key>/tags',
-    view_func=tag_view,
 )

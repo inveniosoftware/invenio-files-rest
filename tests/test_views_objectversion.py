@@ -521,9 +521,9 @@ def test_delete_unwritable(client, db, bucket, versions):
     assert resp.status_code == 204
 
     # Won't remove anything because file is not writable.
-    FileInstance.query.count() == 4
+    assert FileInstance.query.count() == 4
     remove_file_data(obj.file_id)
-    FileInstance.query.count() == 4
+    assert FileInstance.query.count() == 4
 
 
 def test_put_header_tags(app, client, bucket, permissions, get_md5, get_json):

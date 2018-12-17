@@ -37,7 +37,7 @@ tests_require = [
     'SQLAlchemy-Continuum>=1.2.1',
     'check-manifest>=0.25',
     'coverage>=4.0',
-    'invenio-access>=1.0.0a11',
+    'invenio-access>=1.0.0b1',
     'invenio-accounts>=1.0.0b9',
     'invenio-admin>=1.0.0b4',
     'invenio-celery>=1.0.0b3',
@@ -78,12 +78,12 @@ install_requires = [
     'Flask-Login>=0.3.2',
     'Flask-WTF>=0.13.1',
     'Flask>=0.11.1',
-    'SQLAlchemy-Utils>=0.31.0',
-    'WTForms>=2.0',
     'fs>=0.5.4,<2.0',
     'invenio-rest[cors]>=1.0.0b1',
-    'webargs>=1.1.1',
     'simplejson>=3.0.0',
+    'SQLAlchemy-Utils>=0.31.0',
+    'webargs>=1.1.1',
+    'WTForms>=2.0',
 ]
 
 setup_requires = [
