@@ -84,14 +84,11 @@ def downgrade():
     op.drop_table('files_objecttags')
     # table ObjectVersion: modify primary_key
     if op.get_context().dialect.name == 'mysql':
-        Fk = 'fk_files_object_bucket_id_files_bucket'
         op.execute(
             'ALTER TABLE files_object '
             'DROP INDEX uq_files_object_bucket_id, '
-            #  'DROP FOREIGN KEY {0}, '
             'DROP PRIMARY KEY, '
-            'ADD PRIMARY KEY(`bucket_id`, `key`, `version_id`)'
-            .format(Fk))
+            'ADD PRIMARY KEY(`bucket_id`, `key`, `version_id`)')
     else:
         op.drop_constraint(
             'pk_files_object', 'files_object', type_='primary')

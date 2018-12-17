@@ -22,15 +22,11 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-"""Implementention of various utility functions."""
-try:
-    import urlparse
-except ImportError:
-    import urllib.parse as urlparse
+"""Implementation of various utility functions."""
 
 import six
 from flask import current_app
-from marshmallow.fields import Field
+from six.moves.urllib.parse import parse_qs
 from werkzeug.utils import import_string
 
 
@@ -66,4 +62,4 @@ def deserialize_query_string(value):
     if not isinstance(value, six.string_types):
         return None
     return {key: (value[0] if len(value) > 0 else None) for key, value
-            in urlparse.parse_qs(value).items()}
+            in parse_qs(value).items()}

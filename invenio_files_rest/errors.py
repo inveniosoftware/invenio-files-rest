@@ -30,7 +30,7 @@ from invenio_rest.errors import RESTException
 
 
 class FilesException(RESTException):
-    """Base exception for all errors ."""
+    """Base exception for all errors."""
 
     code = 500
 
@@ -150,10 +150,3 @@ class MultipartNoPart(MultipartException):
 
     code = 400
     description = "No upload part detected in request."
-
-
-class MergeConflict(InvalidOperationError):
-    """Exception raised when a object version is not mergeable."""
-
-    code = 403
-    description = "ObjectVersion conflict: bucket is not mergeable."

@@ -36,7 +36,7 @@ from sqlalchemy.exc import IntegrityError
 
 from invenio_files_rest.errors import BucketLockedError, \
     FileInstanceAlreadySetError, FileInstanceUnreadableError, \
-    InvalidKeyError, InvalidOperationError, MergeConflict
+    InvalidKeyError, InvalidOperationError
 from invenio_files_rest.models import Bucket, BucketTag, FileInstance, \
     Location, ObjectVersion, ObjectVersionTag
 
@@ -476,12 +476,13 @@ def test_object_snapshot(app, db, dummy_location):
     assert ObjectVersion.get_by_bucket(b1).count() == 3
     assert ObjectVersion.get_by_bucket(b2).count() == 1
     assert ObjectVersion.get_by_bucket(b3).count() == 3
-    assert ObjectVersion.get_by_bucket(b1, versions=True).count() == 8
+    assert ObjectVersion.get_by_bucket(b1, versions=True,
+                                       with_deleted=True).count() == 8
     assert ObjectVersion.get_by_bucket(b3, versions=True).count() == 3
 
 
 def test_object_snapshot_deleted(app, db, dummy_location):
-    """Deleted bucket."""
+    """Test snapshot creation of a deleted bucket."""
     b1 = Bucket.create()
     b2 = Bucket.create()
     b2.deleted = True
@@ -494,6 +495,119 @@ def test_object_snapshot_deleted(app, db, dummy_location):
     # b2 is deleted.
     with pytest.raises(InvalidOperationError) as excinfo:
         b2.snapshot()
+    assert excinfo.value.get_body() != {}
+
+
+def test_bucket_sync_new_object(app, db, dummy_location):
+    """Test that a new file in src in synced to dest."""
+    b1 = Bucket.create()
+    b2 = Bucket.create()
+    ObjectVersion.create(b1, "filename").set_location("b1v1", 1, "achecksum")
+    db.session.commit()
+
+    assert ObjectVersion.get_by_bucket(b1).count() == 1
+    assert ObjectVersion.get_by_bucket(b2).count() == 0
+    b1.sync(b2)
+    assert ObjectVersion.get_by_bucket(b1).count() == 1
+    assert ObjectVersion.get_by_bucket(b2).count() == 1
+    assert ObjectVersion.get(b2, "filename")
+
+
+def test_bucket_sync_same_object(app, db, dummy_location):
+    """Test that an exiting file in src and dest is not changed."""
+    b1 = Bucket.create()
+    b2 = Bucket.create()
+    ObjectVersion.create(b1, "filename").set_location("b1v1", 1, "achecksum")
+    b1.sync(b2)
+    db.session.commit()
+
+    b1_version_id = ObjectVersion.get(b1, "filename").version_id
+    b2_version_id = ObjectVersion.get(b2, "filename").version_id
+
+    b1.sync(b2)
+
+    assert ObjectVersion.get_by_bucket(b1).count() == 1
+    assert ObjectVersion.get_by_bucket(b2).count() == 1
+    assert ObjectVersion.get(b1, "filename").version_id == b1_version_id
+    assert ObjectVersion.get(b2, "filename").version_id == b2_version_id
+
+
+def test_bucket_sync_deleted_object(app, db, dummy_location):
+    """Test that a deleted object in src is deleted in dest."""
+    b1 = Bucket.create()
+    b2 = Bucket.create()
+    ObjectVersion.create(b1, "filename").set_location("b1v1", 1, "achecksum")
+    ObjectVersion.create(b2, "filename").set_location("b2v1", 1, "achecksum")
+    ObjectVersion.create(b2, "extra-deleted").set_location("b3v1", 1, "asum")
+    ObjectVersion.delete(b1, "filename")
+    db.session.commit()
+
+    b1.sync(b2)
+
+    assert ObjectVersion.get_by_bucket(b1).count() == 0
+    assert ObjectVersion.get_by_bucket(b2).count() == 1
+    assert ObjectVersion.get(b2, "extra-deleted")
+
+    ObjectVersion.delete(b2, "extra-deleted")
+    db.session.commit()
+
+    b1.sync(b2)
+
+    assert ObjectVersion.get_by_bucket(b1).count() == 0
+    assert ObjectVersion.get_by_bucket(b2).count() == 0
+
+
+def test_bucket_sync_delete_extras(app, db, dummy_location):
+    """Test that an extra object in dest is deleted when syncing."""
+    b1 = Bucket.create()
+    b2 = Bucket.create()
+    ObjectVersion.create(b1, "filename").set_location("b1v1", 1, "achecksum")
+    ObjectVersion.create(b2, "filename").set_location("b2v1", 1, "achecksum")
+    ObjectVersion.create(b2, "extra-deleted").set_location("b3v1", 1, "asum")
+    db.session.commit()
+
+    b1.sync(b2, delete_extras=True)
+
+    assert ObjectVersion.get_by_bucket(b1).count() == 1
+    assert ObjectVersion.get_by_bucket(b2).count() == 1
+    assert not ObjectVersion.get(b2, "extra-deleted")
+
+
+def test_bucket_sync(app, db, dummy_location):
+    """Test that a bucket is correctly synced."""
+    b1 = Bucket.create()
+    b2 = Bucket.create()
+    ObjectVersion.create(b1, "filename1").set_location("b1v11", 1, "achecksum")
+    ObjectVersion.create(b1, "filename2").set_location("b1v12", 1, "achecksum")
+    ObjectVersion.create(b1, "filename3").set_location("b1v13", 1, "achecksum")
+    ObjectVersion.create(b2, "extra1").set_location("b2v11", 1, "achecksum")
+    db.session.commit()
+
+    b1.sync(b2)
+
+    assert ObjectVersion.get_by_bucket(b1).count() == 3
+    assert ObjectVersion.get_by_bucket(b2).count() == 4
+
+    ObjectVersion.delete(b1, "filename1")
+    ObjectVersion.create(b2, "extra2").set_location("b2v12", 1, "achecksum")
+    ObjectVersion.create(b2, "extra3").set_location("b2v13", 1, "achecksum")
+    ObjectVersion.delete(b2, "extra3")
+    db.session.commit()
+
+    b1.sync(b2, delete_extras=True)
+
+    assert ObjectVersion.get_by_bucket(b1).count() == 2
+    assert ObjectVersion.get_by_bucket(b2).count() == 2
+
+
+def test_bucket_sync_deleted(app, db, dummy_location):
+    """Test bucket sync of a deleted bucket."""
+    b1 = Bucket.create()
+    b1.deleted = True
+    db.session.commit()
+
+    with pytest.raises(InvalidOperationError) as excinfo:
+        b1.sync(Bucket.create())
     assert excinfo.value.get_body() != {}
 
 
@@ -871,145 +985,3 @@ def test_object_version_tags(app, db, dummy_location):
     ObjectVersion.query.delete()
     db.session.commit()
     assert ObjectVersionTag.query.count() == 0
-
-
-def test_object_merge(app, db, dummy_location):
-    """Test buckets merge."""
-    def keys(b, extra=None):
-        extra = extra or []
-        return sorted([o.key for o in b.objects] + extra)
-
-    b1 = Bucket.create()
-
-    # create OBJ1 in B1
-    ObjectVersion.create(b1, "obj1").set_location("b1u1", 1, "achecksum")
-    b2 = b1.snapshot()
-    assert keys(b1) == keys(b2)
-    assert len(ObjectVersion.get_by_bucket(b2).all()) == 1
-
-    # delete OBJ1 in B1
-    ObjectVersion.delete(b1, "obj1")
-    b1.merge(b2)
-    assert keys(b1) == keys(b2)
-    assert ObjectVersion.get_by_bucket(b2).all() == []
-
-    # create OBJ2 version 1 in B1
-    o2 = ObjectVersion.create(b1, "obj2").set_location("b2u1", 1, "achecksum")
-    b1.merge(b2)
-    assert keys(b1) == keys(b2)
-    assert o2 == ObjectVersion.get(b2, 'obj2')
-
-    # create OBJ2 version 2 in B1
-    ObjectVersion.create(b1, "obj2").set_location("b2u2", 1, "achecksum")
-    b1.merge(b2)
-
-    # check that if sync again, no new object are created
-    b1.merge(b2)
-    assert keys(b1) == keys(b2)
-    assert len(ObjectVersion.get_versions(b2, 'obj2').all()) == 2
-
-    # create OBJ2 version 3 (change file) in B1
-    ObjectVersion.create(b1, "obj2").set_location("b2u3", 1, "achecksum2")
-    b1.merge(b2)
-    assert keys(b1) == keys(b2)
-    assert len(ObjectVersion.get_versions(b2, 'obj2').all()) == 3
-
-    # create a OBJ3 in B2
-    ObjectVersion.create(b2, "obj3").set_location("b3u1", 1, "achecksum3")
-    b1.merge(b2)
-    assert keys(b1, ["obj3"]) == keys(b2)
-
-    # merge B2 -> B1 (to have the OBJ3)
-    b2.merge(b1)
-    assert keys(b1) == keys(b2)
-
-    # merge deleted OBJ3 from both B1 and B2 but in different ways
-    ObjectVersion.delete(b1, 'obj2')
-    ObjectVersion.create(b2, 'obj2').set_location("b2u4", 1, "achecksum6")
-    ObjectVersion.delete(b2, 'obj2')
-    # + (random action) create OBJ4 in B2
-    ObjectVersion.create(b2, "obj4").set_location("b4u1", 1, "achecksum4")
-    b2.merge(b1)
-    assert keys(b1, ["obj2"]) == keys(b2)
-    assert len(ObjectVersion.get_versions(b1, 'obj2').all()) == 4
-    assert len(ObjectVersion.get_versions(b2, 'obj2').all()) == 5
-
-    # create a OBJ1 version 2.1 in B1
-    ObjectVersion.create(b1, "obj1").set_location("b1u2.1", 1, "achecksum4")
-    # create a OBJ1 version 2.2 in B2
-    ObjectVersion.create(b2, "obj1").set_location("b1u2.2", 1, "achecksum5")
-    with pytest.raises(MergeConflict):
-        b1.merge(b2)
-
-
-def test_object_alternate_snapshot_merge(app, db, dummy_location):
-    """Test bucket snapshot/merge."""
-    def keys(b, extra=None):
-        extra = extra or []
-        return sorted([o.key for o in b.objects] + extra)
-
-    b1 = Bucket.create()
-
-    # create OBJ1 with many versions in B1 -> SNAPSHOT
-    ObjectVersion.create(b1, "obj1").set_location("b1u1", 1, "achecksum1")
-    ObjectVersion.create(b1, "obj1").set_location("b1u2", 1, "achecksum2")
-    ObjectVersion.delete(b1, "obj1")
-    b1o1 = ObjectVersion.create(
-        b1, "obj1").set_location("b1u3", 1, "achecksum3")
-    b2 = b1.snapshot()
-    [b2o1] = ObjectVersion.get_versions(b2, 'obj1').all()
-    assert b2o1 == b1o1
-
-    # create more versions of OBJ1 in B2 -> MERGE
-    ObjectVersion.create(b2, "obj1").set_location("b2u1", 1, "achecksum3")
-    b2o1 = ObjectVersion.create(
-        b2, "obj1").set_location("b2u2", 1, "achecksum4")
-    b2.merge(b1)
-    assert len(ObjectVersion.get_versions(b1, 'obj1').all()) == 5
-    assert len(ObjectVersion.get_versions(b2, 'obj1').all()) == 3
-    obj1 = ObjectVersion.get(b1, 'obj1')
-    assert b2o1 == obj1
-
-    # b1 --SNAPSHOT--> b2,b3
-    b2 = b1.snapshot()
-    b3 = b1.snapshot()
-    assert obj1 == ObjectVersion.get(b2, 'obj1')
-    assert obj1 == ObjectVersion.get(b3, 'obj1')
-
-    # new OBJ1 version in b2 and b3
-    ObjectVersion.create(b2, "obj3").set_location("b2u3", 1, "achecksum4")
-    ObjectVersion.create(b3, "obj4").set_location("b3u4", 1, "achecksum5")
-
-    # B2 add OBJ3 and B3 add OBJ4:
-    #
-    # b1        b2    b3
-    # *---------*-----*
-    # |         |     |
-    # *<-obj3---+     |
-    # |               |
-    # *<-----obj4-----+
-    b2.merge(b1)
-    b3.merge(b1)
-
-    # b1 --SNAPSHOT--> b2,b3
-    b2 = b1.snapshot()
-    b3 = b1.snapshot()
-    assert obj1 == ObjectVersion.get(b2, 'obj1')
-    assert obj1 == ObjectVersion.get(b3, 'obj1')
-
-    # new OBJ1 version in b2 and b3
-    ObjectVersion.create(b2, "obj1").set_location("b2u4", 1, "achecksum6")
-    ObjectVersion.create(b3, "obj1").set_location("b3u1", 1, "achecksum7")
-
-    # B2 and B3 try to modify OBJ1 in its own branch and merge one after the
-    # other:
-    #
-    # b1        b2    b3
-    # *---------*-----*
-    # |         |     |
-    # *<-obj1---+     |
-    # |               |
-    # *<-----obj1-----+
-    b2.merge(b1)
-    with pytest.raises(MergeConflict):
-        b3.merge(b1)
