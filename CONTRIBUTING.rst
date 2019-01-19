@@ -67,7 +67,7 @@ Ready to contribute? Here's how to set up `invenio` for local development.
 
    .. code-block:: console
 
-      $ git clone git@github.com:your_name_here/invenio-files-rest.git
+      $ git clone git@github.com:inveniosoftware/invenio-files-rest.git
 
 3. Install your local copy into a virtualenv. Assuming you have
    virtualenvwrapper installed, this is how you set up your fork for local
