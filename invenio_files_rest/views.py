@@ -389,7 +389,7 @@ class BucketResource(ContentNegotiatedMethodView):
 
     @use_kwargs(get_args)
     @pass_bucket
-    def get(self, bucket=None, versions=None, uploads=None):
+    def get(self, bucket=None, versions=missing, uploads=missing):
         """Get list of objects in the bucket.
 
         :param bucket: A :class:`invenio_files_rest.models.Bucket` instance.
@@ -763,7 +763,7 @@ class ObjectResource(ContentNegotiatedMethodView):
     @use_kwargs(post_args)
     @pass_bucket
     @need_bucket_permission('bucket-update')
-    def post(self, bucket=None, key=None, uploads=None, upload_id=None):
+    def post(self, bucket=None, key=None, uploads=missing, upload_id=None):
         """Upload a new object or start/complete a multipart upload.
 
         :param bucket: The bucket (instance or id) to get the object from.
