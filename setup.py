@@ -83,6 +83,7 @@ install_requires = [
     'fs>=0.5.4,<2.0',
     'invenio-rest[cors]>=1.0.0a10',
     'webargs>=1.1.1',
+    'simplejson>=3.0.0',
 ]
 
 setup_requires = [
