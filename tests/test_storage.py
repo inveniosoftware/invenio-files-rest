@@ -196,7 +196,7 @@ def test_pyfs_update_fail(pyfs, pyfs_testpath, get_md5):
     assert content[4:6] != 'ef'
 
 
-def test_pyfs_checksum(get_md5):
+def test_pyfs_checksum(app, get_md5):
     """Test fixity."""
     # Compute checksum of license file/
     with open('LICENSE', 'rb') as fp:
@@ -210,14 +210,58 @@ def test_pyfs_checksum(get_md5):
 
     # Now do it with storage interface
     s = PyFSFileStorage('LICENSE', size=getsize('LICENSE'))
-    assert checksum == s.checksum(chunk_size=2, progress_callback=callback)
+    with app.test_request_context():
+        assert checksum == s.checksum(chunk_size=2,
+                                      progress_callback=callback)
+
     assert counter['size'] == getsize('LICENSE')
 
     # No size provided, means progress callback isn't called
     counter['size'] = 0
     s = PyFSFileStorage('LICENSE')
-    assert checksum == s.checksum(chunk_size=2, progress_callback=callback)
+    with app.test_request_context():
+        assert checksum == s.checksum(chunk_size=2,
+                                      progress_callback=callback)
+
     assert counter['size'] == 0
+
+
+def test_pyfs_custom_checksums(app, get_md5, get_sha256):
+    """Test custom checksum algorithms."""
+
+    # Compute all supported checksums of license file
+    with open('LICENSE', 'rb') as fp:
+        data = fp.read()
+        checksum_md5 = get_md5(data)
+        checksum_sha256 = get_sha256(data)
+
+    counter = dict(size=0)
+
+    def callback(total, size):
+        counter['size'] = size
+
+    # Compute default (MD5) checksum of license file using storage interface
+    fm = PyFSFileStorage('LICENSE', size=getsize('LICENSE'))
+    with app.test_request_context():
+        assert checksum_md5 == fm.checksum(chunk_size=2,
+                                           progress_callback=callback)
+    assert counter['size'] == getsize('LICENSE')
+
+    # Now change the default checksum algorithm to SHA-256
+    app.extensions['invenio-files-rest'].checksum_algorithm = 'sha256'
+    assert app.extensions['invenio-files-rest'].checksum_algorithm == 'sha256'
+
+    # Storage should now compute SHA-256 checksums
+    fs = PyFSFileStorage('LICENSE')
+    with app.test_request_context():
+        assert checksum_sha256 == fs.checksum(chunk_size=2,
+                                              progress_callback=callback)
+
+    # Test setting unsupported checksum algorithm
+    app.extensions['invenio-files-rest'].checksum_algorithm = '256ahs'
+    fu = PyFSFileStorage('LICENSE')
+    with app.test_request_context():
+        pytest.raises(StorageError, fu.checksum, progress_callback=callback)
 
 
 def test_pyfs_checksum_fail():

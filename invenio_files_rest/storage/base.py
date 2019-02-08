@@ -26,12 +26,12 @@
 
 from __future__ import absolute_import, print_function
 
-import hashlib
 from calendar import timegm
 from functools import partial
 
 from ..errors import FileSizeError, StorageError, UnexpectedFileSizeError
 from ..helpers import chunk_size_or_default, compute_checksum, send_stream
+from ..proxies import current_files_rest
 
 
 def check_sizelimit(size_limit, bytes_written, total_size):
@@ -145,7 +145,7 @@ class FileStorage(object):
         try:
             value = self._compute_checksum(
                 fp, size=self._size, chunk_size=None,
-                progress_callback=progress_callback)
+                progress_callback=progress_callback, **kwargs)
         except StorageError:
             raise
         finally:
@@ -168,13 +168,21 @@ class FileStorage(object):
     #
     # Helpers
     #
-    def _init_hash(self):
+    def _init_hash(self, algo=None):
         """Initialize message digest object.
 
         Overwrite this method if you want to use different checksum
         algorithm for your storage backend.
         """
-        return 'md5', hashlib.md5()
+        if not algo:
+            algo = current_files_rest.checksum_algorithm
+
+        m = current_files_rest.supported_checksums.get(algo)
+        if not m:
+            raise AttributeError(
+                'Unsupported checksum algorithm: {}'.format(algo))
+
+        return algo, m()
 
     def _compute_checksum(self, stream, size=None, chunk_size=None,
                           progress_callback=None, **kwargs):
@@ -189,7 +197,7 @@ class FileStorage(object):
             progress_callback = None
 
         try:
-            algo, m = self._init_hash()
+            algo, m = self._init_hash(algo=kwargs.pop('algo', None))
             return compute_checksum(
                 stream, algo, m,
                 chunk_size=chunk_size,

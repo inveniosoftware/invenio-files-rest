@@ -92,6 +92,19 @@ class _FilesRESTState(object):
             self.app.config.get('FILES_REST_UPLOAD_FACTORIES', [])
         ]
 
+    @cached_property
+    def supported_checksums(self):
+        """Load list of supported checksum algorithms."""
+        return load_or_import_from_config(
+            'FILES_REST_SUPPORTED_CHECKSUM_ALGORITHMS', app=self.app
+        )
+
+    @cached_property
+    def checksum_algorithm(self):
+        return self.app.config.get(
+            'FILES_REST_CHECKSUM_ALGORITHM', 'md5'
+        )
+
     def multipart_partfactory(self):
         """Get factory for content length, part number, stream for a part."""
         for factory in self.part_factories:

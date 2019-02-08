@@ -727,9 +727,13 @@ class FileInstance(db.Model, Timestamp):
             ``storage().checksum``.
         """
         try:
+            checksum_kwargs = {
+                'algo': self.checksum.split(':', 1)[0],
+                **(checksum_kwargs or {})
+            }
             real_checksum = self.storage(**kwargs).checksum(
                 progress_callback=progress_callback, chunk_size=chunk_size,
-                **(checksum_kwargs or {}))
+                **checksum_kwargs)
         except Exception as exc:
             current_app.logger.exception(str(exc))
             if throws:

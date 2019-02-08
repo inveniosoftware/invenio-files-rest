@@ -74,6 +74,20 @@ def test_verify_checksum(app, db, dummy_location):
     f = FileInstance.query.get(file_id)
     assert f.last_check is None
 
+    # Create another file using MD5 checksum
+    with open('LICENSE', 'rb') as fp:
+        obj = ObjectVersion.create(b1, 'LICENSE', stream=fp)
+    db.session.commit()
+    file_id = obj.file_id
+
+    # Set checksums to SHA256, verify of previous MD5 checksums must work
+    app.extensions['invenio-files-rest'].checksum_algorithm = 'sha256'
+    verify_checksum(str(file_id))
+
+    f = FileInstance.query.get(file_id)
+    assert f.last_check_at
+    assert f.last_check is True
+
 
 def test_schedule_checksum_verification(app, db, dummy_location):
     """Test file checksum verification scheduling celery task."""
