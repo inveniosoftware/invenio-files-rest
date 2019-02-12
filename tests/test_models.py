@@ -10,6 +10,7 @@
 
 from __future__ import absolute_import, print_function
 
+import sys
 import uuid
 from os.path import getsize
 
@@ -184,12 +185,25 @@ def test_object_create(app, db, dummy_location):
         # I.e. it is considered a delete marker.
         obj3 = ObjectVersion.create(b, "deleted_obj")
 
+        # Create a new object containing key in unicode
+        obj4 = ObjectVersion.create(b, u"hellö")
+
     # Object __repr__
-    assert str(obj1) == \
-        "{0}:{1}:{2}".format(obj1.bucket_id, obj1.version_id, obj1.key)
+    assert repr(obj1) == \
+        u"{0}:{1}:{2}".format(
+            obj1.bucket_id, obj1.version_id, obj1.key)
+
+    if sys.version_info[0] >= 3:  # python3
+        assert repr(obj4) == \
+            u"{0}:{1}:{2}".format(
+                obj4.bucket_id, obj4.version_id, obj4.key)
+    else:  # python2
+        assert repr(obj4) == \
+            u"{0}:{1}:{2}".format(
+                obj4.bucket_id, obj4.version_id, obj4.key).encode('utf-8')
 
     # Sanity check
-    assert ObjectVersion.query.count() == 3
+    assert ObjectVersion.query.count() == 4
 
     # Assert that obj2 is the head version
     obj = ObjectVersion.get(b.id, "test", version_id=obj1.version_id)

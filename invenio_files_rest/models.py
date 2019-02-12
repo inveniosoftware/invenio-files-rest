@@ -38,6 +38,7 @@ from __future__ import absolute_import, print_function
 
 import mimetypes
 import re
+import sys
 import uuid
 from datetime import datetime
 from functools import wraps
@@ -949,10 +950,20 @@ class ObjectVersion(db.Model, Timestamp):
         """Validate key."""
         return validate_key(key_)
 
-    def __repr__(self):
-        """Return representation of location."""
-        return '{0}:{2}:{1}'.format(
-            self.bucket_id, self.key, self.version_id)
+    def __unicode__(self):
+        """Return unicoded object."""
+        return u"{0}:{1}:{2}".format(
+            self.bucket_id, self.version_id, self.key)
+
+    # https://docs.python.org/3.3/howto/pyporting.html#str-unicode
+    if sys.version_info[0] >= 3:  # Python 3
+        def __repr__(self):
+            """Return representation of location."""
+            return self.__unicode__()
+    else:  # Python 2
+        def __repr__(self):
+            """Return representation of location."""
+            return self.__unicode__().encode('utf8')
 
     @hybrid_property
     def mimetype(self):
