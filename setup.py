@@ -37,10 +37,10 @@ tests_require = [
     'SQLAlchemy-Continuum>=1.2.1',
     'check-manifest>=0.25',
     'coverage>=4.0',
-    'invenio-access>=1.0.0b1',
-    'invenio-accounts>=1.0.0b9',
-    'invenio-admin>=1.0.0b4',
-    'invenio-celery>=1.0.0b3',
+    'invenio-access>=1.0.0',
+    'invenio-accounts>=1.0.0',
+    'invenio-admin>=1.0.0',
+    'invenio-celery>=1.0.0',
     'isort>=4.3.4',
     'mock>=1.3.0',
     'pydocstyle>=1.0.0',
@@ -56,13 +56,13 @@ extras_require = {
         'sphinxcontrib-httpdomain>=1.4.0',
     ],
     'postgresql': [
-        'invenio-db[postgresql]>=1.0.0b8',
+        'invenio-db[postgresql]>=1.0.0',
     ],
     'mysql': [
-        'invenio-db[mysql]>=1.0.0b8',
+        'invenio-db[mysql]>=1.0.0',
     ],
     'sqlite': [
-        'invenio-db>=1.0.0b8',
+        'invenio-db>=1.0.0',
     ],
     'tests': tests_require,
 }
@@ -74,12 +74,12 @@ for name, reqs in extras_require.items():
     extras_require['all'].extend(reqs)
 
 install_requires = [
-    'Flask-CeleryExt>=0.2.2',
+    'Flask-CeleryExt>=0.3.1',
     'Flask-Login>=0.3.2',
     'Flask-WTF>=0.13.1',
     'Flask>=0.11.1',
     'fs>=0.5.4,<2.0',
-    'invenio-rest[cors]>=1.0.0b1',
+    'invenio-rest[cors]>=1.0.0',
     'simplejson>=3.0.0',
     'SQLAlchemy-Utils>=0.31.0',
     'webargs>=1.1.1',
@@ -185,6 +185,7 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: Implementation :: CPython',
         'Development Status :: 3 - Alpha',
     ],

@@ -99,7 +99,7 @@ def parse_header_tags():
     # Get the value of the custom HTTP header and interpret it as an query
     # string
     qs = request.headers.get(
-        current_app.config['FILES_REST_FILE_TAGS_HEADER'], None)
+        current_app.config['FILES_REST_FILE_TAGS_HEADER'], '')
 
     tags = {}
     for key, value in parse_qsl(qs):
