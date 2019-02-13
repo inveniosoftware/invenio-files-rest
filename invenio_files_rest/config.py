@@ -23,7 +23,7 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 """Invenio Files Rest module configuration file."""
-
+import hashlib
 from datetime import timedelta
 
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024
@@ -132,3 +132,16 @@ FILES_REST_TASK_WAIT_INTERVAL = 2
 
 FILES_REST_TASK_WAIT_MAX_SECONDS = 600
 """Maximum number of seconds to wait for a task to finish."""
+
+FILES_REST_SUPPORTED_CHECKSUM_ALGORITHMS = {
+    'md5': hashlib.md5
+}
+"""Algorithms that can be used for file checksum compute and verify"""
+
+FILES_REST_CHECKSUM_ALGORITHM = 'md5'
+"""Checksum algorithm to be used on all newly uploaded files
+
+.. note::
+   Value of this variable must be a corresponding
+   key in the ``FILES_REST_SUPPORTED_CHECKSUM_ALGORITHMS`` variable.
+"""

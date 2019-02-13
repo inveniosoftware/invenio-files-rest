@@ -97,6 +97,11 @@ def base_app():
         FILES_REST_MULTIPART_MAX_PARTS=100,
         FILES_REST_TASK_WAIT_INTERVAL=0.1,
         FILES_REST_TASK_WAIT_MAX_SECONDS=1,
+        FILES_REST_SUPPORTED_CHECKSUM_ALGORITHMS={
+            'md5': hashlib.md5,
+            'sha256': hashlib.sha256
+        },
+        FILES_REST_CHECKSUM_ALGORITHM='md5'
     )
 
     FlaskCeleryExt(app_)
@@ -363,6 +368,16 @@ def get_md5():
         m = hashlib.md5()
         m.update(data)
         return "md5:{0}".format(m.hexdigest()) if prefix else m.hexdigest()
+    return inner
+
+
+@pytest.fixture()
+def get_sha256():
+    """Get SHA256 digest of data."""
+    def inner(data, prefix=True):
+        m = hashlib.sha256()
+        m.update(data)
+        return "sha256:{0}".format(m.hexdigest()) if prefix else m.hexdigest()
     return inner
 
 
