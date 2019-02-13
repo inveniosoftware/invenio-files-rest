@@ -34,18 +34,18 @@ from flask_login import current_user
 from invenio_db import db
 from invenio_rest import ContentNegotiatedMethodView
 from marshmallow import missing
+from six.moves.urllib.parse import parse_qsl
 from webargs import fields
 from webargs.flaskparser import use_kwargs
 
-from .errors import FileSizeError, MissingQueryParameter, \
-    MultipartInvalidChunkSize
+from .errors import DuplicateTagError, FileSizeError, InvalidTagError, \
+    MissingQueryParameter, MultipartInvalidChunkSize
 from .models import Bucket, MultipartObject, ObjectVersion, ObjectVersionTag, \
     Part
 from .proxies import current_files_rest, current_permission_factory
 from .serializer import json_serializer
 from .signals import file_downloaded
 from .tasks import merge_multipartobject, remove_file_data
-from .utils import deserialize_query_string
 
 blueprint = Blueprint(
     'invenio_files_rest',
@@ -80,6 +80,39 @@ def invalid_subresource_validator(value):
     abort(405)
 
 
+def validate_tag(key, value):
+    """Validate a tag.
+
+    Keys must be less than 128 chars and values must be less than 256 chars.
+    """
+    # Note, parse_sql does not include a keys if the value is an empty string
+    # (e.g. 'key=&test=a'), and thus technically we should not get strings
+    # which have zero length.
+    klen = len(key)
+    vlen = len(value)
+
+    return klen > 0 and klen < 256 and vlen > 0 and vlen < 256
+
+
+def parse_header_tags():
+    """Parse tags specified in the HTTP request header."""
+    # Get the value of the custom HTTP header and interpret it as an query
+    # string
+    qs = request.headers.get(
+        current_app.config['FILES_REST_FILE_TAGS_HEADER'], None)
+
+    tags = {}
+    for key, value in parse_qsl(qs):
+        # Check for duplicate keys
+        if key in tags:
+            raise DuplicateTagError()
+        # Check for too short/long keys and values.
+        if not validate_tag(key, value):
+            raise InvalidTagError()
+        tags[key] = value
+    return tags or None
+
+
 #
 # Part upload factories
 #
@@ -112,15 +145,11 @@ def default_partfactory(part_number=None, content_length=None,
     :param content_length: The content length. (Default: ``None``)
     :param content_type: The HTTP Content-Type. (Default: ``None``)
     :param content_md5: The content MD5. (Default: ``None``)
-    :param file_tags_header: The file tags. (Default: ``None``)
     :returns: The content length, the part number, the stream, the content
         type, MD5 of the content.
     """
-    header = current_app.config['FILES_REST_FILE_TAGS_HEADER']
-    file_tags_header = deserialize_query_string(request.headers.get(header))
-
     return content_length, part_number, request.stream, content_type, \
-        content_md5, file_tags_header
+        content_md5, None
 
 
 @use_kwargs({
@@ -150,16 +179,12 @@ def stream_uploadfactory(content_md5=None, content_length=None,
     :param content_md5: The content MD5. (Default: ``None``)
     :param content_length: The content length. (Default: ``None``)
     :param content_type: The HTTP Content-Type. (Default: ``None``)
-    :param file_tags_header: The file tags. (Default: ``None``)
     :returns: The stream, content length, MD5 of the content.
     """
     if content_type.startswith('multipart/form-data'):
         abort(422)
 
-    header = current_app.config['FILES_REST_FILE_TAGS_HEADER']
-    file_tags_header = deserialize_query_string(request.headers.get(header))
-
-    return request.stream, content_length, content_md5, file_tags_header
+    return request.stream, content_length, content_md5, parse_header_tags()
 
 
 @use_kwargs({
@@ -187,15 +212,11 @@ def ngfileupload_partfactory(part_number=None, content_length=None,
     :param part_number: The part number. (Default: ``None``)
     :param content_length: The content length. (Default: ``None``)
     :param uploaded_file: The upload request. (Default: ``None``)
-    :param file_tags_header: The file tags. (Default: ``None``)
     :returns: The content length, part number, stream, HTTP Content-Type
         header.
     """
-    header = current_app.config['FILES_REST_FILE_TAGS_HEADER']
-    file_tags_header = deserialize_query_string(request.headers.get(header))
-
     return content_length, part_number, uploaded_file.stream, \
-        uploaded_file.headers.get('Content-Type'), None, file_tags_header
+        uploaded_file.headers.get('Content-Type'), None, None
 
 
 @use_kwargs({
@@ -230,10 +251,7 @@ def ngfileupload_uploadfactory(content_length=None, content_type=None,
     if not content_type.startswith('multipart/form-data'):
         abort(422)
 
-    header = current_app.config['FILES_REST_FILE_TAGS_HEADER']
-    file_tags_header = deserialize_query_string(request.headers.get(header))
-
-    return uploaded_file.stream, content_length, None, file_tags_header
+    return uploaded_file.stream, content_length, None, parse_header_tags()
 
 
 #

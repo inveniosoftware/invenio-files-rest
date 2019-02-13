@@ -528,27 +528,52 @@ def test_delete_unwritable(client, db, bucket, versions):
 
 def test_put_header_tags(app, client, bucket, permissions, get_md5, get_json):
     """Test upload of an object with tags in the headers."""
-
     key = 'test.txt'
-    data = b'updated_content'
-    checksum = get_md5(data, prefix=True)
-    object_url = url_for(
-        'invenio_files_rest.object_api', bucket_id=bucket.id, key=key)
-    file_tags_header = app.config['FILES_REST_FILE_TAGS_HEADER']
     headers = {
-        file_tags_header: 'key1=val1;key2=val2;key3=val3;key1=invalid'
+        app.config['FILES_REST_FILE_TAGS_HEADER']: (
+            'key1=val1;key2=val2;key3=val3')
     }
 
     login_user(client, permissions['bucket'])
     resp = client.put(
-        object_url,
-        input_stream=BytesIO(data),
+        url_for('invenio_files_rest.object_api', bucket_id=bucket.id, key=key),
+        input_stream=BytesIO(b'updated_content'),
         headers=headers,
     )
     assert resp.status_code == 200
-    assert resp.get_etag()[0] == checksum
 
     tags = ObjectVersion.get(bucket, key).get_tags()
     assert tags['key1'] == 'val1'
     assert tags['key2'] == 'val2'
     assert tags['key3'] == 'val3'
+
+
+def test_put_header_invalid_tags(app, client, bucket, permissions, get_md5,
+                                 get_json):
+    """Test upload of an object with tags in the headers."""
+    header_name = app.config['FILES_REST_FILE_TAGS_HEADER']
+    invalid = [
+        # We don't test zero-length values/keys, because they are filtered out
+        # from parse_qsl
+        ('a'*256, 'valid'),
+        ('valid', 'b'*256),
+    ]
+
+    login_user(client, permissions['bucket'])
+    # Invalid key or values
+    for k, v in invalid:
+        resp = client.put(
+            url_for(
+                'invenio_files_rest.object_api', bucket_id=bucket.id, key='k'),
+            input_stream=BytesIO(b'updated_content'),
+            headers={header_name: '{}={}'.format(k, v)},
+        )
+        assert resp.status_code == 400
+
+    # Duplicate key
+    resp = client.put(
+        url_for('invenio_files_rest.object_api', bucket_id=bucket.id, key='k'),
+        input_stream=BytesIO(b'updated_content'),
+        headers={header_name: 'a=1&a=2'},
+    )
+    assert resp.status_code == 400

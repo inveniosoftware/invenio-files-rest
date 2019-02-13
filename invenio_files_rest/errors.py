@@ -150,3 +150,17 @@ class MultipartNoPart(MultipartException):
 
     code = 400
     description = "No upload part detected in request."
+
+
+class InvalidTagError(InvalidOperationError):
+    """Invalid tag key and/or value."""
+
+    code = 400
+    description = "Too long/short tag key or tag value."
+
+
+class DuplicateTagError(InvalidOperationError):
+    """Invalid tag key and/or value."""
+
+    code = 400
+    description = "Duplicate tag key"
