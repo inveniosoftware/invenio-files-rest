@@ -26,7 +26,6 @@
 
 import six
 from flask import current_app
-from six.moves.urllib.parse import parse_qs
 from werkzeug.utils import import_string
 
 
@@ -52,14 +51,3 @@ def load_or_import_from_config(key, app=None, default=None):
     app = app or current_app
     imp = app.config.get(key)
     return obj_or_import_string(imp, default=default)
-
-
-def deserialize_query_string(value):
-    """Deserialize a query string into a dictionary.
-
-    :returns: The deserialized dictionary.
-    """
-    if not isinstance(value, six.string_types):
-        return None
-    return {key: (value[0] if len(value) > 0 else None) for key, value
-            in parse_qs(value).items()}
