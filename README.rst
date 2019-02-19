@@ -19,6 +19,9 @@
 .. image:: https://img.shields.io/pypi/v/invenio-files-rest.svg
         :target: https://pypi.org/pypi/invenio-files-rest
 
+.. image:: https://img.shields.io/github/license/inveniosoftware/invenio-files-rest.svg
+        :target: https://github.com/inveniosoftware/invenio-files-rest/blob/master/LICENSE
+
 
 Files download/upload REST API similar to S3 for Invenio.
 
