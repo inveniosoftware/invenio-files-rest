@@ -655,9 +655,11 @@ def test_object_mimetype(app, db, dummy_location):
     db.session.commit()
     obj1 = ObjectVersion.create(b, "test.pdf", stream=BytesIO(b'pdfdata'))
     obj2 = ObjectVersion.create(b, "README", stream=BytesIO(b'pdfdata'))
+    obj3 = ObjectVersion.create(b, "test.csv.gz", stream=BytesIO(b'gzdata'))
 
     assert obj1.mimetype == "application/pdf"
     assert obj2.mimetype == "application/octet-stream"
+    assert obj3.mimetype == "application/gzip"
 
     # Override computed MIME type.
     obj2.mimetype = "text/plain"
