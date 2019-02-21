@@ -58,6 +58,7 @@ from .errors import BucketLockedError, FileInstanceAlreadySetError, \
     MultipartInvalidChunkSize, MultipartInvalidPartNumber, \
     MultipartInvalidSize, MultipartMissingParts, MultipartNotCompleted
 from .proxies import current_files_rest
+from .utils import ENCODING_MIMETYPES, guess_mimetype
 
 slug_pattern = re.compile('^[a-z][a-z0-9-]+$')
 
@@ -956,11 +957,7 @@ class ObjectVersion(db.Model, Timestamp):
     @hybrid_property
     def mimetype(self):
         """Get MIME type of object."""
-        if self._mimetype:
-            m = self._mimetype
-        elif self.key:
-            m = mimetypes.guess_type(self.key)[0]
-        return m or 'application/octet-stream'
+        return self._mimetype if self._mimetype else guess_mimetype(self.key)
 
     @mimetype.setter
     def mimetype(self, value):
