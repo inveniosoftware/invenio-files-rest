@@ -24,9 +24,19 @@
 
 """Implementention of various utility functions."""
 
+import mimetypes
+
 import six
 from flask import current_app
 from werkzeug.utils import import_string
+
+ENCODING_MIMETYPES = {
+    'gzip': 'application/gzip',
+    'compress': 'application/gzip',
+    'bzip2': 'application/x-bzip2',
+    'xz': 'application/x-xz',
+}
+"""Mapping encoding to MIME types which are not in mimetypes.types_map."""
 
 
 def obj_or_import_string(value, default=None):
@@ -51,3 +61,14 @@ def load_or_import_from_config(key, app=None, default=None):
     app = app or current_app
     imp = app.config.get(key)
     return obj_or_import_string(imp, default=default)
+
+
+def guess_mimetype(filename):
+    """Map extra mimetype with the encoding provided.
+
+    :returns: The extra mimetype.
+    """
+    m, encoding = mimetypes.guess_type(filename)
+    if encoding:
+        m = ENCODING_MIMETYPES.get(encoding, None)
+    return m or 'application/octet-stream'
