@@ -25,6 +25,11 @@ def example_app():
     project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     exampleappdir = os.path.join(project_dir, 'examples')
     os.chdir(exampleappdir)
+
+    # tear down example app
+    cmd = './app-teardown.sh'
+    subprocess.call(cmd, shell=True)
+
     # setup example
     cmd = './app-setup.sh'
     exit_status = subprocess.call(cmd, shell=True)
@@ -35,8 +40,8 @@ def example_app():
                               preexec_fn=os.setsid, shell=True)
     # Starting celery
     cmd = 'celery worker -A app.celery -l info --purge'
-    webapp = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                              preexec_fn=os.setsid, shell=True)
+    celeryapp = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                 preexec_fn=os.setsid, shell=True)
     time.sleep(10)
     # return webapp
     yield webapp
