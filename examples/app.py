@@ -19,7 +19,7 @@ Install requirements:
 
    $ pip install -e .[all]
    $ cd examples
-   $ ./app-setup.py
+   $ ./app-setup.sh
    $ ./app-fixtures.sh
 
 Run example development server:
@@ -45,6 +45,12 @@ Endpoints
 Administration interface is available on::
 
    http://localhost:5000/admin/
+
+To access the admin interface the user needs to have superuser access rights.
+
+.. code-block:: console
+
+   $ flask access allow superuser-access user <inser_user_email>
 
 REST API is available on::
 
