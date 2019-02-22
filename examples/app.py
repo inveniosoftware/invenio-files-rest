@@ -170,7 +170,7 @@ from os.path import dirname, exists, join
 from flask import Flask, current_app
 from flask_babelex import Babel
 from flask_menu import Menu
-from invenio_access import InvenioAccess
+from invenio_access import ActionSystemRoles, InvenioAccess, any_user
 from invenio_accounts import InvenioAccounts
 from invenio_accounts.views import blueprint as accounts_blueprint
 from invenio_admin import InvenioAdmin
@@ -182,6 +182,14 @@ from invenio_files_rest import InvenioFilesREST
 from invenio_files_rest.models import Bucket, FileInstance, Location, \
     MultipartObject, ObjectVersion, Part
 from invenio_files_rest.views import blueprint
+
+
+def allow_all(*args, **kwargs):
+    """Return permission that always allow an access.
+    :returns: A object instance with a ``can()`` method.
+    """
+    return type('Allow', (), {'can': lambda self: True})()
+
 
 # Create Flask application
 app = Flask(__name__)
@@ -197,6 +205,7 @@ app.config.update(dict(
         'SQLALCHEMY_DATABASE_URI', 'sqlite:///test.db'
     ),
     SQLALCHEMY_TRACK_MODIFICATIONS=True,
+    FILES_REST_PERMISSION_FACTORY=allow_all,
 ))
 
 Babel(app)

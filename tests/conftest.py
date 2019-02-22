@@ -22,7 +22,7 @@ from flask_babelex import Babel
 from flask_celeryext import FlaskCeleryExt
 from flask_menu import Menu
 from invenio_access import InvenioAccess
-from invenio_access.models import ActionUsers
+from invenio_access.models import ActionRoles, ActionUsers, Role
 from invenio_accounts import InvenioAccounts
 from invenio_accounts.testutils import create_test_user
 from invenio_accounts.views import blueprint as accounts_blueprint
@@ -344,6 +344,44 @@ def permissions(db, bucket):
     db.session.commit()
 
     yield users
+
+
+@pytest.yield_fixture()
+def admin_user(db):
+    """Permission for admin users."""
+    perms = [
+        location_update_all,
+        bucket_read_all,
+        bucket_read_versions_all,
+        bucket_update_all,
+        bucket_listmultiparts_all,
+        object_read_all,
+        object_read_version_all,
+        object_delete_all,
+        object_delete_version_all,
+        multipart_read_all,
+        multipart_delete_all,
+        bucket_read_all,
+        object_read_all,
+        bucket_update_all,
+        object_delete_all,
+        multipart_read_all,
+        object_read_all,
+    ]
+
+    admin = Role(name='admin')
+
+    for perm in perms:
+        db.session.add(ActionRoles.allow(perm, role=admin))
+
+    admin_user = create_test_user(email='admin@invenio-software.org',
+                                  password='pass1',
+                                  active=True)
+    admin.users.append(admin_user)
+
+    db.session.commit()
+
+    yield admin_user
 
 
 @pytest.fixture()

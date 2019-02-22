@@ -8,7 +8,7 @@
 
 """Permissions for files using Invenio-Access."""
 
-from invenio_access import DynamicPermission, action_factory
+from invenio_access import Permission, action_factory
 
 from .models import Bucket, MultipartObject, ObjectVersion
 
@@ -118,12 +118,12 @@ def permission_factory(obj, action):
         the action is global.
     :param action: The required action.
     :raises RuntimeError: If the object is unknown.
-    :returns: A :class:`invenio_access.permissions.DynamicPermission` instance.
+    :returns: A :class:`invenio_access.permissions.Permission` instance.
     """
     need_class = _action2need_map[action]
 
     if obj is None:
-        return DynamicPermission(need_class(None))
+        return Permission(need_class(None))
 
     arg = None
     if isinstance(obj, Bucket):
@@ -135,4 +135,4 @@ def permission_factory(obj, action):
     else:
         raise RuntimeError('Unknown object')
 
-    return DynamicPermission(need_class(arg))
+    return Permission(need_class(arg))
