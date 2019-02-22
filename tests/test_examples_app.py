@@ -38,10 +38,7 @@ def example_app():
     cmd = 'FLASK_APP=app.py flask run --debugger -p 5000'
     webapp = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                               preexec_fn=os.setsid, shell=True)
-    # Starting celery
-    cmd = 'celery worker -A app.celery -l info --purge'
-    celeryapp = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                 preexec_fn=os.setsid, shell=True)
+
     time.sleep(10)
     # return webapp
     yield webapp
