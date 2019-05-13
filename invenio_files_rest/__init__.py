@@ -11,7 +11,7 @@
 from __future__ import absolute_import, print_function
 
 from .ext import InvenioFilesREST
-from .version import __version__
 from .proxies import current_files_rest
+from .version import __version__
 
 __all__ = ('__version__', 'current_files_rest', 'InvenioFilesREST', )
