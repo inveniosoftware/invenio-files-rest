@@ -19,6 +19,7 @@ Invenio-Files-REST.
    :maxdepth: 2
 
    installation
+   configuration
    usage
    exampleapp
 

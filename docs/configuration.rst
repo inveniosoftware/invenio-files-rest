@@ -6,8 +6,8 @@
     under the terms of the MIT License; see LICENSE file for more details.
 
 
+Configuration
+=============
 
-Usage
-=======
-
-.. automodule:: invenio_files_rest
+.. automodule:: invenio_files_rest.config
+   :members:
