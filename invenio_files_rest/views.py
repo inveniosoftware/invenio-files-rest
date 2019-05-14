@@ -583,7 +583,6 @@ class ObjectResource(ContentNegotiatedMethodView):
             # Create a delete marker.
             with db.session.begin_nested():
                 ObjectVersion.delete(bucket, obj.key)
-            db.session.commit()
         else:
             # Permanently delete specific object version.
             check_permission(
@@ -591,10 +590,19 @@ class ObjectResource(ContentNegotiatedMethodView):
                 hidden=False,
             )
             obj.remove()
-            db.session.commit()
+            # Set newest object as head
+            if obj.is_head:
+                obj_to_restore = \
+                    ObjectVersion.get_versions(obj.bucket,
+                                               obj.key,
+                                               desc=True).first()
+                if obj_to_restore:
+                    obj_to_restore.is_head = True
+
             if obj.file_id:
                 remove_file_data.delay(str(obj.file_id))
 
+        db.session.commit()
         return self.make_response('', 204)
 
     @staticmethod

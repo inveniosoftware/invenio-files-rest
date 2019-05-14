@@ -472,6 +472,28 @@ def test_delete_versions(client, db, bucket, versions, permissions, user,
         )).status_code == 404
 
 
+def test_delete_versions_head_reset(client, db, bucket, versions, admin_user):
+    """Test head setting after deletion."""
+    login_user(client, admin_user)
+    key = 'LICENSE'
+    versions_to_delete = \
+        [version for version in versions if version.key == key]
+    assert len(versions_to_delete) == 2
+    for obj in versions_to_delete:
+        if obj.is_head:
+            version_to_delete = obj
+        else:
+            new_head_obj = obj
+    assert not new_head_obj.is_head
+    res = client.delete(url_for(
+        'invenio_files_rest.object_api',
+        bucket_id=bucket.id,
+        key=version_to_delete.key,
+        versionId=version_to_delete.version_id))
+    assert res.status_code == 204
+    assert new_head_obj.is_head
+
+
 def test_delete_locked_deleted(client, db, bucket, versions,
                                admin_user):
     """Test a deleted/locked bucket."""
