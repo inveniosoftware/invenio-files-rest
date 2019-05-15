@@ -543,3 +543,33 @@ def test_get_listuploads(client, db, bucket, multipart, multipart_url,
             bucket_id=str(bucket.id),
         ) + '?uploads')
         assert res.status_code == expected
+
+
+def test_already_exhausted_input_stream(app, client, db, bucket, admin_user):
+    """Test server error when file stream is already read."""
+    key = 'test.json'
+    data = b'{"json": "file"}'
+    object_url = url_for(
+        'invenio_files_rest.object_api', bucket_id=bucket.id, key=key)
+    # Add a new before request hook which reads the incoming request payload.
+    # This simulates what happens when Sentry's raven-python library when it
+    # reads the JSON payloads, breaking the upload of JSON files
+    # (`application/json`).
+
+    def consume_request_input_stream(*args):
+        """Reads input stream object."""
+        from flask import request
+        request.data
+
+    app.before_request(consume_request_input_stream)
+    login_user(client, admin_user)
+    resp = client.put(
+        object_url,
+        input_stream=BytesIO(data),
+    )
+    assert resp.status_code == 500
+    resp = client.post(
+        object_url,
+        input_stream=BytesIO(data),
+    )
+    assert resp.status_code == 500
