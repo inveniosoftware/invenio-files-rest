@@ -267,6 +267,16 @@ def pass_multipart(with_completed=False):
     return decorate
 
 
+def ensure_input_stream_is_not_exhausted(f):
+    """Make sure that the input stream has not been read already."""
+    @wraps(f)
+    def decorate(*args, **kwargs):
+        if request.content_length and request.stream.is_exhausted:
+            abort(500)
+        return f(*args, **kwargs)
+    return decorate
+
+
 #
 # Permission checking
 #
@@ -797,6 +807,7 @@ class ObjectResource(ContentNegotiatedMethodView):
     @use_kwargs(post_args)
     @pass_bucket
     @need_bucket_permission('bucket-update')
+    @ensure_input_stream_is_not_exhausted
     def post(self, bucket=None, key=None, uploads=missing, upload_id=None):
         """Upload a new object or start/complete a multipart upload.
 
@@ -815,6 +826,7 @@ class ObjectResource(ContentNegotiatedMethodView):
     @use_kwargs(put_args)
     @pass_bucket
     @need_bucket_permission('bucket-update')
+    @ensure_input_stream_is_not_exhausted
     def put(self, bucket=None, key=None, upload_id=None):
         """Update a new object or upload a part of a multipart upload.
 
