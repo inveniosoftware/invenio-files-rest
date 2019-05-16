@@ -30,7 +30,7 @@ tests_require = [
     'pydocstyle>=1.0.0',
     'pytest-cov>=1.8.0',
     'pytest-pep8>=1.0.6',
-    'pytest>=3.5.0',
+    'pytest>=3.7.0',
 ]
 
 extras_require = {
