@@ -22,8 +22,8 @@ from six.moves.urllib.parse import parse_qsl
 from webargs import fields
 from webargs.flaskparser import use_kwargs
 
-from .errors import DuplicateTagError, FileSizeError, InvalidTagError, \
-    MissingQueryParameter, MultipartInvalidChunkSize
+from .errors import DuplicateTagError, ExhaustedStreamError, FileSizeError, \
+    InvalidTagError, MissingQueryParameter, MultipartInvalidChunkSize
 from .models import Bucket, MultipartObject, ObjectVersion, ObjectVersionTag, \
     Part
 from .proxies import current_files_rest, current_permission_factory
@@ -272,7 +272,7 @@ def ensure_input_stream_is_not_exhausted(f):
     @wraps(f)
     def decorate(*args, **kwargs):
         if request.content_length and request.stream.is_exhausted:
-            abort(500)
+            raise ExhaustedStreamError()
         return f(*args, **kwargs)
     return decorate
 
