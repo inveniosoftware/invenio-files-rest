@@ -148,3 +148,9 @@ class DuplicateTagError(InvalidOperationError):
 
     code = 400
     description = "Duplicate tag key"
+
+
+class ExhaustedStreamError(FilesException):
+    """The incoming file stream has been already consumed."""
+
+    code = 500
