@@ -23,8 +23,7 @@ The entities of this module consists of:
    The location of the file is specified via a URI. A file instance can have
    many object versions.
  * **Locations** - A bucket belongs to a specific location. Locations can be
-   used to represent e.g. different storage systems and/or geographical
-   locations.
+   used to represent e.g. different storage systems.
  * **Multipart Objects** - Identified by UUIDs and belongs to a specific bucket
    and key.
  * **Part object** - Identified by their multipart object and a part number.
@@ -1712,9 +1711,11 @@ class Part(db.Model, Timestamp):
 
 __all__ = (
     'Bucket',
+    'BucketTag',
     'FileInstance',
     'Location',
     'MultipartObject',
     'ObjectVersion',
+    'ObjectVersionTag',
     'Part',
 )

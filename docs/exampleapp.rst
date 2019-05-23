@@ -6,10 +6,8 @@
     under the terms of the MIT License; see LICENSE file for more details.
 
 
-
-=====================
- Example application
-=====================
+Example application
+===================
 
 .. include:: ../examples/app.py
    :start-after: SPHINX-START

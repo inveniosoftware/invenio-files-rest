@@ -23,9 +23,16 @@
         :target: https://github.com/inveniosoftware/invenio-files-rest/blob/master/LICENSE
 
 
-Files download/upload REST API similar to S3 for Invenio.
+Invenio-Files-REST is a files storage module. It allows you to store and
+retrieve files in a similar way to Amazon S3 APIs.
 
-*This is an experimental developer preview release.*
+Features:
 
-* Free software: MIT license
-* Documentation: https://invenio-files-rest.readthedocs.io/
+ * Files storage with configurable storage backends
+ * Secure REST APIs
+ * Support for large file uploads and multipart upload.
+ * Customizable access control
+ * File integrity monitoring
+
+
+Further documentation is available on https://invenio-files-rest.readthedocs.io/.

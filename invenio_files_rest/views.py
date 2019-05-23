@@ -361,11 +361,7 @@ class LocationResource(ContentNegotiatedMethodView):
     def post(self):
         """Create bucket."""
         with db.session.begin_nested():
-            bucket = Bucket.create(
-                storage_class=current_app.config[
-                    'FILES_REST_DEFAULT_STORAGE_CLASS'
-                ],
-            )
+            bucket = Bucket.create()
         db.session.commit()
         return self.make_response(
             data=bucket,
@@ -804,7 +800,7 @@ class ObjectResource(ContentNegotiatedMethodView):
     @pass_bucket
     def get(self, bucket=None, key=None, version_id=None, upload_id=None,
             uploads=None, download=None):
-        """Get object or list parts of a multpart upload.
+        """Get object or list parts of a multipart upload.
 
         :param bucket: The bucket (instance or id) to get the object from.
             (Default: ``None``)

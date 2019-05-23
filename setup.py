@@ -24,7 +24,6 @@ tests_require = [
     'invenio-access>=1.0.0',
     'invenio-accounts>=1.0.0',
     'invenio-admin>=1.0.0',
-    'invenio-celery>=1.0.0',
     'isort>=4.3.4',
     'mock>=1.3.0',
     'pydocstyle>=1.0.0',
@@ -59,11 +58,11 @@ for name, reqs in extras_require.items():
 
 
 install_requires = [
-    'Flask-CeleryExt>=0.3.1',
     'Flask-Login>=0.3.2',
     'Flask-WTF>=0.13.1',
     'Flask>=0.11.1',
     'fs>=0.5.4,<2.0',
+    'invenio-celery>=1.1.1',
     'invenio-rest[cors]>=1.1.2',
     'simplejson>=3.0.0',
     'SQLAlchemy-Utils>=0.31.0',
