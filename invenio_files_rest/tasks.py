@@ -59,7 +59,7 @@ def verify_checksum(file_id, pessimistic=False, chunk_size=None, throws=True,
 
 
 def default_checksum_verification_files_query():
-    """Return a query of valid FileInstances for checksum verficiation."""
+    """Return a query of valid FileInstances for checksum verification."""
     return FileInstance.query
 
 
@@ -202,7 +202,7 @@ def remove_file_data(file_id, silent=True):
     """Remove file instance and associated data.
 
     :param file_id: The :class:`invenio_files_rest.models.FileInstance` ID.
-    :param silent: It stops propagation of a possible arised IntegrityError
+    :param silent: It stops propagation of a possible raised IntegrityError
         exception. (Default: ``True``)
     :raises sqlalchemy.exc.IntegrityError: Raised if the database removal goes
         wrong and silent is set to ``False``.
