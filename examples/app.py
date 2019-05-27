@@ -6,7 +6,7 @@
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
 
-"""Minimal Flask application example for development.
+r"""Minimal Flask application example for development.
 
 SPHINX-START
 
@@ -170,13 +170,13 @@ from __future__ import absolute_import, print_function
 
 import os
 import shutil
-from os import environ, makedirs
+from os import makedirs
 from os.path import dirname, exists, join
 
 from flask import Flask, current_app
 from flask_babelex import Babel
 from flask_menu import Menu
-from invenio_access import ActionSystemRoles, InvenioAccess, any_user
+from invenio_access import InvenioAccess
 from invenio_accounts import InvenioAccounts
 from invenio_accounts.views import blueprint as accounts_blueprint
 from invenio_admin import InvenioAdmin
@@ -192,6 +192,7 @@ from invenio_files_rest.views import blueprint
 
 def allow_all(*args, **kwargs):
     """Return permission that always allow an access.
+
     :returns: A object instance with a ``can()`` method.
     """
     return type('Allow', (), {'can': lambda self: True})()
