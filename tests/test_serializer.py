@@ -10,14 +10,15 @@
 
 from __future__ import absolute_import, print_function
 
-from marshmallow import Schema, fields
+from marshmallow import fields
 
-from invenio_files_rest.serializer import json_serializer, serializer_mapping
+from invenio_files_rest.serializer import BaseSchema, json_serializer, \
+    serializer_mapping
 
 
 def test_serialize_pretty(app):
     """Test pretty JSON."""
-    class TestSchema(Schema):
+    class TestSchema(BaseSchema):
         title = fields.Str(attribute='title')
 
     data = {'title': 'test'}
@@ -26,6 +27,8 @@ def test_serialize_pretty(app):
 
     serializer_mapping['TestSchema'] = TestSchema
 
+    # TODO This test should be checked if it shouldn't have
+    #  BaseSchema instead of Schema
     with app.test_request_context():
         assert json_serializer(data=data, context=context).data == \
             b'{"title":"test"}'

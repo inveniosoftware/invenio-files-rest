@@ -9,16 +9,18 @@
 """REST API serializers."""
 
 import json
+import warnings
 from time import sleep
 
 from flask import current_app, request, url_for
-from marshmallow import Schema, fields, missing, post_dump
+from invenio_rest.serializer import BaseSchema as InvenioRestBaseSchema
+from marshmallow import fields, missing, post_dump
 
 from .errors import FilesException
 from .models import Bucket, MultipartObject, ObjectVersion, Part
 
 
-class BaseSchema(Schema):
+class BaseSchema(InvenioRestBaseSchema):
     """Base schema for all serializations."""
 
     created = fields.DateTime(dump_only=True)
