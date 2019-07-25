@@ -30,7 +30,7 @@ tests_require = [
     'pydocstyle>=1.0.0',
     'pytest-cov>=1.8.0',
     'pytest-pep8>=1.0.6',
-    'pytest>=3.7.0',
+    'pytest>=4.0.0,<5.0.0',
 ]
 
 extras_require = {
@@ -50,11 +50,13 @@ extras_require = {
     'tests': tests_require,
 }
 
+
 extras_require['all'] = []
 for name, reqs in extras_require.items():
     if name in ('postgresql', 'mysql', 'sqlite'):
         continue
     extras_require['all'].extend(reqs)
+
 
 install_requires = [
     'Flask-CeleryExt>=0.3.1',
@@ -62,11 +64,9 @@ install_requires = [
     'Flask-WTF>=0.13.1',
     'Flask>=0.11.1',
     'fs>=0.5.4,<2.0',
-    'invenio-rest[cors]>=1.0.0',
-    'marshmallow>=2.15.1,<3.0.0',
+    'invenio-rest[cors]>=1.1.0',
     'simplejson>=3.0.0',
     'SQLAlchemy-Utils>=0.31.0',
-    'webargs>=1.1.1',
     'WTForms>=2.0',
 ]
 

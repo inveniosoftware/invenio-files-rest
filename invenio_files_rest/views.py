@@ -105,18 +105,23 @@ def parse_header_tags():
         load_from='partNumber',
         location='query',
         required=True,
+        data_key='partNumber',
     ),
     'content_length': fields.Int(
         load_from='Content-Length',
         location='headers',
         required=True,
         validate=minsize_validator,
+        data_key='Content-Length',
     ),
     'content_type': fields.Str(
         load_from='Content-Type',
         location='headers',
+        data_key='Content-Type',
+
     ),
     'content_md5': fields.Str(
+        data_key='Content-MD5',
         load_from='Content-MD5',
         location='headers',
     ),
@@ -139,17 +144,20 @@ def default_partfactory(part_number=None, content_length=None,
 @use_kwargs({
     'content_md5': fields.Str(
         load_from='Content-MD5',
+        data_key='Content-MD5',
         location='headers',
         missing=None,
     ),
     'content_length': fields.Int(
         load_from='Content-Length',
+        data_key='Content-Length',
         location='headers',
         required=True,
         validate=minsize_validator,
     ),
     'content_type': fields.Str(
         load_from='Content-Type',
+        data_key='Content-Type',
         location='headers',
         missing='',
     ),
@@ -174,17 +182,20 @@ def stream_uploadfactory(content_md5=None, content_length=None,
 @use_kwargs({
     'part_number': fields.Int(
         load_from='_chunkNumber',
+        data_key='_chunkNumber',
         location='form',
         required=True,
     ),
     'content_length': fields.Int(
         load_from='_currentChunkSize',
+        data_key='_currentChunkSize',
         location='form',
         required=True,
         validate=minsize_validator,
     ),
     'uploaded_file': fields.Raw(
         load_from='file',
+        data_key='file',
         location='files',
         required=True,
     ),
@@ -206,16 +217,19 @@ def ngfileupload_partfactory(part_number=None, content_length=None,
 @use_kwargs({
     'content_length': fields.Int(
         load_from='_totalSize',
+        data_key='_totalSize',
         location='form',
         required=True,
     ),
     'content_type': fields.Str(
         load_from='Content-Type',
+        data_key='Content-Type',
         location='headers',
         required=True,
     ),
     'uploaded_file': fields.Raw(
         load_from='file',
+        data_key='file',
         location='files',
         required=True,
     ),
@@ -444,11 +458,13 @@ class ObjectResource(ContentNegotiatedMethodView):
         'version_id': fields.UUID(
             location='query',
             load_from='versionId',
+            data_key='versionId',
             missing=None,
         ),
         'upload_id': fields.UUID(
             location='query',
             load_from='uploadId',
+            data_key='uploadId',
             missing=None,
         ),
         'uploads': fields.Raw(
@@ -472,6 +488,7 @@ class ObjectResource(ContentNegotiatedMethodView):
         'upload_id': fields.UUID(
             location='query',
             load_from='uploadId',
+            data_key='uploadId',
             missing=None,
         )
     }
@@ -480,6 +497,7 @@ class ObjectResource(ContentNegotiatedMethodView):
         'upload_id': fields.UUID(
             location='query',
             load_from='uploadId',
+            data_key='uploadId',
             missing=None,
         ),
     }
@@ -493,6 +511,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             locations=('query', 'json'),
             missing=None,
             load_from='partSize',
+            data_key='partSize',
         ),
     }
 
