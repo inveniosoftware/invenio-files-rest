@@ -10,6 +10,10 @@
 Changes
 =======
 
+Version 1.0.1 (released 2019-08-01)
+
+- Adds support for marshmallow 2 and 3.
+
 Version 1.0.0 (released 2019-07-22)
 
 - Initial public release.
