@@ -1,43 +1,29 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2016, 2017 CERN.
+# Copyright (C) 2016-2019 CERN.
 #
-# Invenio is free software; you can redistribute it
-# and/or modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the
-# License, or (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be
-# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio; if not, write to the
-# Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307, USA.
-#
-# In applying this license, CERN does not
-# waive the privileges and immunities granted to it by virtue of its status
-# as an Intergovernmental Organization or submit itself to any jurisdiction.
+# Invenio is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
 
 """Module test views."""
 
 from __future__ import absolute_import, print_function
 
+import sys
 import uuid
 from os.path import getsize
 
 import pytest
 from fs.errors import ResourceNotFoundError
 from six import BytesIO, b
+from sqlalchemy.exc import IntegrityError
 
 from invenio_files_rest.errors import BucketLockedError, \
     FileInstanceAlreadySetError, FileInstanceUnreadableError, \
     InvalidKeyError, InvalidOperationError
 from invenio_files_rest.models import Bucket, BucketTag, FileInstance, \
-    Location, ObjectVersion
+    Location, ObjectVersion, ObjectVersionTag
 
 
 def test_location(app, db):
@@ -199,12 +185,25 @@ def test_object_create(app, db, dummy_location):
         # I.e. it is considered a delete marker.
         obj3 = ObjectVersion.create(b, "deleted_obj")
 
+        # Create a new object containing key in unicode
+        obj4 = ObjectVersion.create(b, u"hellö")
+
     # Object __repr__
-    assert str(obj1) == \
-        "{0}:{1}:{2}".format(obj1.bucket_id, obj1.version_id, obj1.key)
+    assert repr(obj1) == \
+        u"{0}:{1}:{2}".format(
+            obj1.bucket_id, obj1.version_id, obj1.key)
+
+    if sys.version_info[0] >= 3:  # python3
+        assert repr(obj4) == \
+            u"{0}:{1}:{2}".format(
+                obj4.bucket_id, obj4.version_id, obj4.key)
+    else:  # python2
+        assert repr(obj4) == \
+            u"{0}:{1}:{2}".format(
+                obj4.bucket_id, obj4.version_id, obj4.key).encode('utf-8')
 
     # Sanity check
-    assert ObjectVersion.query.count() == 3
+    assert ObjectVersion.query.count() == 4
 
     # Assert that obj2 is the head version
     obj = ObjectVersion.get(b.id, "test", version_id=obj1.version_id)
@@ -475,12 +474,13 @@ def test_object_snapshot(app, db, dummy_location):
     assert ObjectVersion.get_by_bucket(b1).count() == 3
     assert ObjectVersion.get_by_bucket(b2).count() == 1
     assert ObjectVersion.get_by_bucket(b3).count() == 3
-    assert ObjectVersion.get_by_bucket(b1, versions=True).count() == 8
+    assert ObjectVersion.get_by_bucket(b1, versions=True,
+                                       with_deleted=True).count() == 8
     assert ObjectVersion.get_by_bucket(b3, versions=True).count() == 3
 
 
 def test_object_snapshot_deleted(app, db, dummy_location):
-    """Deleted bucket."""
+    """Test snapshot creation of a deleted bucket."""
     b1 = Bucket.create()
     b2 = Bucket.create()
     b2.deleted = True
@@ -493,6 +493,119 @@ def test_object_snapshot_deleted(app, db, dummy_location):
     # b2 is deleted.
     with pytest.raises(InvalidOperationError) as excinfo:
         b2.snapshot()
+    assert excinfo.value.get_body() != {}
+
+
+def test_bucket_sync_new_object(app, db, dummy_location):
+    """Test that a new file in src in synced to dest."""
+    b1 = Bucket.create()
+    b2 = Bucket.create()
+    ObjectVersion.create(b1, "filename").set_location("b1v1", 1, "achecksum")
+    db.session.commit()
+
+    assert ObjectVersion.get_by_bucket(b1).count() == 1
+    assert ObjectVersion.get_by_bucket(b2).count() == 0
+    b1.sync(b2)
+    assert ObjectVersion.get_by_bucket(b1).count() == 1
+    assert ObjectVersion.get_by_bucket(b2).count() == 1
+    assert ObjectVersion.get(b2, "filename")
+
+
+def test_bucket_sync_same_object(app, db, dummy_location):
+    """Test that an exiting file in src and dest is not changed."""
+    b1 = Bucket.create()
+    b2 = Bucket.create()
+    ObjectVersion.create(b1, "filename").set_location("b1v1", 1, "achecksum")
+    b1.sync(b2)
+    db.session.commit()
+
+    b1_version_id = ObjectVersion.get(b1, "filename").version_id
+    b2_version_id = ObjectVersion.get(b2, "filename").version_id
+
+    b1.sync(b2)
+
+    assert ObjectVersion.get_by_bucket(b1).count() == 1
+    assert ObjectVersion.get_by_bucket(b2).count() == 1
+    assert ObjectVersion.get(b1, "filename").version_id == b1_version_id
+    assert ObjectVersion.get(b2, "filename").version_id == b2_version_id
+
+
+def test_bucket_sync_deleted_object(app, db, dummy_location):
+    """Test that a deleted object in src is deleted in dest."""
+    b1 = Bucket.create()
+    b2 = Bucket.create()
+    ObjectVersion.create(b1, "filename").set_location("b1v1", 1, "achecksum")
+    ObjectVersion.create(b2, "filename").set_location("b2v1", 1, "achecksum")
+    ObjectVersion.create(b2, "extra-deleted").set_location("b3v1", 1, "asum")
+    ObjectVersion.delete(b1, "filename")
+    db.session.commit()
+
+    b1.sync(b2)
+
+    assert ObjectVersion.get_by_bucket(b1).count() == 0
+    assert ObjectVersion.get_by_bucket(b2).count() == 1
+    assert ObjectVersion.get(b2, "extra-deleted")
+
+    ObjectVersion.delete(b2, "extra-deleted")
+    db.session.commit()
+
+    b1.sync(b2)
+
+    assert ObjectVersion.get_by_bucket(b1).count() == 0
+    assert ObjectVersion.get_by_bucket(b2).count() == 0
+
+
+def test_bucket_sync_delete_extras(app, db, dummy_location):
+    """Test that an extra object in dest is deleted when syncing."""
+    b1 = Bucket.create()
+    b2 = Bucket.create()
+    ObjectVersion.create(b1, "filename").set_location("b1v1", 1, "achecksum")
+    ObjectVersion.create(b2, "filename").set_location("b2v1", 1, "achecksum")
+    ObjectVersion.create(b2, "extra-deleted").set_location("b3v1", 1, "asum")
+    db.session.commit()
+
+    b1.sync(b2, delete_extras=True)
+
+    assert ObjectVersion.get_by_bucket(b1).count() == 1
+    assert ObjectVersion.get_by_bucket(b2).count() == 1
+    assert not ObjectVersion.get(b2, "extra-deleted")
+
+
+def test_bucket_sync(app, db, dummy_location):
+    """Test that a bucket is correctly synced."""
+    b1 = Bucket.create()
+    b2 = Bucket.create()
+    ObjectVersion.create(b1, "filename1").set_location("b1v11", 1, "achecksum")
+    ObjectVersion.create(b1, "filename2").set_location("b1v12", 1, "achecksum")
+    ObjectVersion.create(b1, "filename3").set_location("b1v13", 1, "achecksum")
+    ObjectVersion.create(b2, "extra1").set_location("b2v11", 1, "achecksum")
+    db.session.commit()
+
+    b1.sync(b2)
+
+    assert ObjectVersion.get_by_bucket(b1).count() == 3
+    assert ObjectVersion.get_by_bucket(b2).count() == 4
+
+    ObjectVersion.delete(b1, "filename1")
+    ObjectVersion.create(b2, "extra2").set_location("b2v12", 1, "achecksum")
+    ObjectVersion.create(b2, "extra3").set_location("b2v13", 1, "achecksum")
+    ObjectVersion.delete(b2, "extra3")
+    db.session.commit()
+
+    b1.sync(b2, delete_extras=True)
+
+    assert ObjectVersion.get_by_bucket(b1).count() == 2
+    assert ObjectVersion.get_by_bucket(b2).count() == 2
+
+
+def test_bucket_sync_deleted(app, db, dummy_location):
+    """Test bucket sync of a deleted bucket."""
+    b1 = Bucket.create()
+    b1.deleted = True
+    db.session.commit()
+
+    with pytest.raises(InvalidOperationError) as excinfo:
+        b1.sync(Bucket.create())
     assert excinfo.value.get_body() != {}
 
 
@@ -556,9 +669,11 @@ def test_object_mimetype(app, db, dummy_location):
     db.session.commit()
     obj1 = ObjectVersion.create(b, "test.pdf", stream=BytesIO(b'pdfdata'))
     obj2 = ObjectVersion.create(b, "README", stream=BytesIO(b'pdfdata'))
+    obj3 = ObjectVersion.create(b, "test.csv.gz", stream=BytesIO(b'gzdata'))
 
     assert obj1.mimetype == "application/pdf"
     assert obj2.mimetype == "application/octet-stream"
+    assert obj3.mimetype == "application/gzip"
 
     # Override computed MIME type.
     obj2.mimetype = "text/plain"
@@ -818,3 +933,55 @@ def test_fileinstance_validation(app, db, dummy_location):
     f = FileInstance.create()
     f.set_uri('x' * 255, 1000, 1000)  # Should not raise
     pytest.raises(ValueError, f.set_uri, 'x' * 256, 1000, 1000)
+
+
+def test_object_version_tags(app, db, dummy_location):
+    """Test object version tags."""
+    f = FileInstance(uri="f1", size=1, checksum="mychecksum")
+    db.session.add(f)
+    db.session.commit()
+    b = Bucket.create()
+    obj1 = ObjectVersion.create(b, "test").set_file(f)
+    ObjectVersionTag.create(obj1, "mykey", "testvalue")
+    ObjectVersionTag.create(obj1, "another_key", "another value")
+    db.session.commit()
+
+    # Duplicate key
+    pytest.raises(
+        IntegrityError, ObjectVersionTag.create, obj1, "mykey", "newvalue")
+
+    # Test get
+    assert ObjectVersionTag.query.count() == 2
+    assert ObjectVersionTag.get(obj1, "mykey").value == "testvalue"
+    assert ObjectVersionTag.get_value(obj1.version_id, "another_key") \
+        == "another value"
+    assert ObjectVersionTag.get_value(obj1, "invalid") is None
+
+    # Test delete
+    ObjectVersionTag.delete(obj1, "mykey")
+    assert ObjectVersionTag.query.count() == 1
+    ObjectVersionTag.delete(obj1, "invalid")
+    assert ObjectVersionTag.query.count() == 1
+
+    # Create or update
+    ObjectVersionTag.create_or_update(obj1, "another_key", "newval")
+    ObjectVersionTag.create_or_update(obj1.version_id, "newkey", "testval")
+    db.session.commit()
+    assert ObjectVersionTag.get_value(obj1, "another_key") == "newval"
+    assert ObjectVersionTag.get_value(obj1, "newkey") == "testval"
+
+    # Get tags as dictionary
+    assert obj1.get_tags() == dict(another_key="newval", newkey="testval")
+    obj2 = ObjectVersion.create(b, 'test2')
+    assert obj2.get_tags() == dict()
+
+    # Copy object version
+    obj_copy = obj1.copy()
+    db.session.commit()
+    assert obj_copy.get_tags() == dict(another_key="newval", newkey="testval")
+    assert ObjectVersionTag.query.count() == 4
+
+    # Cascade delete
+    ObjectVersion.query.delete()
+    db.session.commit()
+    assert ObjectVersionTag.query.count() == 0

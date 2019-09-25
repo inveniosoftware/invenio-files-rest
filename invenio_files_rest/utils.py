@@ -1,32 +1,26 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2016 CERN.
+# Copyright (C) 2016-2019 CERN.
 #
-# Invenio is free software; you can redistribute it
-# and/or modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the
-# License, or (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be
-# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio; if not, write to the
-# Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307, USA.
-#
-# In applying this license, CERN does not
-# waive the privileges and immunities granted to it by virtue of its status
-# as an Intergovernmental Organization or submit itself to any jurisdiction.
+# Invenio is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
 
-"""Implementention of various utility functions."""
+"""Implementation of various utility functions."""
+
+import mimetypes
 
 import six
 from flask import current_app
 from werkzeug.utils import import_string
+
+ENCODING_MIMETYPES = {
+    'gzip': 'application/gzip',
+    'compress': 'application/gzip',
+    'bzip2': 'application/x-bzip2',
+    'xz': 'application/x-xz',
+}
+"""Mapping encoding to MIME types which are not in mimetypes.types_map."""
 
 
 def obj_or_import_string(value, default=None):
@@ -51,3 +45,14 @@ def load_or_import_from_config(key, app=None, default=None):
     app = app or current_app
     imp = app.config.get(key)
     return obj_or_import_string(imp, default=default)
+
+
+def guess_mimetype(filename):
+    """Map extra mimetype with the encoding provided.
+
+    :returns: The extra mimetype.
+    """
+    m, encoding = mimetypes.guess_type(filename)
+    if encoding:
+        m = ENCODING_MIMETYPES.get(encoding, None)
+    return m or 'application/octet-stream'

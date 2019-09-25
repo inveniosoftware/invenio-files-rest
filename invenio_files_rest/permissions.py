@@ -1,33 +1,14 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015, 2016 CERN.
+# Copyright (C) 2015-2019 CERN.
 #
-# Invenio is free software; you can redistribute it
-# and/or modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the
-# License, or (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be
-# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio; if not, write to the
-# Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307, USA.
-#
-# In applying this license, CERN does not
-# waive the privileges and immunities granted to it by virtue of its status
-# as an Intergovernmental Organization or submit itself to any jurisdiction.
+# Invenio is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
 
 """Permissions for files using Invenio-Access."""
 
-from functools import partial
-
-from invenio_access.permissions import DynamicPermission, \
-    ParameterizedActionNeed
+from invenio_access import Permission, action_factory
 
 from .models import Bucket, MultipartObject, ObjectVersion
 
@@ -35,48 +16,42 @@ from .models import Bucket, MultipartObject, ObjectVersion
 # Action needs
 #
 
-LocationUpdate = partial(
-    ParameterizedActionNeed, 'files-rest-location-update')
+LocationUpdate = action_factory('files-rest-location-update', parameter=True)
 """Action needed: location update."""
 
-BucketRead = partial(
-    ParameterizedActionNeed, 'files-rest-bucket-read')
+BucketRead = action_factory('files-rest-bucket-read', parameter=True)
 """Action needed: list objects in bucket."""
 
-BucketReadVersions = partial(
-    ParameterizedActionNeed, 'files-rest-bucket-read-versions')
+BucketReadVersions = action_factory(
+    'files-rest-bucket-read-versions', parameter=True)
 """Action needed: list object versions in bucket."""
 
-BucketUpdate = partial(
-    ParameterizedActionNeed, 'files-rest-bucket-update')
+BucketUpdate = action_factory('files-rest-bucket-update', parameter=True)
 """Action needed: create objects and multipart uploads in bucket."""
 
-BucketListMultiparts = partial(
-    ParameterizedActionNeed, 'files-rest-bucket-listmultiparts')
+BucketListMultiparts = action_factory(
+    'files-rest-bucket-listmultiparts', parameter=True)
 """Action needed: list multipart uploads in bucket."""
 
-ObjectRead = partial(
-    ParameterizedActionNeed, 'files-rest-object-read')
+ObjectRead = action_factory('files-rest-object-read', parameter=True)
 """Action needed: get object in bucket."""
 
-ObjectReadVersion = partial(
-    ParameterizedActionNeed, 'files-rest-object-read-version')
+ObjectReadVersion = action_factory(
+    'files-rest-object-read-version', parameter=True)
 """Action needed: get object version in bucket."""
 
-ObjectDelete = partial(
-    ParameterizedActionNeed, 'files-rest-object-delete')
+ObjectDelete = action_factory('files-rest-object-delete', parameter=True)
 """Action needed: delete object in bucket."""
 
-ObjectDeleteVersion = partial(
-    ParameterizedActionNeed, 'files-rest-object-delete-version')
+ObjectDeleteVersion = action_factory(
+    'files-rest-object-delete-version', parameter=True)
 """Action needed: permanently delete specific object version in bucket."""
 
-MultipartRead = partial(
-    ParameterizedActionNeed, 'files-rest-multipart-read')
+
+MultipartRead = action_factory('files-rest-multipart-read', parameter=True)
 """Action needed: list parts of a multipart upload in a bucket."""
 
-MultipartDelete = partial(
-    ParameterizedActionNeed, 'files-rest-multipart-delete')
+MultipartDelete = action_factory('files-rest-multipart-delete', parameter=True)
 """Action needed: abort a multipart upload."""
 
 
@@ -143,12 +118,12 @@ def permission_factory(obj, action):
         the action is global.
     :param action: The required action.
     :raises RuntimeError: If the object is unknown.
-    :returns: A :class:`invenio_access.permissions.DynamicPermission` instance.
+    :returns: A :class:`invenio_access.permissions.Permission` instance.
     """
     need_class = _action2need_map[action]
 
     if obj is None:
-        return DynamicPermission(need_class(None))
+        return Permission(need_class(None))
 
     arg = None
     if isinstance(obj, Bucket):
@@ -160,4 +135,4 @@ def permission_factory(obj, action):
     else:
         raise RuntimeError('Unknown object')
 
-    return DynamicPermission(need_class(arg))
+    return Permission(need_class(arg))

@@ -1,26 +1,10 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015, 2016 CERN.
+# Copyright (C) 2015-2019 CERN.
 #
-# Invenio is free software; you can redistribute it
-# and/or modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the
-# License, or (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be
-# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio; if not, write to the
-# Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307, USA.
-#
-# In applying this license, CERN does not
-# waive the privileges and immunities granted to it by virtue of its status
-# as an Intergovernmental Organization or submit itself to any jurisdiction.
+# Invenio is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
 
 """Files download/upload REST API similar to S3 for Invenio."""
 
@@ -29,17 +13,19 @@ from __future__ import absolute_import, print_function
 import uuid
 from functools import partial, wraps
 
-from flask import Blueprint, abort, current_app, request
+from flask import Blueprint, abort, current_app, json, request
 from flask_login import current_user
 from invenio_db import db
 from invenio_rest import ContentNegotiatedMethodView
 from marshmallow import missing
+from six.moves.urllib.parse import parse_qsl
 from webargs import fields
 from webargs.flaskparser import use_kwargs
 
-from .errors import FileSizeError, MissingQueryParameter, \
-    MultipartInvalidChunkSize
-from .models import Bucket, MultipartObject, ObjectVersion, Part
+from .errors import DuplicateTagError, ExhaustedStreamError, FileSizeError, \
+    InvalidTagError, MissingQueryParameter, MultipartInvalidChunkSize
+from .models import Bucket, MultipartObject, ObjectVersion, ObjectVersionTag, \
+    Part
 from .proxies import current_files_rest, current_permission_factory
 from .serializer import json_serializer
 from .signals import file_downloaded
@@ -78,6 +64,39 @@ def invalid_subresource_validator(value):
     abort(405)
 
 
+def validate_tag(key, value):
+    """Validate a tag.
+
+    Keys must be less than 128 chars and values must be less than 256 chars.
+    """
+    # Note, parse_sql does not include a keys if the value is an empty string
+    # (e.g. 'key=&test=a'), and thus technically we should not get strings
+    # which have zero length.
+    klen = len(key)
+    vlen = len(value)
+
+    return klen > 0 and klen < 256 and vlen > 0 and vlen < 256
+
+
+def parse_header_tags():
+    """Parse tags specified in the HTTP request header."""
+    # Get the value of the custom HTTP header and interpret it as an query
+    # string
+    qs = request.headers.get(
+        current_app.config['FILES_REST_FILE_TAGS_HEADER'], '')
+
+    tags = {}
+    for key, value in parse_qsl(qs):
+        # Check for duplicate keys
+        if key in tags:
+            raise DuplicateTagError()
+        # Check for too short/long keys and values.
+        if not validate_tag(key, value):
+            raise InvalidTagError()
+        tags[key] = value
+    return tags or None
+
+
 #
 # Part upload factories
 #
@@ -86,18 +105,23 @@ def invalid_subresource_validator(value):
         load_from='partNumber',
         location='query',
         required=True,
+        data_key='partNumber',
     ),
     'content_length': fields.Int(
         load_from='Content-Length',
         location='headers',
         required=True,
         validate=minsize_validator,
+        data_key='Content-Length',
     ),
     'content_type': fields.Str(
         load_from='Content-Type',
         location='headers',
+        data_key='Content-Type',
+
     ),
     'content_md5': fields.Str(
+        data_key='Content-MD5',
         load_from='Content-MD5',
         location='headers',
     ),
@@ -114,23 +138,26 @@ def default_partfactory(part_number=None, content_length=None,
         type, MD5 of the content.
     """
     return content_length, part_number, request.stream, content_type, \
-        content_md5
+        content_md5, None
 
 
 @use_kwargs({
     'content_md5': fields.Str(
         load_from='Content-MD5',
+        data_key='Content-MD5',
         location='headers',
         missing=None,
     ),
     'content_length': fields.Int(
         load_from='Content-Length',
+        data_key='Content-Length',
         location='headers',
         required=True,
         validate=minsize_validator,
     ),
     'content_type': fields.Str(
         load_from='Content-Type',
+        data_key='Content-Type',
         location='headers',
         missing='',
     ),
@@ -148,23 +175,27 @@ def stream_uploadfactory(content_md5=None, content_length=None,
     """
     if content_type.startswith('multipart/form-data'):
         abort(422)
-    return request.stream, content_length, content_md5
+
+    return request.stream, content_length, content_md5, parse_header_tags()
 
 
 @use_kwargs({
     'part_number': fields.Int(
         load_from='_chunkNumber',
+        data_key='_chunkNumber',
         location='form',
         required=True,
     ),
     'content_length': fields.Int(
         load_from='_currentChunkSize',
+        data_key='_currentChunkSize',
         location='form',
         required=True,
         validate=minsize_validator,
     ),
     'uploaded_file': fields.Raw(
         load_from='file',
+        data_key='file',
         location='files',
         required=True,
     ),
@@ -180,22 +211,25 @@ def ngfileupload_partfactory(part_number=None, content_length=None,
         header.
     """
     return content_length, part_number, uploaded_file.stream, \
-        uploaded_file.headers.get('Content-Type'), None
+        uploaded_file.headers.get('Content-Type'), None, None
 
 
 @use_kwargs({
     'content_length': fields.Int(
         load_from='_totalSize',
+        data_key='_totalSize',
         location='form',
         required=True,
     ),
     'content_type': fields.Str(
         load_from='Content-Type',
+        data_key='Content-Type',
         location='headers',
         required=True,
     ),
     'uploaded_file': fields.Raw(
         load_from='file',
+        data_key='file',
         location='files',
         required=True,
     ),
@@ -209,12 +243,13 @@ def ngfileupload_uploadfactory(content_length=None, content_type=None,
     :param content_length: The content length. (Default: ``None``)
     :param content_type: The HTTP Content-Type. (Default: ``None``)
     :param uploaded_file: The upload request. (Default: ``None``)
+    :param file_tags_header: The file tags. (Default: ``None``)
     :returns: A tuple containing stream, content length, and empty header.
     """
     if not content_type.startswith('multipart/form-data'):
         abort(422)
 
-    return uploaded_file.stream, content_length, None
+    return uploaded_file.stream, content_length, None, parse_header_tags()
 
 
 #
@@ -243,6 +278,16 @@ def pass_multipart(with_completed=False):
                 abort(404, 'uploadId does not exists.')
             return f(self, obj, *args, **kwargs)
         return inner
+    return decorate
+
+
+def ensure_input_stream_is_not_exhausted(f):
+    """Make sure that the input stream has not been read already."""
+    @wraps(f)
+    def decorate(*args, **kwargs):
+        if request.content_length and request.stream.is_exhausted:
+            raise ExhaustedStreamError()
+        return f(*args, **kwargs)
     return decorate
 
 
@@ -309,7 +354,7 @@ class LocationResource(ContentNegotiatedMethodView):
     """Service resource."""
 
     def __init__(self, *args, **kwargs):
-        """Instatiate content negotiated view."""
+        """Instantiate content negotiated view."""
         super(LocationResource, self).__init__(*args, **kwargs)
 
     @need_location_permission('location-update', hidden=False)
@@ -343,7 +388,7 @@ class BucketResource(ContentNegotiatedMethodView):
     }
 
     def __init__(self, *args, **kwargs):
-        """Instatiate content negotiated view."""
+        """Instantiate content negotiated view."""
         super(BucketResource, self).__init__(*args, **kwargs)
 
     @need_permissions(lambda self, bucket: bucket, 'bucket-listmultiparts')
@@ -389,7 +434,7 @@ class BucketResource(ContentNegotiatedMethodView):
 
     @use_kwargs(get_args)
     @pass_bucket
-    def get(self, bucket=None, versions=None, uploads=None):
+    def get(self, bucket=None, versions=missing, uploads=missing):
         """Get list of objects in the bucket.
 
         :param bucket: A :class:`invenio_files_rest.models.Bucket` instance.
@@ -413,11 +458,13 @@ class ObjectResource(ContentNegotiatedMethodView):
         'version_id': fields.UUID(
             location='query',
             load_from='versionId',
+            data_key='versionId',
             missing=None,
         ),
         'upload_id': fields.UUID(
             location='query',
             load_from='uploadId',
+            data_key='uploadId',
             missing=None,
         ),
         'uploads': fields.Raw(
@@ -441,6 +488,7 @@ class ObjectResource(ContentNegotiatedMethodView):
         'upload_id': fields.UUID(
             location='query',
             load_from='uploadId',
+            data_key='uploadId',
             missing=None,
         )
     }
@@ -449,6 +497,7 @@ class ObjectResource(ContentNegotiatedMethodView):
         'upload_id': fields.UUID(
             location='query',
             load_from='uploadId',
+            data_key='uploadId',
             missing=None,
         ),
     }
@@ -462,11 +511,12 @@ class ObjectResource(ContentNegotiatedMethodView):
             locations=('query', 'json'),
             missing=None,
             load_from='partSize',
+            data_key='partSize',
         ),
     }
 
     def __init__(self, *args, **kwargs):
-        """Instatiate content negotiated view."""
+        """Instantiate content negotiated view."""
         super(ObjectResource, self).__init__(*args, **kwargs)
 
     #
@@ -516,7 +566,7 @@ class ObjectResource(ContentNegotiatedMethodView):
         # User can tamper with Content-Length, so this is just an initial up
         # front check. The storage subsystem must validate the size limit as
         # well.
-        stream, content_length, content_md5 = \
+        stream, content_length, content_md5, tags = \
             current_files_rest.upload_factory()
 
         size_limit = bucket.size_limit
@@ -529,6 +579,11 @@ class ObjectResource(ContentNegotiatedMethodView):
             obj = ObjectVersion.create(bucket, key)
             obj.set_contents(
                 stream, size=content_length, size_limit=size_limit)
+            # Check add tags
+            if tags:
+                for key, value in tags.items():
+                    ObjectVersionTag.create(obj, key, value)
+
         db.session.commit()
         return self.make_response(
             data=obj,
@@ -557,7 +612,6 @@ class ObjectResource(ContentNegotiatedMethodView):
             # Create a delete marker.
             with db.session.begin_nested():
                 ObjectVersion.delete(bucket, obj.key)
-            db.session.commit()
         else:
             # Permanently delete specific object version.
             check_permission(
@@ -565,10 +619,19 @@ class ObjectResource(ContentNegotiatedMethodView):
                 hidden=False,
             )
             obj.remove()
-            db.session.commit()
+            # Set newest object as head
+            if obj.is_head:
+                obj_to_restore = \
+                    ObjectVersion.get_versions(obj.bucket,
+                                               obj.key,
+                                               desc=True).first()
+                if obj_to_restore:
+                    obj_to_restore.is_head = True
+
             if obj.file_id:
                 remove_file_data.delay(str(obj.file_id))
 
+        db.session.commit()
         return self.make_response('', 204)
 
     @staticmethod
@@ -657,7 +720,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             instance.
         :returns: A Flask response.
         """
-        content_length, part_number, stream, content_type, content_md5 = \
+        content_length, part_number, stream, content_type, content_md5, tags =\
             current_files_rest.multipart_partfactory()
 
         if content_length:
@@ -763,7 +826,8 @@ class ObjectResource(ContentNegotiatedMethodView):
     @use_kwargs(post_args)
     @pass_bucket
     @need_bucket_permission('bucket-update')
-    def post(self, bucket=None, key=None, uploads=None, upload_id=None):
+    @ensure_input_stream_is_not_exhausted
+    def post(self, bucket=None, key=None, uploads=missing, upload_id=None):
         """Upload a new object or start/complete a multipart upload.
 
         :param bucket: The bucket (instance or id) to get the object from.
@@ -781,6 +845,7 @@ class ObjectResource(ContentNegotiatedMethodView):
     @use_kwargs(put_args)
     @pass_bucket
     @need_bucket_permission('bucket-update')
+    @ensure_input_stream_is_not_exhausted
     def put(self, bucket=None, key=None, upload_id=None):
         """Update a new object or upload a part of a multipart upload.
 
@@ -813,6 +878,7 @@ class ObjectResource(ContentNegotiatedMethodView):
         else:
             obj = self.get_object(bucket, key, version_id)
             return self.delete_object(bucket, obj, version_id)
+
 
 #
 # Blueprint definition

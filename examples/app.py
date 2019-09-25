@@ -1,26 +1,10 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015, 2016 CERN.
+# Copyright (C) 2015-2019 CERN.
 #
-# Invenio is free software; you can redistribute it
-# and/or modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the
-# License, or (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be
-# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio; if not, write to the
-# Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307, USA.
-#
-# In applying this license, CERN does not
-# waive the privileges and immunities granted to it by virtue of its status
-# as an Intergovernmental Organization or submit itself to any jurisdiction.
+# Invenio is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
 
 """Minimal Flask application example for development.
 
@@ -35,7 +19,7 @@ Install requirements:
 
    $ pip install -e .[all]
    $ cd examples
-   $ ./app-setup.py
+   $ ./app-setup.sh
    $ ./app-fixtures.sh
 
 Run example development server:
@@ -61,6 +45,12 @@ Endpoints
 Administration interface is available on::
 
    http://localhost:5000/admin/
+
+To access the admin interface the user needs to have superuser access rights.
+
+.. code-block:: console
+
+   $ flask access allow superuser-access user <inser_user_email>
 
 REST API is available on::
 
@@ -186,7 +176,7 @@ from os.path import dirname, exists, join
 from flask import Flask, current_app
 from flask_babelex import Babel
 from flask_menu import Menu
-from invenio_access import InvenioAccess
+from invenio_access import ActionSystemRoles, InvenioAccess, any_user
 from invenio_accounts import InvenioAccounts
 from invenio_accounts.views import blueprint as accounts_blueprint
 from invenio_admin import InvenioAdmin
@@ -198,6 +188,14 @@ from invenio_files_rest import InvenioFilesREST
 from invenio_files_rest.models import Bucket, FileInstance, Location, \
     MultipartObject, ObjectVersion, Part
 from invenio_files_rest.views import blueprint
+
+
+def allow_all(*args, **kwargs):
+    """Return permission that always allow an access.
+    :returns: A object instance with a ``can()`` method.
+    """
+    return type('Allow', (), {'can': lambda self: True})()
+
 
 # Create Flask application
 app = Flask(__name__)
@@ -213,6 +211,7 @@ app.config.update(dict(
         'SQLALCHEMY_DATABASE_URI', 'sqlite:///test.db'
     ),
     SQLALCHEMY_TRACK_MODIFICATIONS=True,
+    FILES_REST_PERMISSION_FACTORY=allow_all,
 ))
 
 Babel(app)

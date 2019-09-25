@@ -1,40 +1,26 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015, 2016 CERN.
+# Copyright (C) 2015-2019 CERN.
 #
-# Invenio is free software; you can redistribute it
-# and/or modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the
-# License, or (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be
-# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio; if not, write to the
-# Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307, USA.
-#
-# In applying this license, CERN does not
-# waive the privileges and immunities granted to it by virtue of its status
-# as an Intergovernmental Organization or submit itself to any jurisdiction.
+# Invenio is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
 
 """REST API serializers."""
 
 import json
+import warnings
 from time import sleep
 
 from flask import current_app, request, url_for
-from marshmallow import Schema, fields, missing, post_dump
+from invenio_rest.serializer import BaseSchema as InvenioRestBaseSchema
+from marshmallow import fields, missing, post_dump
 
 from .errors import FilesException
 from .models import Bucket, MultipartObject, ObjectVersion, Part
 
 
-class BaseSchema(Schema):
+class BaseSchema(InvenioRestBaseSchema):
     """Base schema for all serializations."""
 
     created = fields.DateTime(dump_only=True)
@@ -76,6 +62,11 @@ class ObjectVersionSchema(BaseSchema):
     size = fields.Integer(attribute='file.size')
     checksum = fields.String(attribute='file.checksum')
     delete_marker = fields.Boolean(attribute='deleted')
+    tags = fields.Method('dump_tags', dump_only=True)
+
+    def dump_tags(self, o):
+        """Dump tags."""
+        return o.get_tags()
 
     def dump_links(self, o):
         """Dump links."""
@@ -219,14 +210,7 @@ def schema_from_context(context):
 
 
 def _format_args():
-    try:
-        pretty_format = \
-            current_app.config['JSONIFY_PRETTYPRINT_REGULAR'] and \
-            not request.is_xhr
-    except RuntimeError:
-        pretty_format = False
-
-    if pretty_format:
+    if request and request.args.get('prettyprint'):
         return dict(
             indent=2,
             separators=(', ', ': '),

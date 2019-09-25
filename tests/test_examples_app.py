@@ -1,26 +1,10 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2016 CERN.
+# Copyright (C) 2016-2019 CERN.
 #
-# Invenio is free software; you can redistribute it
-# and/or modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the
-# License, or (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be
-# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio; if not, write to the
-# Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307, USA.
-#
-# In applying this license, CERN does not
-# waive the privileges and immunities granted to it by virtue of its status
-# as an Intergovernmental Organization or submit itself to any jurisdiction.
+# Invenio is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
 
 """Test example app."""
 
@@ -41,6 +25,11 @@ def example_app():
     project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     exampleappdir = os.path.join(project_dir, 'examples')
     os.chdir(exampleappdir)
+
+    # tear down example app
+    cmd = './app-teardown.sh'
+    subprocess.call(cmd, shell=True)
+
     # setup example
     cmd = './app-setup.sh'
     exit_status = subprocess.call(cmd, shell=True)
@@ -49,10 +38,7 @@ def example_app():
     cmd = 'FLASK_APP=app.py flask run --debugger -p 5000'
     webapp = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                               preexec_fn=os.setsid, shell=True)
-    # Starting celery
-    cmd = 'celery worker -A app.celery -l info --purge'
-    webapp = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                              preexec_fn=os.setsid, shell=True)
+
     time.sleep(10)
     # return webapp
     yield webapp

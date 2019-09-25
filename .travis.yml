@@ -1,26 +1,10 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015, 2016 CERN.
+# Copyright (C) 2015-2019 CERN.
 #
-# Invenio is free software; you can redistribute it
-# and/or modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the
-# License, or (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be
-# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio; if not, write to the
-# Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307, USA.
-#
-# In applying this license, CERN does not
-# waive the privileges and immunities granted to it by virtue of its status
-# as an Intergovernmental Organization or submit itself to any jurisdiction.
+# Invenio is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
 
 
 notifications:
@@ -30,6 +14,10 @@ language: python
 
 matrix:
   fast_finish: true
+  allow_failures:
+    - env: REQUIREMENTS=devel EXTRAS=all,sqlite SQLALCHEMY_DATABASE_URI="sqlite:///test.db"
+    - env: REQUIREMENTS=devel EXTRAS=all,mysql SQLALCHEMY_DATABASE_URI="mysql+pymysql://root@localhost:3306/invenio"
+    - env: REQUIREMENTS=devel EXTRAS=all,postgresql SQLALCHEMY_DATABASE_URI="postgresql+psycopg2://postgres@localhost:5432/invenio"
 
 cache:
   directories:
@@ -64,6 +52,7 @@ env:
   - REQUIREMENTS=devel EXTRAS=all,mysql SQLALCHEMY_DATABASE_URI="mysql+pymysql://root@localhost:3306/invenio"
   - REQUIREMENTS=devel EXTRAS=all,postgresql SQLALCHEMY_DATABASE_URI="postgresql+psycopg2://postgres@localhost:5432/invenio"
 
+
 python:
   - "2.7"
   - "3.5"
@@ -88,9 +77,9 @@ after_success:
 
 deploy:
   provider: pypi
-  user: lnielsen
+  user: inveniosoftware
   password:
-    secure: dBKlAXVbmKa7rqiMQf+BjcakbRB5NbsuX75OVu8A+1r4N+pCzExPMj13tiQnZUEeTZdclmSHC54M9s3hSsOUlL7BznCvg+gyJfb2csKeme14gyO7cGo36gIfYk/sShNYN9j6B2WcQOLKQR66MoS0qIQWlZtHR+Hh1jcaXBRkFXAfPia1cY6cyaZpx7wWv0+smMuGXOvlQYKsBFTHFZq0vuW1eSfUm1l8L0WoirUN80AFUOVp1DiKsNXLV6EVfJzpuHniGnUw5Sv09Bi2nctyeZZP1x4PtkCTnYjyVehWGoTCmxT09tgkcdQgpHOwY7fHYv4PT5t+mlTZmmmlDIq/bpX0wblngVrWQjj6YBYwA8VnbIW+q003x8AyrP6shxY94cZWzNT11eeQQzJJVx4Rvyuzi/hQIviewubQfbHF7vZkIJV/iIE+f5rDSwLg1KO0MzThVs0QIXQlJMLyiRX36egEDRJQ/MJhvhVaVS8abRdi/mcey8B4mVxWcwu/OHbNvSWxW/r1Cnj6SMW3PMAnOgmrO1DreSIN6in9Qh6wnboCWMjNEQQk8P62+a+uBoaiJHA0LRi3dygFWw6FKS60zcdAynk8paQzfFxdaZtwMbcMku/4YEXwDtcjweboUUSM2OAI287otWA+4nFdiB5SuHYoQAV33Q3HbtCQWbU/TBM=
+    secure: "q698pNV2H5J6ll9Ot3CCufkdc6uE8HX5XfJ7oCvrHeaA11aAYjQ1h90Bfcocb7E2KH91VnbO9ZD9ByMg5m8nwf4q8tdzHqE44etBuI7Zv1S17wJKrR4E2MmpZ/NLHTmudVEO6bQ/fEOuwrQgiQ6v63Uh446T33EigUCtSQxwZWJeTyrivob7gWv35gHMCI9NoD7xRoKFo+6lBHHr+FU0Lr2iJ7sFc5i+0yWfdJ5q1dre/kO+GYSW11ckR5Uhb/dlsnS8skJcAlKVGGpXMyBMFCD3ajPCmTQrq0VfNMVpPZbVsewNkrVOuAhzJPWC9wh6TvPZ09akcKlG3VdElcVsfO7kpPNbroXHFIwq7t0uwcnZCw+f5LkXaYT3zeIH6lO4Jue4JN2Ux2adkvy911dP7GFvsEf00iqQCwsXWMFIaczs9v02+k5h9tN9kw5tgp4hqLVklnM/gvrwx1KpuFyHi4r0lCYpmp4ehTj/3SssvtJTrownJTy9vk+OH/tdeLfG7s90auG7tDalPktq8q/daZ24nxeW09qTz5VpvZn+U7pc3k6g2DVZzU4j+qa0Uu1GUvrGZiFlMTSd6PX8IfHAQ3FECrP05Z9tCrklsI86dZKVdE5rENceDNTs9U63U+fFMgZArlsnp+82bqBUL1VdRJCjDu3k7LfEkzLPTv1xfgM="
   distributions: "compile_catalog sdist bdist_wheel"
   on:
     tags: true

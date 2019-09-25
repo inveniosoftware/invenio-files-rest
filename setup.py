@@ -1,26 +1,10 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015, 2016 CERN.
+# Copyright (C) 2015-2019 CERN.
 #
-# Invenio is free software; you can redistribute it
-# and/or modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the
-# License, or (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be
-# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio; if not, write to the
-# Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307, USA.
-#
-# In applying this license, CERN does not
-# waive the privileges and immunities granted to it by virtue of its status
-# as an Intergovernmental Organization or submit itself to any jurisdiction.
+# Invenio is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
 
 """Files download/upload REST API similar to S3 for Invenio."""
 
@@ -33,21 +17,20 @@ history = open('CHANGES.rst').read()
 
 tests_require = [
     'Flask-BabelEx>=0.9.3',
-    'Flask-Menu>=0.4.0',
+    'Flask-Menu>=0.5.0',
     'SQLAlchemy-Continuum>=1.2.1',
     'check-manifest>=0.25',
     'coverage>=4.0',
-    'invenio-access>=1.0.0a11',
-    'invenio-accounts>=1.0.0b3',
-    'invenio-admin>=1.0.0b1',
-    'invenio-celery>=1.0.0b2',
+    'invenio-access>=1.0.0',
+    'invenio-accounts>=1.0.0',
+    'invenio-admin>=1.0.0',
+    'invenio-celery>=1.0.0',
     'isort>=4.3.4',
     'mock>=1.3.0',
     'pydocstyle>=1.0.0',
-    'pytest-cache>=1.0',
     'pytest-cov>=1.8.0',
     'pytest-pep8>=1.0.6',
-    'pytest>=3.5.0',
+    'pytest>=4.0.0,<5.0.0',
 ]
 
 extras_require = {
@@ -56,16 +39,17 @@ extras_require = {
         'sphinxcontrib-httpdomain>=1.4.0',
     ],
     'postgresql': [
-        'invenio-db[postgresql]>=1.0.0b3',
+        'invenio-db[postgresql]>=1.0.0',
     ],
     'mysql': [
-        'invenio-db[mysql]>=1.0.0b3',
+        'invenio-db[mysql]>=1.0.0',
     ],
     'sqlite': [
-        'invenio-db>=1.0.0b3',
+        'invenio-db>=1.0.0',
     ],
     'tests': tests_require,
 }
+
 
 extras_require['all'] = []
 for name, reqs in extras_require.items():
@@ -73,16 +57,17 @@ for name, reqs in extras_require.items():
         continue
     extras_require['all'].extend(reqs)
 
+
 install_requires = [
-    'Flask-CeleryExt>=0.2.2',
+    'Flask-CeleryExt>=0.3.1',
     'Flask-Login>=0.3.2',
     'Flask-WTF>=0.13.1',
     'Flask>=0.11.1',
+    'fs>=0.5.4,<2.0',
+    'invenio-rest[cors]>=1.1.0',
+    'simplejson>=3.0.0',
     'SQLAlchemy-Utils>=0.31.0',
     'WTForms>=2.0',
-    'fs>=0.5.4,<2.0',
-    'invenio-rest[cors]>=1.0.0a10',
-    'webargs>=1.1.1',
 ]
 
 setup_requires = [
@@ -103,7 +88,7 @@ setup(
     description=__doc__,
     long_description=readme + '\n\n' + history,
     keywords='invenio files REST',
-    license='GPLv2',
+    license='MIT',
     author='CERN',
     author_email='info@inveniosoftware.org',
     url='https://github.com/inveniosoftware/invenio-files-rest',
@@ -175,7 +160,7 @@ setup(
     classifiers=[
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: GNU General Public License v2 (GPLv2)',
+        'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
@@ -184,7 +169,8 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: Implementation :: CPython',
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 5 - Production/Stable',
     ],
 )

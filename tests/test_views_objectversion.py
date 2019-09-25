@@ -1,26 +1,10 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2016 CERN.
+# Copyright (C) 2016-2019 CERN.
 #
-# Invenio is free software; you can redistribute it
-# and/or modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the
-# License, or (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be
-# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio; if not, write to the
-# Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307, USA.
-#
-# In applying this license, CERN does not
-# waive the privileges and immunities granted to it by virtue of its status
-# as an Intergovernmental Organization or submit itself to any jurisdiction.
+# Invenio is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
 
 """Test object related views."""
 
@@ -143,8 +127,11 @@ def test_last_modified_utc_conversion(client, headers, bucket, permissions):
     assert abs(get_resp.last_modified - updated) < timedelta(seconds=1)
 
 
-def test_get_unreadable_file(client, headers, bucket, objects, db):
+def test_get_unreadable_file(client, headers, bucket, objects, db,
+                             admin_user):
     """Test getting an object with an unreadable file."""
+    login_user(client, admin_user)
+
     obj = objects[0]
     assert obj.is_head
     obj.file.readable = False
@@ -306,8 +293,10 @@ def test_put_versioning(client, bucket, permissions, get_md5, get_json):
     (None, None, 200, None),
 ])
 def test_put_file_size_errors(client, db, bucket, quota_size, max_file_size,
-                              expected, err):
+                              expected, err, admin_user):
     """Test that file size errors are properly raised."""
+    login_user(client, admin_user)
+
     filedata = b'a' * 75
     object_url = url_for(
         'invenio_files_rest.object_api', bucket_id=bucket.id, key='test.txt')
@@ -331,7 +320,9 @@ def test_put_file_size_errors(client, db, bucket, quota_size, max_file_size,
         assert resp.status_code == 400
 
 
-def test_put_invalid_key(client, db, bucket):
+def test_put_invalid_key(client, db, bucket, admin_user):
+    login_user(client, admin_user)
+
     """Test invalid key name."""
     key = 'a' * 2000
     object_url = url_for(
@@ -342,8 +333,10 @@ def test_put_invalid_key(client, db, bucket):
     assert resp.status_code == 400
 
 
-def test_put_zero_size(client, bucket):
+def test_put_zero_size(client, bucket, admin_user):
     """Test zero size file."""
+    login_user(client, admin_user)
+
     object_url = url_for(
         'invenio_files_rest.object_api', bucket_id=bucket.id, key='test.txt')
 
@@ -352,8 +345,10 @@ def test_put_zero_size(client, bucket):
     assert resp.status_code == 400
 
 
-def test_put_deleted_locked(client, db, bucket):
+def test_put_deleted_locked(client, db, bucket, admin_user):
     """Test that file size errors are properly raised."""
+    login_user(client, admin_user)
+
     object_url = url_for(
         'invenio_files_rest.object_api', bucket_id=bucket.id, key='test.txt')
 
@@ -374,8 +369,10 @@ def test_put_deleted_locked(client, db, bucket):
     assert resp.status_code == 404
 
 
-def test_put_error(client, bucket):
+def test_put_error(client, bucket, admin_user):
     """Test upload - cancelled by user."""
+    login_user(client, admin_user)
+
     object_url = url_for(
         'invenio_files_rest.object_api', bucket_id=bucket.id, key='test.txt')
 
@@ -391,8 +388,10 @@ def test_put_error(client, bucket):
     assert len(list(opener.opendir(bucket.location.uri).walk('.'))) == 3
 
 
-def test_put_multipartform(client, bucket):
+def test_put_multipartform(client, bucket, admin_user):
     """Test upload via multipart/form-data."""
+    login_user(client, admin_user)
+
     object_url = url_for(
         'invenio_files_rest.object_api', bucket_id=bucket.id, key='test.txt')
 
@@ -473,7 +472,30 @@ def test_delete_versions(client, db, bucket, versions, permissions, user,
         )).status_code == 404
 
 
-def test_delete_locked_deleted(client, db, bucket, versions):
+def test_delete_versions_head_reset(client, db, bucket, versions, admin_user):
+    """Test head setting after deletion."""
+    login_user(client, admin_user)
+    key = 'LICENSE'
+    versions_to_delete = \
+        [version for version in versions if version.key == key]
+    assert len(versions_to_delete) == 2
+    for obj in versions_to_delete:
+        if obj.is_head:
+            version_to_delete = obj
+        else:
+            new_head_obj = obj
+    assert not new_head_obj.is_head
+    res = client.delete(url_for(
+        'invenio_files_rest.object_api',
+        bucket_id=bucket.id,
+        key=version_to_delete.key,
+        versionId=version_to_delete.version_id))
+    assert res.status_code == 204
+    assert new_head_obj.is_head
+
+
+def test_delete_locked_deleted(client, db, bucket, versions,
+                               admin_user):
     """Test a deleted/locked bucket."""
     obj = versions[0]
     object_url = url_for(
@@ -482,6 +504,8 @@ def test_delete_locked_deleted(client, db, bucket, versions):
     # Locked bucket
     bucket.locked = True
     db.session.commit()
+
+    login_user(client, admin_user)
 
     # Latest version
     resp = client.delete(object_url)
@@ -503,13 +527,15 @@ def test_delete_locked_deleted(client, db, bucket, versions):
     assert resp.status_code == 404
 
 
-def test_delete_unwritable(client, db, bucket, versions):
+def test_delete_unwritable(client, db, bucket, versions, admin_user):
     """Test deleting a file which is not writable."""
     obj = versions[0]
 
     # Unwritable file.
     obj.file.writable = False
     db.session.commit()
+
+    login_user(client, admin_user)
 
     # Delete specific version
     with patch('invenio_files_rest.views.remove_file_data') as task:
@@ -521,6 +547,59 @@ def test_delete_unwritable(client, db, bucket, versions):
     assert resp.status_code == 204
 
     # Won't remove anything because file is not writable.
-    FileInstance.query.count() == 4
+    assert FileInstance.query.count() == 4
     remove_file_data(obj.file_id)
-    FileInstance.query.count() == 4
+    assert FileInstance.query.count() == 4
+
+
+def test_put_header_tags(app, client, bucket, permissions, get_md5, get_json):
+    """Test upload of an object with tags in the headers."""
+    key = 'test.txt'
+    headers = {
+        app.config['FILES_REST_FILE_TAGS_HEADER']: (
+            'key1=val1;key2=val2;key3=val3')
+    }
+
+    login_user(client, permissions['bucket'])
+    resp = client.put(
+        url_for('invenio_files_rest.object_api', bucket_id=bucket.id, key=key),
+        input_stream=BytesIO(b'updated_content'),
+        headers=headers,
+    )
+    assert resp.status_code == 200
+
+    tags = ObjectVersion.get(bucket, key).get_tags()
+    assert tags['key1'] == 'val1'
+    assert tags['key2'] == 'val2'
+    assert tags['key3'] == 'val3'
+
+
+def test_put_header_invalid_tags(app, client, bucket, permissions, get_md5,
+                                 get_json):
+    """Test upload of an object with tags in the headers."""
+    header_name = app.config['FILES_REST_FILE_TAGS_HEADER']
+    invalid = [
+        # We don't test zero-length values/keys, because they are filtered out
+        # from parse_qsl
+        ('a'*256, 'valid'),
+        ('valid', 'b'*256),
+    ]
+
+    login_user(client, permissions['bucket'])
+    # Invalid key or values
+    for k, v in invalid:
+        resp = client.put(
+            url_for(
+                'invenio_files_rest.object_api', bucket_id=bucket.id, key='k'),
+            input_stream=BytesIO(b'updated_content'),
+            headers={header_name: '{}={}'.format(k, v)},
+        )
+        assert resp.status_code == 400
+
+    # Duplicate key
+    resp = client.put(
+        url_for('invenio_files_rest.object_api', bucket_id=bucket.id, key='k'),
+        input_stream=BytesIO(b'updated_content'),
+        headers={header_name: 'a=1&a=2'},
+    )
+    assert resp.status_code == 400

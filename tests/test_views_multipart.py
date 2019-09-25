@@ -1,26 +1,10 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2016 CERN.
+# Copyright (C) 2016-2019 CERN.
 #
-# Invenio is free software; you can redistribute it
-# and/or modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the
-# License, or (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be
-# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio; if not, write to the
-# Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307, USA.
-#
-# In applying this license, CERN does not
-# waive the privileges and immunities granted to it by virtue of its status
-# as an Intergovernmental Organization or submit itself to any jurisdiction.
+# Invenio is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
 
 """Module test views."""
 
@@ -82,8 +66,10 @@ def test_post_init(client, headers, permissions, bucket, get_json):
                 assert k in data
 
 
-def test_post_init_querystring(client, bucket, get_json):
+def test_post_init_querystring(client, bucket, get_json, admin_user):
     """Test init multipart upload."""
+    login_user(client, admin_user)
+
     res = client.post(
         obj_url(bucket),
         query_string='uploads&size=10&partSize=4',
@@ -100,8 +86,10 @@ def test_get_init_not_allowed(client, bucket, get_json):
     assert res.status_code == 405
 
 
-def test_post_invalid_partsizes(client, headers, bucket, get_json):
+def test_post_invalid_partsizes(client, headers, bucket, get_json, admin_user):
     """Test invalid multipart init."""
+    login_user(client, admin_user)
+
     # Part size too large
     res = client.post(
         obj_url(bucket), query_string='uploads', headers=headers,
@@ -121,8 +109,10 @@ def test_post_invalid_partsizes(client, headers, bucket, get_json):
     assert res.status_code == 400
 
 
-def test_post_size_limits(client, db, headers, bucket):
+def test_post_size_limits(client, db, headers, bucket, admin_user):
     """Test invalid multipart init."""
+    login_user(client, admin_user)
+
     bucket.quota_size = 100
     db.session.commit()
 
@@ -142,8 +132,10 @@ def test_post_size_limits(client, db, headers, bucket):
     assert res.status_code == 400
 
 
-def test_post_locked_bucket(client, db, headers, bucket, get_json):
+def test_post_locked_bucket(client, db, headers, bucket, get_json, admin_user):
     """Test invalid multipart init."""
+    login_user(client, admin_user)
+
     bucket.locked = True
     db.session.commit()
 
@@ -161,8 +153,10 @@ def test_post_locked_bucket(client, db, headers, bucket, get_json):
     assert res.status_code == 404
 
 
-def test_post_invalidkey(client, db, headers, bucket):
+def test_post_invalidkey(client, db, headers, bucket, admin_user):
     """Test invalid multipart init."""
+    login_user(client, admin_user)
+
     object_url = url_for(
         'invenio_files_rest.object_api',
         bucket_id=str(bucket.id),
@@ -222,8 +216,11 @@ def test_put_not_found(client, db, bucket, permissions, multipart,
     assert res.status_code == 404
 
 
-def test_put_wrong_sizes(client, db, bucket, multipart, multipart_url):
+def test_put_wrong_sizes(client, db, bucket, multipart, multipart_url,
+                         admin_user):
     """Test invalid part sizes."""
+    login_user(client, admin_user)
+
     cases = [
         b'a' * (multipart.chunk_size + 1),
         b'a' * (multipart.chunk_size - 1),
@@ -237,8 +234,11 @@ def test_put_wrong_sizes(client, db, bucket, multipart, multipart_url):
         assert res.status_code == 400
 
 
-def test_put_ngfileupload(client, db, bucket, multipart, multipart_url):
+def test_put_ngfileupload(client, db, bucket, multipart, multipart_url,
+                          admin_user):
     """Test invalid part sizes."""
+    login_user(client, admin_user)
+
     res = client.put(
         multipart_url,
         data={
@@ -255,8 +255,11 @@ def test_put_ngfileupload(client, db, bucket, multipart, multipart_url):
     assert res.status_code == 200
 
 
-def test_put_invalid_part_number(client, db, bucket, multipart, multipart_url):
+def test_put_invalid_part_number(client, db, bucket, multipart, multipart_url,
+                                 admin_user):
     """Test invalid part number."""
+    login_user(client, admin_user)
+
     data = b'a' * multipart.chunk_size
     for c in [400, 2000, 'a']:
         res = client.put(
@@ -266,8 +269,11 @@ def test_put_invalid_part_number(client, db, bucket, multipart, multipart_url):
         assert res.status_code == 400
 
 
-def test_put_completed_multipart(client, db, bucket, multipart, multipart_url):
+def test_put_completed_multipart(client, db, bucket, multipart, multipart_url,
+                                 admin_user):
     """Test uploading to a completed multipart upload."""
+    login_user(client, admin_user)
+
     multipart.completed = True
     db.session.commit()
 
@@ -278,8 +284,11 @@ def test_put_completed_multipart(client, db, bucket, multipart, multipart_url):
     assert res.status_code == 403
 
 
-def test_put_badstream(client, db, bucket, multipart, multipart_url, get_json):
+def test_put_badstream(client, db, bucket, multipart, multipart_url, get_json,
+                       admin_user):
     """Test uploading to a completed multipart upload."""
+    login_user(client, admin_user)
+
     client.put(
         multipart_url + '&partNumber={0}'.format(1),
         input_stream=BytesIO(b'a' * multipart.chunk_size),
@@ -329,15 +338,20 @@ def test_get(client, db, bucket, permissions, multipart, multipart_url,
             assert len(data['parts']) == 3
 
 
-def test_get_empty(client, multipart, multipart_url, get_json):
+def test_get_empty(client, multipart, multipart_url, get_json, admin_user):
     """Test get parts when empty."""
+    login_user(client, admin_user)
+
     data = get_json(client.get(multipart_url), code=200)
     assert len(data['parts']) == 0
     assert data['id'] == str(multipart.upload_id)
 
 
-def test_get_serialization(client, multipart, multipart_url, get_json):
+def test_get_serialization(client, multipart, multipart_url, get_json,
+                           admin_user):
     """Test get parts when empty."""
+    login_user(client, admin_user)
+
     client.put(
         multipart_url + '&partNumber={0}'.format(1),
         input_stream=BytesIO(b'a' * multipart.chunk_size),
@@ -409,8 +423,10 @@ def test_post_complete(client, headers, permissions, bucket, multipart,
 
 
 def test_post_complete_fail(client, headers, bucket, multipart,
-                            multipart_url, parts, get_json):
+                            multipart_url, parts, get_json, admin_user):
     """Test completing multipart when merge fails."""
+    login_user(client, admin_user)
+
     # Mock celery task to emulate real usage.
     task_result = MagicMock()
     task_result.ready = MagicMock(side_effect=[False, False, True])
@@ -435,8 +451,10 @@ def test_post_complete_fail(client, headers, bucket, multipart,
 
 
 def test_post_complete_timeout(app, client, headers, bucket, multipart,
-                               multipart_url, parts, get_json):
+                               multipart_url, parts, get_json, admin_user):
     """Test completing multipart when merge fails."""
+    login_user(client, admin_user)
+
     max_rounds = int(
         app.config['FILES_REST_TASK_WAIT_MAX_SECONDS'] //
         app.config['FILES_REST_TASK_WAIT_INTERVAL'])
@@ -525,3 +543,33 @@ def test_get_listuploads(client, db, bucket, multipart, multipart_url,
             bucket_id=str(bucket.id),
         ) + '?uploads')
         assert res.status_code == expected
+
+
+def test_already_exhausted_input_stream(app, client, db, bucket, admin_user):
+    """Test server error when file stream is already read."""
+    key = 'test.json'
+    data = b'{"json": "file"}'
+    object_url = url_for(
+        'invenio_files_rest.object_api', bucket_id=bucket.id, key=key)
+    # Add a new before request hook which reads the incoming request payload.
+    # This simulates what happens when Sentry's raven-python library when it
+    # reads the JSON payloads, breaking the upload of JSON files
+    # (`application/json`).
+
+    def consume_request_input_stream(*args):
+        """Reads input stream object."""
+        from flask import request
+        request.data
+
+    app.before_request(consume_request_input_stream)
+    login_user(client, admin_user)
+    resp = client.put(
+        object_url,
+        input_stream=BytesIO(data),
+    )
+    assert resp.status_code == 500
+    resp = client.post(
+        object_url,
+        input_stream=BytesIO(data),
+    )
+    assert resp.status_code == 500

@@ -1,26 +1,10 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015, 2016, 2017 CERN.
+# Copyright (C) 2015-2019 CERN.
 #
-# Invenio is free software; you can redistribute it
-# and/or modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the
-# License, or (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be
-# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio; if not, write to the
-# Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307, USA.
-#
-# In applying this license, CERN does not
-# waive the privileges and immunities granted to it by virtue of its status
-# as an Intergovernmental Organization or submit itself to any jurisdiction.
+# Invenio is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
 
 
 """Pytest configuration."""
@@ -38,12 +22,13 @@ from flask_babelex import Babel
 from flask_celeryext import FlaskCeleryExt
 from flask_menu import Menu
 from invenio_access import InvenioAccess
-from invenio_access.models import ActionUsers
+from invenio_access.models import ActionRoles, ActionUsers, Role
 from invenio_accounts import InvenioAccounts
 from invenio_accounts.testutils import create_test_user
 from invenio_accounts.views import blueprint as accounts_blueprint
 from invenio_db import InvenioDB
 from invenio_db import db as db_
+from invenio_db.utils import drop_alembic_version_table
 from six import BytesIO
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.schema import DropConstraint, DropSequence, DropTable
@@ -82,8 +67,12 @@ def base_app():
     app_ = Flask('testapp')
     app_.config.update(
         TESTING=True,
+        # Celery 3
         CELERY_ALWAYS_EAGER=True,
         CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+        # Celery 4
+        CELERY_TASK_ALWAYS_EAGER=True,
+        CELERY_TASK_EAGER_PROPAGATES=True,
         SQLALCHEMY_TRACK_MODIFICATIONS=True,
         SQLALCHEMY_DATABASE_URI=os.environ.get(
             'SQLALCHEMY_DATABASE_URI',
@@ -129,6 +118,7 @@ def db(app):
     yield db_
     db_.session.remove()
     db_.drop_all()
+    drop_alembic_version_table()
 
 
 @pytest.yield_fixture()
@@ -354,6 +344,44 @@ def permissions(db, bucket):
     db.session.commit()
 
     yield users
+
+
+@pytest.yield_fixture()
+def admin_user(db):
+    """Permission for admin users."""
+    perms = [
+        location_update_all,
+        bucket_read_all,
+        bucket_read_versions_all,
+        bucket_update_all,
+        bucket_listmultiparts_all,
+        object_read_all,
+        object_read_version_all,
+        object_delete_all,
+        object_delete_version_all,
+        multipart_read_all,
+        multipart_delete_all,
+        bucket_read_all,
+        object_read_all,
+        bucket_update_all,
+        object_delete_all,
+        multipart_read_all,
+        object_read_all,
+    ]
+
+    admin = Role(name='admin')
+
+    for perm in perms:
+        db.session.add(ActionRoles.allow(perm, role=admin))
+
+    admin_user = create_test_user(email='admin@invenio-software.org',
+                                  password='pass1',
+                                  active=True)
+    admin.users.append(admin_user)
+
+    db.session.commit()
+
+    yield admin_user
 
 
 @pytest.fixture()
