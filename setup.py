@@ -82,7 +82,7 @@ install_requires = [
     'WTForms>=2.0',
     'fs>=0.5.4,<2.0',
     'invenio-rest[cors]>=1.0.0a10',
-    'webargs>=1.1.1',
+    'webargs>=5.1.3',
     'simplejson>=3.0.0',
 ]
 
