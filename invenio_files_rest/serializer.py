@@ -200,7 +200,7 @@ serializer_mapping = {
 }
 
 
-def schema_from_context(context):
+def schema_from_context(context, serializer_mapping):
     """Determine which schema to use."""
     item_class = context.get('class')
     return (
@@ -268,7 +268,8 @@ def wait_for_taskresult(task_result, content, interval, max_rounds):
 
 
 def json_serializer(data=None, code=200, headers=None, context=None,
-                    etag=None, task_result=None):
+                    etag=None, task_result=None,
+                    serializer_mapping=serializer_mapping, view_name=None):
     """Build a json flask response using the given data.
 
     :param data: The data to serialize. (Default: ``None``)
@@ -278,10 +279,18 @@ def json_serializer(data=None, code=200, headers=None, context=None,
     :param etag: The ETag header. (Default: ``None``)
     :param task_result: Optionally you can pass async task to wait for.
         (Default: ``None``)
+    :param serializer_mapping: Optionally provide the serializer with a
+        different mapping.
+    :param view_name: Optionally push to the marshmallow context the view
+        name prefix,usefull in case of multiple routes pointing to the same
+        blueprint.
     :returns: A Flask response with json data.
     :rtype: :py:class:`flask.Response`
     """
-    schema_class, many = schema_from_context(context or {})
+    context = context or {}
+    if view_name:
+        context.update({'view_name': view_name})
+    schema_class, many = schema_from_context(context, serializer_mapping)
 
     if data is not None:
         # Generate JSON response
