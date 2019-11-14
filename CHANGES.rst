@@ -10,6 +10,10 @@
 Changes
 =======
 
+Version 1.0.2 (released 2019-11-14)
+
+- Adds optional serializer_mapping and view_name in `json_serializer` method
+
 Version 1.0.1 (released 2019-08-01)
 
 - Adds support for marshmallow 2 and 3.
