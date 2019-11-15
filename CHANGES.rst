@@ -10,6 +10,10 @@
 Changes
 =======
 
+Version 1.0.3 (released 2019-11-15)
+
+- Increase invenio-rest version to support Marshmallow 2 and 3 migration
+
 Version 1.0.2 (released 2019-11-14)
 
 - Adds optional serializer_mapping and view_name in `json_serializer` method
