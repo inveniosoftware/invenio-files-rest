@@ -63,6 +63,7 @@ class ObjectVersionSchema(BaseSchema):
     checksum = fields.String(attribute='file.checksum')
     delete_marker = fields.Boolean(attribute='deleted')
     tags = fields.Method('dump_tags', dump_only=True)
+    file_id = fields.UUID()
 
     def dump_tags(self, o):
         """Dump tags."""
