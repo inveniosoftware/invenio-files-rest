@@ -692,6 +692,13 @@ class FileInstance(db.Model, Timestamp):
     last_check = db.Column(db.Boolean(name='last_check'), default=True)
     """Result of last fixity check."""
 
+    last_secondary_check_at = db.Column(db.DateTime, nullable=True)
+    """Timestamp of last secondary fixity check."""
+
+    last_secondary_check = db.Column(
+        db.Boolean(name='last_secondary_check'), default=True)
+    """Result of last secondary fixity check."""
+
     @validates('uri')
     def validate_uri(self, key, uri):
         """Validate uri."""
@@ -759,15 +766,20 @@ class FileInstance(db.Model, Timestamp):
             progress_callback=progress_callback, chunk_size=chunk_size,
             **(checksum_kwargs or {}))
 
-    def clear_last_check(self):
+    def clear_last_check(self, is_secondary=False):
         """Clear the checksum of the file."""
         with db.session.begin_nested():
-            self.last_check = None
-            self.last_check_at = datetime.utcnow()
+            if is_secondary:
+                self.last_secondary_check = None
+                self.last_secondary_check_at = datetime.utcnow()
+            else:
+                self.last_check = None
+                self.last_check_at = datetime.utcnow()
         return self
 
     def verify_checksum(self, progress_callback=None, chunk_size=None,
-                        throws=True, checksum_kwargs=None, **kwargs):
+                        throws=True, checksum_kwargs=None,
+                        is_secondary=False, **kwargs):
         """Verify checksum of file instance.
 
         :param bool throws: If `True`, exceptions raised during checksum
@@ -788,10 +800,18 @@ class FileInstance(db.Model, Timestamp):
                 raise
             real_checksum = None
         with db.session.begin_nested():
-            self.last_check = (None if real_checksum is None
-                               else (self.checksum == real_checksum))
-            self.last_check_at = datetime.utcnow()
-        return self.last_check
+            if is_secondary:
+                self.last_secondary_check = (
+                    None if real_checksum is None
+                    else (self.checksum == real_checksum)
+                )
+                self.last_secondary_check_at = datetime.utcnow()
+                return self.last_secondary_check
+            else:
+                self.last_check = (None if real_checksum is None
+                                   else (self.checksum == real_checksum))
+                self.last_check_at = datetime.utcnow()
+                return self.last_check
 
     @ensure_writable()
     def init_contents(self, size=0, **kwargs):

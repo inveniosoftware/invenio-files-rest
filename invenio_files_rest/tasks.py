@@ -39,7 +39,7 @@ def progress_updater(size, total):
 
 @shared_task(ignore_result=True)
 def verify_checksum(file_id, pessimistic=False, chunk_size=None, throws=True,
-                    checksum_kwargs=None):
+                    checksum_kwargs=None, is_secondary=False):
     """Verify checksum of a file instance.
 
     :param file_id: The file ID.
@@ -49,11 +49,12 @@ def verify_checksum(file_id, pessimistic=False, chunk_size=None, throws=True,
     # Anything might happen during the task, so being pessimistic and marking
     # the file as unchecked is a reasonable precaution
     if pessimistic:
-        f.clear_last_check()
+        f.clear_last_check(is_secondary=is_secondary)
         db.session.commit()
     f.verify_checksum(
         progress_callback=progress_updater, chunk_size=chunk_size,
-        throws=throws, checksum_kwargs=checksum_kwargs)
+        throws=throws, checksum_kwargs=checksum_kwargs,
+        is_secondary=is_secondary)
     db.session.commit()
 
 
@@ -66,7 +67,8 @@ def default_checksum_verification_files_query():
 def schedule_checksum_verification(frequency=None, batch_interval=None,
                                    max_count=None, max_size=None,
                                    files_query=None,
-                                   checksum_kwargs=None):
+                                   checksum_kwargs=None,
+                                   is_secondary=False):
     """Schedule a batch of files for checksum verification.
 
     The purpose of this task is to be periodically called through `celerybeat`,
@@ -110,8 +112,12 @@ def schedule_checksum_verification(frequency=None, batch_interval=None,
 
     files = obj_or_import_string(
         files_query, default=default_checksum_verification_files_query)()
-    files = files.order_by(
-        sa.func.coalesce(FileInstance.last_check_at, date.min))
+    if is_secondary:
+        files = files.order_by(
+            sa.func.coalesce(FileInstance.last_secondary_check_at, date.min))
+    else:
+        files = files.order_by(
+            sa.func.coalesce(FileInstance.last_check_at, date.min))
 
     if max_count is not None:
         all_files_count = files.count()
@@ -149,7 +155,7 @@ def schedule_checksum_verification(frequency=None, batch_interval=None,
     group(
         verify_checksum.s(
             file_id, pessimistic=True, throws=False,
-            checksum_kwargs=(checksum_kwargs or {}))
+            checksum_kwargs=(checksum_kwargs or {}), is_secondary=is_secondary)
         for file_id in scheduled_file_ids
     ).apply_async()
 
