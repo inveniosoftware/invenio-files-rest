@@ -28,7 +28,7 @@ from .models import Bucket, MultipartObject, ObjectVersion, ObjectVersionTag, \
     Part
 from .proxies import current_files_rest, current_permission_factory
 from .serializer import json_serializer
-from .signals import file_downloaded
+from .signals import file_deleted, file_downloaded, file_uploaded
 from .tasks import merge_multipartobject, remove_file_data
 
 blueprint = Blueprint(
@@ -585,6 +585,7 @@ class ObjectResource(ContentNegotiatedMethodView):
                     ObjectVersionTag.create(obj, key, value)
 
         db.session.commit()
+        file_uploaded.send(obj)
         return self.make_response(
             data=obj,
             context={
@@ -621,17 +622,16 @@ class ObjectResource(ContentNegotiatedMethodView):
             obj.remove()
             # Set newest object as head
             if obj.is_head:
-                obj_to_restore = \
-                    ObjectVersion.get_versions(obj.bucket,
-                                               obj.key,
-                                               desc=True).first()
-                if obj_to_restore:
-                    obj_to_restore.is_head = True
+                latest = ObjectVersion.get_versions(obj.bucket,
+                                                    obj.key,
+                                                    desc=True).first()
+                if latest:
+                    latest.is_head = True
 
             if obj.file_id:
                 remove_file_data.delay(str(obj.file_id))
-
         db.session.commit()
+        file_deleted.send(obj)
         return self.make_response('', 204)
 
     @staticmethod
@@ -657,7 +657,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             current_app.logger.warning(
                 'File checksum mismatch detected.', extra=logger_data)
 
-        file_downloaded.send(current_app._get_current_object(), obj=obj)
+        file_downloaded.send(obj)
         return obj.send_file(restricted=restricted,
                              as_attachment=as_attachment)
 
