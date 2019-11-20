@@ -10,6 +10,10 @@
 Changes
 =======
 
+Version 1.0.4 (released 2019-11-20)
+
+- Fix `StorageError` type returned
+
 Version 1.0.3 (released 2019-11-15)
 
 - Increase invenio-rest version to support Marshmallow 2 and 3 migration
