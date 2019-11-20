@@ -24,6 +24,7 @@ from invenio_db import db
 from sqlalchemy.exc import IntegrityError
 
 from .models import FileInstance, Location, MultipartObject, ObjectVersion
+from .signals import file_uploaded
 from .utils import obj_or_import_string
 
 logger = get_task_logger(__name__)
@@ -246,6 +247,7 @@ def merge_multipartobject(upload_id, version_id=None):
             progress_callback=progress_updater
         )
         db.session.commit()
+        file_uploaded.send(obj)
         return str(obj.version_id)
     except Exception:
         db.session.rollback()
