@@ -10,6 +10,10 @@
 Changes
 =======
 
+Version 1.0.5 (released 2019-11-21)
+
+- Add signals for deletion and upload of files
+
 Version 1.0.4 (released 2019-11-20)
 
 - Fix `StorageError` type returned
