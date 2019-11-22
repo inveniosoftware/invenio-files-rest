@@ -10,6 +10,12 @@
 Changes
 =======
 
+Version 1.0.6 (released 2019-11-22)
+
+- Bump version and add to installation requirements invenio-celery
+- Add documentation of module usage
+- Remove storage_class parameter from Bucket create when POST to Location resource
+
 Version 1.0.5 (released 2019-11-21)
 
 - Add signals for deletion and upload of files
