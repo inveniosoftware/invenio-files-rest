@@ -26,10 +26,58 @@ def test_simple_workflow(app, db, tmpdir):
 
     source = os.path.join(os.path.dirname(__file__), 'fixtures', 'source')
 
+    # Create a location to use
     result = runner.invoke(cmd, [
-        'location', 'tmp', 'file://' + tmpdir.strpath, '--default'
+        'location', 'create',
+        'tmp', 'file://' + tmpdir.strpath, '--default'
     ], obj=script_info)
     assert 0 == result.exit_code
+
+    # Create a second one as default to check tmp is not default anymore
+    result = runner.invoke(cmd, [
+        'location', 'create',
+        'aux', 'file://' + tmpdir.strpath, '--default'
+    ], obj=script_info)
+    assert 0 == result.exit_code
+
+    # List locations and check the default is correct
+    result = runner.invoke(cmd, [
+        'location', 'list'
+    ], obj=script_info)
+    assert 0 == result.exit_code
+
+    created_locations = result.output.split('\n')
+
+    # tmp is not default
+    assert "tmp" in created_locations[0]
+    assert "as default False" in created_locations[0]
+    # aux is default
+    assert "aux" in created_locations[1]
+    assert "as default True" in created_locations[1]
+
+    # Set tmp back as default
+    result = runner.invoke(cmd, [
+        'location', 'set-default', 'tmp'
+    ], obj=script_info)
+    assert 0 == result.exit_code
+
+    # List locations and check the default is correct
+    result = runner.invoke(cmd, [
+        'location', 'list'
+    ], obj=script_info)
+    assert 0 == result.exit_code
+
+    created_locations = result.output.split('\n')
+    # tmp is default
+    assert "tmp" in created_locations[0]
+    assert "as default True" in created_locations[0]
+    # aux is not default
+    assert "aux" in created_locations[1]
+    assert "as default False" in created_locations[1]
+
+    ##
+    # Buckets
+    ##
 
     result = runner.invoke(cmd, ['bucket', 'touch'], obj=script_info)
     assert 0 == result.exit_code
