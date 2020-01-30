@@ -65,6 +65,7 @@ install_requires = [
     'invenio-celery>=1.1.1',
     'invenio-rest[cors]>=1.1.2',
     'simplejson>=3.0.0',
+    'six>=1.12.0',
     'SQLAlchemy-Utils>=0.31.0',
     'WTForms>=2.0',
 ]
