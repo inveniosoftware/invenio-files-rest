@@ -78,13 +78,20 @@ def location():
 @with_appcontext
 def create(name, uri, default):
     """Create a new location."""
-    if default:
-        _unset_default_location()
-    location = Location(name=name, uri=uri, default=default)
-    db.session.add(location)
-    db.session.commit()
-    click.secho('Location {} {} as default {} created'.format(
-        location.name, location.uri, str(location.default)), fg='green')
+    location = Location.get_by_name(name)
+    if location:
+        click.secho('Location {} (uri: {} default: {}) already exists'.format(
+            location.name, location.uri, str(location.default)), fg='yellow')
+
+    else:
+        if default:
+            _unset_default_location()
+
+        location = Location(name=name, uri=uri, default=default)
+        db.session.add(location)
+        db.session.commit()
+        click.secho('Location {} {} as default {} created'.format(
+            location.name, location.uri, str(location.default)), fg='green')
 
 
 @location.command()
