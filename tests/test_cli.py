@@ -33,6 +33,14 @@ def test_simple_workflow(app, db, tmpdir):
     ], obj=script_info)
     assert 0 == result.exit_code
 
+    # Create the same location (check idempotent)
+    result = runner.invoke(cmd, [
+        'location', 'create',
+        'tmp', 'file://' + tmpdir.strpath, '--default'
+    ], obj=script_info)
+    assert 0 == result.exit_code
+    assert "already exists" in result.output
+
     # Create a second one as default to check tmp is not default anymore
     result = runner.invoke(cmd, [
         'location', 'create',
