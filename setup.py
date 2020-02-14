@@ -59,7 +59,7 @@ for name, reqs in extras_require.items():
 
 install_requires = [
     'Flask-Login>=0.3.2',
-    'Flask-WTF>=0.13.1',
+    'Flask-WTF>=0.14.3',
     'Flask>=0.11.1',
     'fs>=0.5.4,<2.0',
     'invenio-celery>=1.1.1',
