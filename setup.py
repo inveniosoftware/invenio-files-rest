@@ -16,7 +16,7 @@ readme = open('README.rst').read()
 history = open('CHANGES.rst').read()
 
 tests_require = [
-    'Flask-BabelEx>=0.9.3',
+    'Flask-BabelEx>=0.9.4',
     'Flask-Menu>=0.5.0',
     'SQLAlchemy-Continuum>=1.2.1',
     'check-manifest>=0.25',
