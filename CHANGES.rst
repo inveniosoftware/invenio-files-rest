@@ -10,6 +10,14 @@
 Changes
 =======
 
+Version 1.1.0 (released 2020-01-19)
+
+- Moves *location* from command to group
+- Allows listing locations via de CLI
+- Allows setting a location as *default*
+- Get by name on the `Location` object returns None when not found instead of raising an exception
+- Other bug fixes
+
 Version 1.0.6 (released 2019-11-22)
 
 - Bump version and add to installation requirements invenio-celery
