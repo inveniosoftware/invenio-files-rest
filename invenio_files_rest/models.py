@@ -286,7 +286,7 @@ class Location(db.Model, Timestamp):
         """Fetch a specific location object."""
         return cls.query.filter_by(
             name=name,
-        ).one()
+        ).one_or_none()
 
     @classmethod
     def get_default(cls):
