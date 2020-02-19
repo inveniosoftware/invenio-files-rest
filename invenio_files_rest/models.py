@@ -278,7 +278,7 @@ class Location(db.Model, Timestamp):
         """Validate name."""
         if not slug_pattern.match(name) or len(name) > 20:
             raise ValueError(
-                'Invalid location name (lower-case alphanumeric + danshes).')
+                'Invalid location name (lower-case alphanumeric + dashes).')
         return name
 
     @classmethod
