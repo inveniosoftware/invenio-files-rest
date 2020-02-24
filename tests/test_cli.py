@@ -41,6 +41,13 @@ def test_simple_workflow(app, db, tmpdir):
     assert 0 == result.exit_code
     assert "already exists" in result.output
 
+    # Passing no subcommand should use default command 'create' (idempotent)
+    result = runner.invoke(cmd, [
+        'location', 'tmp', 'file://' + tmpdir.strpath, '--default'
+    ], obj=script_info)
+    assert 0 == result.exit_code
+    assert "already exists" in result.output
+
     # Create a second one as default to check tmp is not default anymore
     result = runner.invoke(cmd, [
         'location', 'create',
