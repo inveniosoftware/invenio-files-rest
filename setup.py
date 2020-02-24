@@ -58,6 +58,7 @@ for name, reqs in extras_require.items():
 
 
 install_requires = [
+    'click-default-group>=1.2.2,<2.0.0',
     'Flask-Login>=0.3.2,<0.5.0',
     'Flask-WTF>=0.14.3',
     'Flask>=0.11.1',

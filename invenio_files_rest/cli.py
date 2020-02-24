@@ -12,6 +12,7 @@
 from __future__ import absolute_import, print_function
 
 import click
+from click_default_group import DefaultGroup
 from flask.cli import with_appcontext
 from invenio_db import db
 
@@ -66,7 +67,7 @@ def _unset_default_location():
         default_location.default = False
 
 
-@files.group()
+@files.group(cls=DefaultGroup, default='create')
 def location():
     """Manage locations."""
 
