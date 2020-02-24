@@ -82,5 +82,5 @@ deploy:
   distributions: "compile_catalog sdist bdist_wheel"
   on:
     tags: true
-    python: "2.7"
+    python: "3.5"
     condition: $REQUIREMENTS = release
