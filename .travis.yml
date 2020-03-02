@@ -29,10 +29,9 @@ services:
   - redis
   - rabbitmq
 
-# Note: dist/sudo/api is required for MySQL 5.6 which adds support for
+# Note: dist/api is required for MySQL 5.6 which adds support for
 # fractional seconds in datetime columns.
 dist: trusty
-sudo: required
 addons:
   postgresql: "9.4"
   apt:
