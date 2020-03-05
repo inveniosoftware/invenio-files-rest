@@ -98,6 +98,42 @@ def test_get(client, headers, bucket, objects, permissions):
                 assert resp.get_etag()[0] == obj.file.checksum
 
 
+def test_get_with_x_sendfile(
+        client, headers, bucket, objects, permissions, offload_file_serving):
+    """Test getting a redirect to an object."""
+
+    login_user(client, permissions['bucket'])
+
+    for obj in objects:
+        object_url = url_for(
+            'invenio_files_rest.object_api',
+            bucket_id=bucket.id,
+            key=obj.key, )
+
+        # Get specifying version (of latest obj).
+        resp = client.get(
+            object_url,
+            query_string='versionId={0}'.format(obj.version_id),
+            headers=headers)
+        assert resp.status_code == 200
+
+        assert resp.headers['X-Accel-Redirect'].startswith(
+            '/user_files/')
+
+        resp = client.delete(url_for(
+            'invenio_files_rest.object_api',
+            bucket_id=bucket.id,
+            key=obj.key,
+        ))
+
+        resp = client.get(url_for(
+            'invenio_files_rest.object_api',
+            bucket_id=bucket.id,
+            key=obj.key,
+        ))
+        assert resp.status_code == 404
+
+
 def test_get_download(client, headers, bucket, objects, permissions):
     """Test getting an object."""
     login_user(client, permissions['objects'])
@@ -429,6 +465,12 @@ def test_delete(client, db, bucket, objects, permissions, user, expected):
         assert resp.status_code == expected
         if resp.status_code == 204:
             assert not ObjectVersion.get(bucket.id, obj.key)
+            resp = client.get(url_for(
+                'invenio_files_rest.object_api',
+                bucket_id=bucket.id,
+                key=obj.key,
+            ))
+            assert resp.status_code == 404
         else:
             assert ObjectVersion.get(bucket.id, obj.key)
 

@@ -30,7 +30,8 @@ import os
 import unicodedata
 from time import time
 
-from flask import current_app, request
+from flask import current_app, make_response, request
+from six.moves.urllib.parse import urlsplit
 from werkzeug.datastructures import Headers
 from werkzeug.urls import url_quote
 from werkzeug.wsgi import FileWrapper
@@ -305,3 +306,13 @@ def populate_from_path(bucket, source, checksum=True, key_prefix='',
                 assert filename.startswith(source)
                 parts = [p for p in filename[len(source):].split(os.sep) if p]
                 yield create_file('/'.join(parts), os.path.join(root, name))
+
+
+def create_file_streaming_redirect_response(obj):
+    """Redirect response generating function."""
+    response = make_response()
+    redirect_url_base = '/user_files/'
+    redirect_url_key = urlsplit(obj.file.uri).path
+    response.headers['X-Accel-Redirect'] = redirect_url_base + \
+        redirect_url_key[1:]
+    return response

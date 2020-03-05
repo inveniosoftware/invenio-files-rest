@@ -374,3 +374,11 @@ def get_json():
             assert resp.status_code == code
         return json.loads(resp.get_data(as_text=True))
     return inner
+
+
+@pytest.fixture()
+def offload_file_serving(app):
+    """Serve a redirect instead of streaming the file."""
+    app.config['FILES_REST_XSENDFILE_ENABLED'] = True
+    yield app
+    app.config['FILES_REST_XSENDFILE_ENABLED'] = False
