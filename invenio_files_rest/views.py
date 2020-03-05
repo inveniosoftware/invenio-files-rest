@@ -533,7 +533,7 @@ class ObjectResource(ContentNegotiatedMethodView):
 
     @classmethod
     def get_object(cls, bucket, key, version_id):
-        """Retrieve object and abort if it doesn't exists.
+        """Retrieve object and abort if it doesn't exist.
 
         If the file is not found, the connection is aborted and the 404
         error is returned.
@@ -814,6 +814,10 @@ class ObjectResource(ContentNegotiatedMethodView):
             return self.multipart_listparts(bucket, key, upload_id)
         else:
             obj = self.get_object(bucket, key, version_id)
+            if current_app.config['FILES_REST_XSENDFILE_ENABLED']:
+                response_constructor = current_app.config[
+                    'FILES_REST_XSENDFILE_RESPONSE_FUNC']
+                return response_constructor(obj)
             # If 'download' is missing from query string it will have
             # the value None.
             return self.send_object(bucket, obj,

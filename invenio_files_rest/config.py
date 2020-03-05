@@ -10,6 +10,8 @@
 
 from datetime import timedelta
 
+from invenio_files_rest.helpers import create_file_streaming_redirect_response
+
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024
 """Maximum allowed content length for form data.
 
@@ -127,3 +129,10 @@ FILES_REST_TASK_WAIT_MAX_SECONDS = 600
 
 FILES_REST_FILE_TAGS_HEADER = 'X-Invenio-File-Tags'
 """Header for updating file tags."""
+
+FILES_REST_XSENDFILE_ENABLED = False
+"""Use the X-Accel-Redirect header to stream the file through NGINX"""
+
+FILES_REST_XSENDFILE_RESPONSE_FUNC =  \
+    create_file_streaming_redirect_response
+"""Function for the creation of a file streaming redirect response."""

@@ -62,13 +62,13 @@ install_requires = [
     'Flask-Login>=0.3.2,<0.5.0',
     'Flask-WTF>=0.14.3',
     'invenio-base>=1.2.2',
+    'invenio-accounts>=1.2.1',
     'fs>=0.5.4,<2.0',
     'invenio-celery>=1.2.0',
     'invenio-rest[cors]>=1.2.0',
     'simplejson>=3.0.0',
-    'six>=1.12.0',
-    'SQLAlchemy-Utils>=0.31.0',
     'WTForms>=2.0',
+    'SQLAlchemy-Utils>=0.33.1,<0.36',
 ]
 
 setup_requires = [
