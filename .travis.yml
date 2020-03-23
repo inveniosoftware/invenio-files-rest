@@ -10,6 +10,8 @@
 notifications:
   email: false
 
+dist: xenial
+
 language: python
 
 matrix:
@@ -29,17 +31,8 @@ services:
   - redis
   - rabbitmq
 
-# Note: dist/sudo/api is required for MySQL 5.6 which adds support for
-# fractional seconds in datetime columns.
-dist: trusty
-sudo: required
 addons:
   postgresql: "9.4"
-  apt:
-    packages:
-      - mysql-server-5.6
-      - mysql-client-core-5.6
-      - mysql-client-5.6
 
 env:
   - REQUIREMENTS=lowest EXTRAS=all,sqlite SQLALCHEMY_DATABASE_URI="sqlite:///test.db"
@@ -54,7 +47,8 @@ env:
 
 
 python:
-  - "3.5"
+  - "3.6"
+  - "3.7"
 
 before_install:
   - "travis_retry pip install --upgrade pip setuptools py"
@@ -82,5 +76,4 @@ deploy:
   distributions: "compile_catalog sdist bdist_wheel"
   on:
     tags: true
-    python: "3.5"
-    condition: $REQUIREMENTS = release
+  skip_existing: true
