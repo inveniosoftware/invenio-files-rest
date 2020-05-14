@@ -22,7 +22,6 @@ Invenio-Files-REST.
    installation
    configuration
    usage
-   exampleapp
 
 
 API Reference

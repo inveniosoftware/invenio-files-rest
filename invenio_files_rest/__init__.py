@@ -22,7 +22,7 @@ You will learn how to create a new Location, a Bucket and an ObjectVersion
 using the programmatic APIs of Invenio-Files-REST.
 
 First, you will have to setup your virtualenv environment and install
-this module. You can follow the same steps as in :doc:`exampleapp`.
+this module along with all it's dependencies.
 
 After that, start a Python shell and execute the following commands:
 
@@ -248,8 +248,9 @@ This is because they depend on your physical file storage infrastructure.
 You will have to create them in advance when setting up your Invenio
 instance.
 
-To be able to run each of the next steps, you can start the example app
-as described in :doc:`exampleapp`.
+To be able to run each of the next steps, you can instantiate and start an
+Invenio instance as described `here
+<https://invenio.readthedocs.io/en/latest/quickstart/quickstart.html#create-an-invenio-instance>`_.
 
 Create a bucket
 ^^^^^^^^^^^^^^^
