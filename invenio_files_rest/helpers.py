@@ -28,6 +28,7 @@ import hashlib
 import mimetypes
 import os
 import unicodedata
+import warnings
 from time import time
 
 from flask import current_app, make_response, request
@@ -310,6 +311,7 @@ def populate_from_path(bucket, source, checksum=True, key_prefix='',
 
 def create_file_streaming_redirect_response(obj):
     """Redirect response generating function."""
+    warnings.warn('This streaming does not support multiple storage backends.')
     response = make_response()
     redirect_url_base = '/user_files/'
     redirect_url_key = urlsplit(obj.file.uri).path
