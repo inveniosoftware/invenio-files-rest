@@ -131,7 +131,8 @@ FILES_REST_FILE_TAGS_HEADER = 'X-Invenio-File-Tags'
 """Header for updating file tags."""
 
 FILES_REST_XSENDFILE_ENABLED = False
-"""Use the X-Accel-Redirect header to stream the file through NGINX"""
+"""Use the X-Accel-Redirect header to stream the file through a reverse proxy(
+    e.g NGINX)."""
 
 FILES_REST_XSENDFILE_RESPONSE_FUNC =  \
     create_file_streaming_redirect_response
