@@ -10,6 +10,14 @@
 Changes
 =======
 
+Version 1.2.0 (released 2020-05-14)
+
+- Adds optional file streaming using a reverse proxy (e.g. NGINX).
+
+Version 1.1.1 (released 2020-02-24)
+
+- Makes cli `location` command backwards compatible.
+
 Version 1.1.0 (released 2020-01-19)
 
 - Moves *location* from command to group
