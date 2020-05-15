@@ -389,11 +389,14 @@ serving files. See the :ref:`usage-security` for more information.
 
 Invenio-Files-Rest provides also the functionality to serve your files directly
 from your external storage. This is achieved by attaching the
-`X-Accel-Redirect` header to the response, which will then be redirected by
+`X-Accel-Redirect
+<https://www.nginx.com/resources/wiki/start/topics/examples/x-accel/>`_
+header to the response, which will then be redirected by
 your Web Proxy (e.g. NGINX, Apache) to your external storage, finally streaming
 the file directly to the user.
-To use this you will need to configure your Web Proxy accordingly and then
-enable the :py:data:`invenio_files_rest.config.FILES_REST_XSENDFILE_ENABLED`.
+To use this feature you will need to configure your Web Proxy accordingly and
+then enable the
+:py:data:`invenio_files_rest.config.FILES_REST_XSENDFILE_ENABLED`.
 
 API Reference
 ^^^^^^^^^^^^^
