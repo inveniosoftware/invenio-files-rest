@@ -10,6 +10,8 @@
 
 from __future__ import absolute_import, print_function
 
+import warnings
+
 from flask import abort
 from werkzeug.exceptions import UnprocessableEntity
 from werkzeug.utils import cached_property
