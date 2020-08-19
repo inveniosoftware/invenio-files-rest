@@ -13,23 +13,24 @@ class StorageFactory:
 
     def __call__(self, fileinstance: FileInstance) -> FileStorage:
         """Returns a FileStorage instance for a file, for manipulating file contents."""
-        storage_backend_cls = self.get_storage_backend_for_file_instance(fileinstance)
-        storage_backend_kwargs = self.get_storage_backend_kwargs(storage_backend_cls, fileinstance)
+
+        if not fileinstance.storage_backend:
+            fileinstance.storage_backend = self.get_storage_backend_name(fileinstance)
+
+        storage_backend_cls = self.app.config['FILES_REST_STORAGE_BACKENDS'][fileinstance.storage_backend]
+        storage_backend_kwargs = self.get_storage_backend_kwargs(fileinstance, storage_backend_cls)
 
         if not fileinstance.uri:
-            fileinstance.uri = self.get_filepath_for_file_instance(fileinstance)
-        if not fileinstance.storage_backend:
-            fileinstance.storage_backend = storage_backend_cls.backend_name
+            fileinstance.uri = self.get_uri(fileinstance, storage_backend_cls)
 
         return storage_backend_cls(fileinstance.uri, **storage_backend_kwargs)
 
-    def get_storage_backend_for_file_instance(self, fileinstance: FileInstance) -> Type[FileStorage]:
-        storage_backend = fileinstance.storage_backend or self.app.config['FILES_REST_DEFAULT_STORAGE_BACKEND']
-        return self.app.config['FILES_REST_STORAGE_BACKENDS'][storage_backend]
+    def get_storage_backend_name(self, fileinstance: FileInstance) -> str:
+        return self.app.config['FILES_REST_DEFAULT_STORAGE_BACKEND']
 
-    def get_filepath_for_file_instance(self, fileinstance: FileInstance) -> str:
+    def get_storage_backend_kwargs(self, fileinstance: FileInstance, storage_backend_cls: Type[FileStorage]) -> Dict[str, Any]:
+        return {}
+
+    def get_uri(self, fileinstance: FileInstance, storage_backend_cls: Type[FileStorage]) -> str:
         id = fileinstance.id.hex
         return os.path.join(id[0:2], id[2:4], id[4:6], id)
-
-    def get_storage_backend_kwargs(self, storage_backend_cls: Type[FileStorage], fileinstance: FileInstance) -> Dict[str, Any]:
-        return {}
