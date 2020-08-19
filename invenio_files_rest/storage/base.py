@@ -14,6 +14,8 @@ import hashlib
 from calendar import timegm
 from functools import partial
 
+from flask import current_app
+
 from ..errors import FileSizeError, StorageError, UnexpectedFileSizeError
 from ..helpers import chunk_size_or_default, compute_checksum, send_stream
 
@@ -53,7 +55,22 @@ def check_size(bytes_written, total_size):
             description='File is smaller than expected.')
 
 
-class FileStorage(object):
+class FileStorageMeta(type):
+    @property
+    def backend_name(cls):
+        try:
+            return cls._backend_name
+        except AttributeError:
+            for name, backend_cls in current_app.config['FILES_REST_STORAGE_BACKENDS'].items():
+                if cls is backend_cls:
+                    cls._backend_name = name
+                    break
+            else:
+                raise RuntimeError("{} isn't listed in FILES_REST_STORAGE_BACKENDS config".format(cls))
+            return cls._backend_name
+
+
+class FileStorage(metaclass=FileStorageMeta):
     """Base class for storage interface to a single file."""
 
     def __init__(self, size=None, modified=None):
