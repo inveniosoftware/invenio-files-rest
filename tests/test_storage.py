@@ -27,7 +27,7 @@ from invenio_files_rest.storage import FileStorage, PyFSFileStorage
 
 def test_storage_interface():
     """Test storage interface."""
-    s = FileStorage()
+    s = FileStorage('some-path')
     pytest.raises(NotImplementedError, s.open)
     pytest.raises(NotImplementedError, s.initialize)
     pytest.raises(NotImplementedError, s.delete)
@@ -75,11 +75,8 @@ def test_pyfs_delete_fail(pyfs, pyfs_testpath):
 def test_pyfs_save(pyfs, pyfs_testpath, get_md5):
     """Test basic save operation."""
     data = b'somedata'
-    uri, size, checksum = pyfs.save(BytesIO(data))
+    pyfs.save(BytesIO(data))
 
-    assert uri == pyfs_testpath
-    assert size == len(data)
-    assert checksum == get_md5(data)
     assert exists(pyfs_testpath)
     assert open(pyfs_testpath, 'rb').read() == data
 

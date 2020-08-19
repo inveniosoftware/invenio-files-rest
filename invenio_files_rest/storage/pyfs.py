@@ -10,6 +10,8 @@
 
 from __future__ import absolute_import, print_function
 
+import shutil
+
 from flask import current_app
 from fs.opener import opener
 from fs.path import basename, dirname
@@ -33,11 +35,16 @@ class PyFSFileStorage(FileStorage):
 
     """
 
-    def __init__(self, fileurl, size=None, modified=None, clean_dir=True):
+    def __init__(self, *args, clean_dir=True, **kwargs):
         """Storage initialization."""
-        self.fileurl = fileurl
+        # if isinstance(args[0], str):
+        #     raise NotImplementedError
         self.clean_dir = clean_dir
-        super(PyFSFileStorage, self).__init__(size=size, modified=modified)
+        super(PyFSFileStorage, self).__init__(*args, **kwargs)
+
+    @property
+    def fileurl(self):
+        return self.filepath
 
     def _get_fs(self, create_dir=True):
         """Return tuple with filesystem and filename."""
@@ -98,20 +105,13 @@ class PyFSFileStorage(FileStorage):
         """Save file in the file system."""
         fp = self.open(mode='wb')
         try:
-            bytes_written, checksum = self._write_stream(
-                incoming_stream, fp, chunk_size=chunk_size,
-                progress_callback=progress_callback,
-                size_limit=size_limit, size=size)
+            shutil.copyfileobj(incoming_stream, fp, length=chunk_size)
         except Exception:
             fp.close()
             self.delete()
             raise
         finally:
             fp.close()
-
-        self._size = bytes_written
-
-        return self.fileurl, bytes_written, checksum
 
     def update(self, incoming_stream, seek=0, size=None, chunk_size=None,
                progress_callback=None):

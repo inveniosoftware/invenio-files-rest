@@ -11,7 +11,9 @@
 from __future__ import absolute_import, print_function
 
 import hashlib
+import warnings
 from calendar import timegm
+from datetime import datetime
 from functools import partial
 
 from flask import current_app
@@ -73,8 +75,9 @@ class FileStorageMeta(type):
 class FileStorage(metaclass=FileStorageMeta):
     """Base class for storage interface to a single file."""
 
-    def __init__(self, size=None, modified=None):
+    def __init__(self, filepath: str, size: int=None, modified: datetime=None):
         """Initialize storage object."""
+        self.filepath = filepath
         self._size = size
         self._modified = timegm(modified.timetuple()) if modified else None
 
@@ -159,6 +162,7 @@ class FileStorage(metaclass=FileStorageMeta):
         :param src: Source stream.
         :param chunk_size: Chunk size to read from source stream.
         """
+        warnings.warn("Call save with the other already-open FileStorage passed in instead.", DeprecationWarning)
         fp = src.open(mode='rb')
         try:
             return self.save(
