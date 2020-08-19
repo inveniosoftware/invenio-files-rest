@@ -10,6 +10,8 @@
 
 from datetime import timedelta
 
+import pkg_resources
+
 from invenio_files_rest.helpers import create_file_streaming_redirect_response
 
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024
@@ -56,6 +58,15 @@ FILES_REST_SIZE_LIMITERS = 'invenio_files_rest.limiters.file_size_limiters'
 
 FILES_REST_STORAGE_FACTORY = 'invenio_files_rest.storage.pyfs_storage_factory'
 """Import path of factory used to create a storage instance."""
+
+FILES_REST_DEFAULT_STORAGE_BACKEND = 'pyfs'
+"""The default storage backend name."""
+
+FILES_REST_STORAGE_BACKENDS = {
+    ep.name: ep.load()
+    for ep in pkg_resources.iter_entry_points('invenio_files_rest.storage')
+}
+"""A mapping from storage backend names to classes."""
 
 FILES_REST_PERMISSION_FACTORY = \
     'invenio_files_rest.permissions.permission_factory'
