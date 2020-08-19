@@ -64,7 +64,7 @@ from .errors import BucketLockedError, FileInstanceAlreadySetError, \
     MultipartInvalidChunkSize, MultipartInvalidPartNumber, \
     MultipartInvalidSize, MultipartMissingParts, MultipartNotCompleted
 from .proxies import current_files_rest
-from .utils import ENCODING_MIMETYPES, guess_mimetype
+from .utils import ENCODING_MIMETYPES, PassthroughChecksum, guess_mimetype
 
 if TYPE_CHECKING:
     from .storage import FileStorage
@@ -836,10 +836,23 @@ class FileInstance(db.Model, Timestamp):
             from.
         :param stream: File-like stream.
         """
-        self.set_uri(
-            *self.storage(**kwargs).save(
-                stream, chunk_size=chunk_size, size=size,
-                size_limit=size_limit, progress_callback=progress_callback))
+        wrapped_stream = PassthroughChecksum(stream,
+                                             hash_name='md5',
+                                             progress_callback=progress_callback)
+
+        storage = self.storage(**kwargs)
+        storage.save(wrapped_stream, chunk_size=chunk_size, size=size,
+                size_limit=size_limit, progress_callback=progress_callback)
+
+        self.storage_backend = type(storage).backend_name
+        self.size = wrapped_stream.bytes_read
+        self.checksum = wrapped_stream.checksum
+        self.uri = storage.filepath
+
+        # TODO: Should these be set here, or sent back from the storage backend?
+        self.readable = True
+        self.writable = False
+        self.storage_class = 'S'
 
     @ensure_writable()
     def copy_contents(self, fileinstance, progress_callback=None,
@@ -850,11 +863,8 @@ class FileInstance(db.Model, Timestamp):
         if not self.size == 0:
             raise ValueError('File instance has data.')
 
-        self.set_uri(
-            *self.storage(**kwargs).copy(
-                fileinstance.storage(**kwargs),
-                chunk_size=chunk_size,
-                progress_callback=progress_callback))
+        with fileinstance.storage(**kwargs).open() as f:
+            self.set_contents(f, progress_callback=progress_callback, chunk_size=chunk_size, **kwargs)
 
     @ensure_readable()
     def send_file(self, filename, restricted=True, mimetype=None,
