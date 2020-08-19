@@ -32,9 +32,19 @@ class _FilesRESTState(object):
     @cached_property
     def storage_factory(self):
         """Load default storage factory."""
-        return load_or_import_from_config(
+        if self.app.config['FILES_REST_STORAGE_FACTORY'] in [
+            'invenio_files_rest.storage.pyfs_storage_factory',
+        ]:
+            warnings.warn(DeprecationWarning(
+                "The " + self.app.config['FILES_REST_STORAGE_FACTORY'] + " storage factory has been deprecated in "
+                "favour of 'invenio_files_rest.storage:StorageFactory"
+            ))
+        storage_factory = load_or_import_from_config(
             'FILES_REST_STORAGE_FACTORY', app=self.app
         )
+        if isinstance(storage_factory, type):
+            storage_factory = storage_factory(self.app)
+        return storage_factory
 
     @cached_property
     def permission_factory(self):
