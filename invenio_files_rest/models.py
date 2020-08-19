@@ -41,6 +41,7 @@ import re
 import six
 import sys
 import uuid
+import warnings
 from datetime import datetime
 from functools import wraps
 from os.path import basename
@@ -756,6 +757,10 @@ class FileInstance(db.Model, Timestamp):
 
         :returns: Storage interface.
         """
+        if kwargs:
+            warnings.warn("Passing **kwargs to .storage() is deprecated; override the storage factory with a subclass "
+                          "of invenio_files_rest.storage.StorageFactory and implement get_storage_backend_kwargs() "
+                          "instead.", DeprecationWarning)
         return current_files_rest.storage_factory(fileinstance=self, **kwargs)
 
     @ensure_readable()
