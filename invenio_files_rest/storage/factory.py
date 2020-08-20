@@ -11,13 +11,13 @@ class StorageFactory:
     def __init__(self, app):
         self.app = app
 
-    def __call__(self, fileinstance: FileInstance) -> FileStorage:
+    def __call__(self, fileinstance: FileInstance, preferred_backend_name: str = None) -> FileStorage:
         """Returns a FileStorage instance for a file, for manipulating file contents."""
 
         if not fileinstance.storage_backend:
-            fileinstance.storage_backend = self.get_storage_backend_name(fileinstance)
+            fileinstance.storage_backend = self.get_storage_backend_name(fileinstance, preferred_backend_name)
 
-        storage_backend_cls = self.app.config['FILES_REST_STORAGE_BACKENDS'][fileinstance.storage_backend]
+        storage_backend_cls = self.resolve_storage_backend(fileinstance.storage_backend)
         storage_backend_kwargs = self.get_storage_backend_kwargs(fileinstance, storage_backend_cls)
 
         if not fileinstance.uri:
@@ -25,8 +25,12 @@ class StorageFactory:
 
         return storage_backend_cls(fileinstance.uri, **storage_backend_kwargs)
 
-    def get_storage_backend_name(self, fileinstance: FileInstance) -> str:
+    def get_storage_backend_name(self, fileinstance: FileInstance, preferred_backend_name: str = None) -> str:
+        """"""
         return self.app.config['FILES_REST_DEFAULT_STORAGE_BACKEND']
+
+    def resolve_storage_backend(self, backend_name: str) -> Type[FileStorage]:
+        return self.app.config['FILES_REST_STORAGE_BACKENDS'][backend_name]
 
     def get_storage_backend_kwargs(self, fileinstance: FileInstance, storage_backend_cls: Type[FileStorage]) -> Dict[str, Any]:
         return {}
