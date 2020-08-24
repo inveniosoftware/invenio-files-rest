@@ -36,16 +36,16 @@ model.
 from __future__ import absolute_import, print_function
 
 import mimetypes
+
 import re
+import six
 import sys
 import uuid
 from datetime import datetime
-from functools import wraps
-from os.path import basename
-
-import six
 from flask import current_app
+from functools import wraps
 from invenio_db import db
+from os.path import basename
 from sqlalchemy.dialects import mysql
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import validates

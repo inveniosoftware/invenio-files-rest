@@ -11,14 +11,13 @@
 from __future__ import absolute_import, print_function
 
 import math
-import uuid
-from datetime import date, datetime, timedelta
-
 import sqlalchemy as sa
+import uuid
 from celery import current_app as current_celery
 from celery import current_task, group, shared_task
 from celery.states import state
 from celery.utils.log import get_task_logger
+from datetime import date, datetime, timedelta
 from flask import current_app
 from invenio_db import db
 from sqlalchemy.exc import IntegrityError

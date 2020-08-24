@@ -10,12 +10,11 @@
 
 from __future__ import absolute_import, print_function
 
+import pytest
 import sys
 import uuid
-from os.path import getsize
-
-import pytest
 from fs.errors import ResourceNotFoundError
+from os.path import getsize
 from six import BytesIO, b
 from sqlalchemy.exc import IntegrityError
 

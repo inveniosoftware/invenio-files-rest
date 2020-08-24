@@ -51,8 +51,8 @@ def touch():
 @with_appcontext
 def cp(source, bucket, checksum, key_prefix):
     """Create new bucket from all files in directory."""
-    from .models import Bucket
     from .helpers import populate_from_path
+    from .models import Bucket
     for object_version in populate_from_path(
             Bucket.get(bucket), source, checksum=checksum,
             key_prefix=key_prefix):

@@ -10,11 +10,10 @@
 
 import json
 import warnings
-from time import sleep
-
 from flask import current_app, request, url_for
 from invenio_rest.serializer import BaseSchema as InvenioRestBaseSchema
 from marshmallow import fields, missing, post_dump
+from time import sleep
 
 from .errors import FilesException
 from .models import Bucket, MultipartObject, ObjectVersion, Part

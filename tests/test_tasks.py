@@ -11,11 +11,10 @@
 from __future__ import absolute_import, print_function
 
 import errno
-from os.path import exists, join
-
 import pytest
 from fs.errors import FSError, ResourceNotFoundError
 from mock import MagicMock, patch
+from os.path import exists, join
 from six import BytesIO
 
 from invenio_files_rest.models import Bucket, FileInstance, ObjectVersion

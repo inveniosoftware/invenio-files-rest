@@ -13,11 +13,10 @@ from __future__ import absolute_import, print_function
 
 import errno
 import os
-from os.path import dirname, exists, getsize, join
-
 import pytest
 from fs.errors import DirectoryNotEmptyError, ResourceNotFoundError
 from mock import patch
+from os.path import dirname, exists, getsize, join
 from six import BytesIO
 
 from invenio_files_rest.errors import FileSizeError, StorageError, \

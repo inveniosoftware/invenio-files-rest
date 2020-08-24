@@ -11,10 +11,9 @@
 from __future__ import absolute_import, print_function
 
 import uuid
-from functools import partial, wraps
-
 from flask import Blueprint, abort, current_app, json, request
 from flask_login import current_user
+from functools import partial, wraps
 from invenio_db import db
 from invenio_rest import ContentNegotiatedMethodView
 from marshmallow import missing

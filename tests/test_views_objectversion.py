@@ -10,9 +10,8 @@
 
 from __future__ import absolute_import, print_function
 
-from datetime import timedelta
-
 import pytest
+from datetime import timedelta
 from flask import url_for
 from fs.opener import opener
 from mock import patch
