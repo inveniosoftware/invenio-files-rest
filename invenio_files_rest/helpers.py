@@ -10,15 +10,15 @@
 
 from __future__ import absolute_import, print_function
 
-import hashlib
 import mimetypes
+
+import hashlib
 import os
 import unicodedata
 import warnings
-from time import time
-
 from flask import current_app, make_response, request
 from six.moves.urllib.parse import urlsplit
+from time import time
 from werkzeug.datastructures import Headers
 from werkzeug.urls import url_quote
 from werkzeug.wsgi import FileWrapper

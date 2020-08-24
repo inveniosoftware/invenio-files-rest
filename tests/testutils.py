@@ -11,7 +11,6 @@
 from __future__ import absolute_import, print_function
 
 import sys
-
 from six import BytesIO
 
 if sys.version_info.major == 2:

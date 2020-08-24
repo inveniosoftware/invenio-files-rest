@@ -12,7 +12,6 @@ from __future__ import absolute_import, print_function
 
 import hashlib
 from os.path import exists
-
 from six import BytesIO
 
 from invenio_files_rest.models import Bucket, MultipartObject, ObjectVersion, \
