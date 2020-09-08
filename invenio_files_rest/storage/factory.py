@@ -1,8 +1,12 @@
 import os
+import urllib.parse
 from typing import Any, Dict, Type
 
-from invenio_files_rest.models import FileInstance
+from flask import current_app
+
+from invenio_files_rest.models import FileInstance, Location
 from .base import FileStorage
+from ..helpers import make_path
 
 
 class StorageFactory:
@@ -11,30 +15,85 @@ class StorageFactory:
     def __init__(self, app):
         self.app = app
 
-    def __call__(self, fileinstance: FileInstance, preferred_backend_name: str = None) -> FileStorage:
-        """Returns a FileStorage instance for a file, for manipulating file contents."""
-
+    def __call__(
+        self,
+        fileinstance: FileInstance,
+    ) -> FileStorage:
+        """Returns a FileStorage instance for a file, for manipulating file contents.
+        """
         if not fileinstance.storage_backend:
-            fileinstance.storage_backend = self.get_storage_backend_name(fileinstance, preferred_backend_name)
+            return None
 
         storage_backend_cls = self.resolve_storage_backend(fileinstance.storage_backend)
         storage_backend_kwargs = self.get_storage_backend_kwargs(fileinstance, storage_backend_cls)
 
-        if not fileinstance.uri:
-            fileinstance.uri = self.get_uri(fileinstance, storage_backend_cls)
+        return storage_backend_cls(
+            uri=fileinstance.uri,
+            **storage_backend_kwargs
+        )
 
-        return storage_backend_cls(fileinstance.uri, **storage_backend_kwargs)
+    def initialize(
+        self,
+        fileinstance: FileInstance,
+        size: int = 0,
+        preferred_location: Location = None
+    ) -> FileStorage:
+        if fileinstance.storage_backend:
+            return self(fileinstance)
 
-    def get_storage_backend_name(self, fileinstance: FileInstance, preferred_backend_name: str = None) -> str:
+        location = self.get_location(fileinstance, preferred_location)
+
+        fileinstance.storage_backend = location.storage_backend
+
+        storage_backend_cls = self.resolve_storage_backend(fileinstance.storage_backend)
+        storage_backend_kwargs = self.get_storage_backend_kwargs(fileinstance, storage_backend_cls)
+
+        if storage_backend_cls.initialize.__self__ == storage_backend_cls:
+            # New behaviour, as initialize should now be a classmethod
+            return storage_backend_cls.initialize(
+                suggested_uri=self.get_suggested_uri(
+                    fileinstance=fileinstance,
+                    location=location,
+                    storage_backend_cls=storage_backend_cls,
+                ),
+                size=size,
+            )
+        else:
+            # Old behaviour
+            return self(
+                fileinstance,
+                default_location=location.uri,
+            ).initialize(size=size)
+
+    def get_location(self, fileinstance: FileInstance, preferred_location: Location = None) -> Location:
+        return preferred_location or Location.get_default()
+
+    def get_storage_backend_name(self, fileinstance: FileInstance, preferred_location: Location) -> str:
         """"""
-        return self.app.config['FILES_REST_DEFAULT_STORAGE_BACKEND']
+        if not preferred_location:
+            raise ValueError("preferred_location required for default storage factory")
+        return preferred_location.storage_backend
 
     def resolve_storage_backend(self, backend_name: str) -> Type[FileStorage]:
         return self.app.config['FILES_REST_STORAGE_BACKENDS'][backend_name]
 
-    def get_storage_backend_kwargs(self, fileinstance: FileInstance, storage_backend_cls: Type[FileStorage]) -> Dict[str, Any]:
+    def get_storage_backend_kwargs(
+        self,
+        fileinstance: FileInstance,
+        storage_backend_cls: Type[FileStorage],
+    ) -> Dict[str, Any]:
         return {}
 
-    def get_uri(self, fileinstance: FileInstance, storage_backend_cls: Type[FileStorage]) -> str:
-        id = fileinstance.id.hex
-        return os.path.join(id[0:2], id[2:4], id[4:6], id)
+    def get_suggested_uri(
+        self,
+        fileinstance: FileInstance,
+        location: Location,
+        storage_backend_cls: Type[FileStorage],
+    ):
+        make_path(
+            location,
+            str(fileinstance.id),
+            'data',
+            current_app.config['FILES_REST_STORAGE_PATH_DIMENSIONS'],
+            current_app.config['FILES_REST_STORAGE_PATH_SPLIT_LENGTH'],
+        )

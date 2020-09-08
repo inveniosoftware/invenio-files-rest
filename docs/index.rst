@@ -22,6 +22,7 @@ Invenio-Files-REST.
    installation
    configuration
    usage
+   new-storage-backend
 
 
 API Reference

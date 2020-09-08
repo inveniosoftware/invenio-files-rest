@@ -43,13 +43,13 @@ class PyFSFileStorage(FileStorage):
         super(PyFSFileStorage, self).__init__(*args, **kwargs)
 
     @property
-    def fileurl(self):
-        return self.filepath
+    def filepath(self):
+        return self.uri
 
     def _get_fs(self, create_dir=True):
         """Return tuple with filesystem and filename."""
-        filedir = dirname(self.fileurl)
-        filename = basename(self.fileurl)
+        filedir = dirname(self.uri)
+        filename = basename(self.uri)
 
         return (
             opener.opendir(filedir, writeable=True, create_dir=create_dir),
@@ -77,8 +77,10 @@ class PyFSFileStorage(FileStorage):
             fs.removedir('.')
         return True
 
-    def initialize(self, size=0):
+    @classmethod
+    def initialize(cls, suggested_uri, size=0):
         """Initialize file on storage and truncate to given size."""
+        self = cls(uri=suggested_uri)
         fs, path = self._get_fs()
 
         # Required for reliably opening the file on certain file systems:
@@ -98,7 +100,7 @@ class PyFSFileStorage(FileStorage):
 
         self._size = size
 
-        return self.fileurl, size, None
+        return {'uri': self.uri, 'size': size}
 
     def save(self, incoming_stream, size_limit=None, size=None,
              chunk_size=None, progress_callback=None):

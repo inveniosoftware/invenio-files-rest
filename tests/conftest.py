@@ -43,6 +43,7 @@ from invenio_files_rest.permissions import bucket_listmultiparts_all, \
     object_read_version_all
 from invenio_files_rest.storage import PyFSFileStorage
 from invenio_files_rest.views import blueprint
+from tests import legacy_storage_interface
 
 
 @compiles(DropTable, 'postgresql')
@@ -135,7 +136,8 @@ def dummy_location(db):
     loc = Location(
         name='testloc',
         uri=tmppath,
-        default=True
+        storage_backend='pyfs',
+        default=True,
     )
     db.session.add(loc)
     db.session.commit()
@@ -155,6 +157,12 @@ def pyfs_testpath(dummy_location):
 def pyfs(dummy_location, pyfs_testpath):
     """Instance of PyFSFileStorage."""
     return PyFSFileStorage(pyfs_testpath)
+
+
+@pytest.fixture()
+def legacy_pyfs(dummy_location, pyfs_testpath):
+    """Instance of PyFSFileStorage."""
+    return legacy_storage_interface.PyFSFileStorage(pyfs_testpath)
 
 
 @pytest.yield_fixture()

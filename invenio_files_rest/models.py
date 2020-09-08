@@ -45,7 +45,7 @@ import warnings
 from datetime import datetime
 from functools import wraps
 from os.path import basename
-from typing import TYPE_CHECKING
+from typing import Dict, TYPE_CHECKING, Tuple, Union
 
 import six
 from flask import current_app
@@ -270,6 +270,9 @@ class Location(db.Model, Timestamp):
 
     name = db.Column(db.String(20), unique=True, nullable=False)
     """External identifier of the location."""
+
+    storage_backend = db.Column(db.String(32), nullable=True)
+    """Name of the storage backend to use for this location."""
 
     uri = db.Column(db.String(255), nullable=False)
     """URI of the location."""
@@ -674,6 +677,8 @@ class FileInstance(db.Model, Timestamp):
     storage_class = db.Column(db.String(1), nullable=True)
     """Storage class of file."""
 
+    backend_name = db.Column(db.String(32), nullable=True)
+
     size = db.Column(db.BigInteger, default=0, nullable=True)
     """Size of file."""
 
@@ -804,13 +809,47 @@ class FileInstance(db.Model, Timestamp):
                                else (self.checksum == real_checksum))
             self.last_check_at = datetime.utcnow()
         return self.last_check
+        return current_files_rest.storage_factory(fileinstance=self, **kwargs)
 
     @ensure_writable()
-    def init_contents(self, size=0, **kwargs):
+    def initialize(self, preferred_location: Location, size=0, **kwargs):
         """Initialize file."""
-        self.set_uri(
-            *self.storage(**kwargs).initialize(size=size),
-            readable=False, writable=True)
+        if hasattr(current_files_rest.storage_factory, 'initialize'):
+            # New behaviour, with a new-style storage factory
+            result = current_files_rest.storage_factory.initialize(
+                fileinstance=self,
+                preferred_location=preferred_location,
+                size=size,
+            )
+        else:
+            # Old behaviour, with an old-style storage factory
+            storage = self.storage(default_location=preferred_location.uri, **kwargs)
+            if isinstance(storage.initialize.__self__, type):
+                # New storage backend, but old storage factory
+                # New storage backends have `initialize` as a classmethod. The storage backend will have constructed
+                # a URI and passed it to the storage's __init__, so we can grab it from there.
+                result = storage.initialize(suggested_uri=storage.uri, size=size)
+            else:
+                result = storage.initialize(size=size)
+        self.update_file_metadata(
+            result,
+            readable=False,
+            writable=True,
+            storage_backend=type(storage).backend_name,
+        )
+
+
+    @ensure_writable()
+    def init_contents(self, size=0, default_location: str=None, **kwargs):
+        if default_location:
+            preferred_location = Location(uri=default_location)
+        else:
+            preferred_location = None
+        return self.initialize(
+            preferred_location=preferred_location,
+            size=size,
+            **kwargs
+        )
 
     @ensure_writable()
     def update_contents(self, stream, seek=0, size=None, chunk_size=None,
@@ -894,6 +933,22 @@ class FileInstance(db.Model, Timestamp):
             if storage_class is None else \
             storage_class
         return self
+
+    _FILE_METADATA_FIELDS = {'uri', 'size', 'checksum', 'writable', 'readable', 'storage_class'}
+
+    def update_file_metadata(self, file_metadata: Union[Tuple,Dict] = None, **kwargs):
+        if file_metadata is None:
+            file_metadata = {}
+
+        if isinstance(file_metadata, tuple):
+            self.set_uri(*file_metadata)
+        elif isinstance(file_metadata, dict):
+            file_metadata.update(kwargs)
+            for key in file_metadata:
+                if key in self._FILE_METADATA_FIELDS:
+                    setattr(self, key, file_metadata[key])
+
+
 
 
 class ObjectVersion(db.Model, Timestamp):
@@ -1036,7 +1091,7 @@ class ObjectVersion(db.Model, Timestamp):
 
     @ensure_no_file()
     @update_bucket_size
-    def set_location(self, uri, size, checksum, storage_class=None):
+    def set_location(self,  uri, size, checksum, storage_class=None, storage_backend=None):
         """Set only URI location of for object.
 
         Useful to link files on externally controlled storage. If a file
@@ -1050,8 +1105,12 @@ class ObjectVersion(db.Model, Timestamp):
         :param storage_class: Storage class where file is stored ()
         """
         self.file = FileInstance()
-        self.file.set_uri(
-            uri, size, checksum, storage_class=storage_class
+        self.file.update_file_metadata(
+            storage_backend=storage_backend,
+            uri=uri,
+            size=size,
+            checksum=checksum,
+            storage_class=storage_class
         )
         db.session.add(self.file)
         return self
