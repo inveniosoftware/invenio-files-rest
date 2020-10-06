@@ -10,6 +10,7 @@
 
 from __future__ import absolute_import, print_function
 
+import contextlib
 import shutil
 
 from flask import current_app
@@ -46,10 +47,6 @@ class PyFSStorageBackend(StorageBackend):
         #     raise NotImplementedError
         self.clean_dir = clean_dir
         super().__init__(*args, **kwargs)
-
-    @property
-    def filepath(self):
-        return self.uri
 
     def _get_fs(self, create_dir=True):
         """Return tuple with filesystem and filename."""
@@ -105,69 +102,18 @@ class PyFSStorageBackend(StorageBackend):
 
         return {}
 
-    def _save(self, incoming_stream, size_limit=None, size=None,
-             chunk_size=None):
-        """Save file in the file system."""
+    @contextlib.contextmanager
+    def get_save_stream(self):
         fp = self.open(mode='wb')
         try:
-            shutil.copyfileobj(incoming_stream, fp, length=chunk_size)
+            yield fp
         except Exception:
-            fp.close()
             self.delete()
             raise
         finally:
             fp.close()
 
-        return {}
-
-    def _update(self, incoming_stream, seek=0, size=None, chunk_size=None,
-               progress_callback=None):
-        """Update a file in the file system."""
+    def get_update_stream(self, seek):
         fp = self.open(mode='r+b')
-        try:
-            fp.seek(seek)
-            shutil.copyfileobj(incoming_stream, fp, length=chunk_size)
-        finally:
-            fp.close()
-
-    def _write_stream(self, src, dst, size=None, size_limit=None,
-                      chunk_size=None, progress_callback=None):
-        """Get helper to save stream from src to dest + compute checksum.
-
-        :param src: Source stream.
-        :param dst: Destination stream.
-        :param size: If provided, this exact amount of bytes will be
-            written to the destination file.
-        :param size_limit: ``FileSizeLimit`` instance to limit number of bytes
-            to write.
-        """
-        chunk_size = chunk_size_or_default(chunk_size)
-
-        algo, m = self._init_hash()
-        bytes_written = 0
-
-        while 1:
-            # Check that size limits aren't bypassed
-            check_sizelimit(size_limit, bytes_written, size)
-
-            chunk = src.read(chunk_size)
-
-            if not chunk:
-                if progress_callback:
-                    progress_callback(bytes_written, bytes_written)
-                break
-
-            dst.write(chunk)
-
-            bytes_written += len(chunk)
-
-            if m:
-                m.update(chunk)
-
-            if progress_callback:
-                progress_callback(None, bytes_written)
-
-        check_size(bytes_written, size)
-
-        return bytes_written, '{0}:{1}'.format(
-            algo, m.hexdigest()) if m else None
+        fp.seek(seek)
+        return contextlib.closing(fp)

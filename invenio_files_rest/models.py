@@ -1088,7 +1088,7 @@ class ObjectVersion(db.Model, Timestamp):
 
     @ensure_no_file()
     @update_bucket_size
-    def set_location(self,  uri, size, checksum, storage_class=None, storage_backend=None):
+    def set_location(self, uri, size, checksum, storage_class=None, storage_backend=None):
         """Set only URI location of for object.
 
         Useful to link files on externally controlled storage. If a file

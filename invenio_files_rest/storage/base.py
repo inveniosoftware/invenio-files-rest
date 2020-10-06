@@ -11,20 +11,19 @@
 from __future__ import absolute_import, annotations, print_function
 
 import hashlib
-import urllib.parse
 import warnings
 from calendar import timegm
 from datetime import datetime
 from functools import partial
-from typing import Any, Callable, Dict, TYPE_CHECKING, Tuple
+from typing import Callable, TYPE_CHECKING, Tuple
 
+import typing
 from flask import current_app
 
-from ..errors import FileSizeError, StorageError, UnexpectedFileSizeError
-from ..helpers import chunk_size_or_default, compute_checksum, make_path, send_stream
-from ..utils import check_size, check_sizelimit, PassthroughChecksum
-
 from .legacy import FileStorage
+from ..errors import StorageError
+from ..helpers import chunk_size_or_default, compute_checksum, make_path, send_stream
+from ..utils import PassthroughChecksum, check_size, check_sizelimit
 
 if TYPE_CHECKING:
     from ..models import FileInstance
@@ -85,60 +84,78 @@ class StorageBackend:
              chunk_size=None, progress_callback: Callable[[int, int], None] = None
              ):
         """Save incoming stream to file storage."""
+        with self.get_save_stream() as output_stream:
+            result = self._write_stream(
+                incoming_stream,
+                output_stream,
+                size_limit=size_limit,
+                size=size,
+                chunk_size=chunk_size,
+                progress_callback=progress_callback,
+            )
+            self._size = result['size']
+            return {
+                'uri': self.uri,
+                'readable': True,
+                'writable': False,
+                'storage_class': 'S',
+                **result,
+            }
 
-        incoming_stream = PassthroughChecksum(
-            incoming_stream,
-            hash_name=self.checksum_hash_name,
-            progress_callback=progress_callback,
-            size_limit=size_limit,
-            size=size,
-        )
-
-        result = self._save(
-            incoming_stream,
-            size=None,
-            chunk_size=None
-        )
-
-        check_size(incoming_stream.bytes_read, size)
-        self._size = incoming_stream.total_size
-
-        return {
-            'checksum': incoming_stream.checksum,
-            'size': incoming_stream.total_size,
-            'uri': self.uri,
-            'readable': True,
-            'writable': False,
-            'storage_class': 'S',
-            **result,
-        }
-
-    def _save(self, incoming_stream, size_limit=None, size=None,
-             chunk_size=None) -> Dict[str, Any]:
+    def get_save_stream(self) -> typing.ContextManager:
         """Save incoming stream to file storage."""
         raise NotImplementedError
 
-    def update(self, incoming_stream, seek=0, size=None, chunk_size=None,
+    def update(self,incoming_stream, seek=0, size=None, chunk_size=None,
                progress_callback=None) -> Tuple[int, str]:
         """Update part of file with incoming stream."""
-        incoming_stream = PassthroughChecksum(
-            incoming_stream,
-            hash_name=self.checksum_hash_name,
-            progress_callback=progress_callback,
-            size=size,
-        )
+        with self.get_update_stream(seek) as output_stream:
+            result = self._write_stream(
+                    incoming_stream,
+                    output_stream,
+                    size=size,
+                    chunk_size=chunk_size,
+                    progress_callback=progress_callback,
+                )
+            self._size = seek + result['size']
+            return result['size'], result['checksum']
 
-        self._update(
-            incoming_stream,
-            seek=seek,
-            size=None,
-            chunk_size=chunk_size,
-        )
-
-        return incoming_stream.bytes_read, incoming_stream.checksum
-
-    def _update(self, incoming_stream, seek=0, size=None, chunk_size=None):
+    def get_update_stream(self, seek) -> typing.ContextManager:
         raise NotImplementedError
+
+    def _write_stream(self, incoming_stream, output_stream, *, size_limit=None, size=None, chunk_size=None, progress_callback=None):
+        chunk_size = chunk_size_or_default(chunk_size)
+        checksum = hashlib.new(self.checksum_hash_name) if self.checksum_hash_name else None
+        update_sum = checksum.update if checksum else lambda chunk: None
+
+        bytes_written = 0
+
+        while True:
+            # Check that size limits aren't bypassed
+            check_sizelimit(size_limit, bytes_written, size)
+
+            chunk = incoming_stream.read(chunk_size)
+
+            if not chunk:
+                if progress_callback:
+                    progress_callback(bytes_written, bytes_written)
+                break
+
+            output_stream.write(chunk)
+
+            bytes_written += len(chunk)
+
+            update_sum(chunk)
+
+            if progress_callback:
+                progress_callback(None, bytes_written)
+
+        check_size(bytes_written, size)
+
+        return {
+            'checksum': f'{self.checksum_hash_name}:{checksum.hexdigest()}' if checksum else None,
+            'size': bytes_written,
+        }
 
     #
     # Default implementation
