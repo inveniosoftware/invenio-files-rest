@@ -15,6 +15,8 @@ import six
 from flask import current_app
 from werkzeug.utils import import_string
 
+from invenio_files_rest.errors import FileSizeError, UnexpectedFileSizeError
+
 ENCODING_MIMETYPES = {
     'gzip': 'application/gzip',
     'compress': 'application/gzip',
@@ -59,8 +61,53 @@ def guess_mimetype(filename):
     return m or 'application/octet-stream'
 
 
+
+def check_sizelimit(size_limit, bytes_written, total_size):
+    """Check if size limit was exceeded.
+
+    :param size_limit: The size limit.
+    :param bytes_written: The total number of bytes written.
+    :param total_size: The total file size.
+    :raises invenio_files_rest.errors.UnexpectedFileSizeError: If the bytes
+        written exceed the total size.
+    :raises invenio_files_rest.errors.FileSizeError: If the bytes
+        written are major than the limit size.
+    """
+    if size_limit is not None and bytes_written > size_limit:
+        desc = 'File size limit exceeded.' \
+            if isinstance(size_limit, int) else size_limit.reason
+        raise FileSizeError(description=desc)
+
+    # Never write more than advertised
+    if total_size is not None and bytes_written > total_size:
+        raise UnexpectedFileSizeError(
+            description='File is bigger than expected.')
+
+
+def check_size(bytes_written, total_size):
+    """Check if expected amounts of bytes have been written.
+
+    :param bytes_written: The total number of bytes written.
+    :param total_size: The total file size.
+    :raises invenio_files_rest.errors.UnexpectedFileSizeError: If the bytes
+        written exceed the total size.
+    """
+    if total_size and bytes_written < total_size:
+        raise UnexpectedFileSizeError(
+            description='File is smaller than expected.')
+
+
+
 class PassthroughChecksum:
-    def __init__(self, fp, hash_name, progress_callback: Callable[[int, int], None] = None, offset: int = 0):
+    def __init__(
+        self,
+        fp,
+        hash_name,
+        progress_callback: Callable[[int, int], None] = None,
+        offset: int = 0,
+        size_limit: int = None,
+        size: int=None
+    ):
         """
         :param fp: A file-like option open for reading
         :param hash_name: A hashlib hash algorithm name
@@ -68,16 +115,21 @@ class PassthroughChecksum:
             size
         """
         self.hash_name = hash_name
-        self._sum = hashlib.new(hash_name)
+        self._sum = hashlib.new(hash_name) if hash_name else None
+        self._update_sum = self._sum.update if self._sum else lambda chunk: None
         self._fp = fp
         self._bytes_read = 0
         self._progress_callback = progress_callback
         self._offset = offset
+        self._size_limit = size_limit
+        self._size = size
 
     def read(self, size=-1):
         chunk = self._fp.read(size)
         self._bytes_read += len(chunk)
-        self._sum.update(chunk)
+        print("CSL", self._size_limit, self.bytes_read, self._size)
+        check_sizelimit(self._size_limit, self.bytes_read, self._size)
+        self._update_sum(chunk)
         if self._progress_callback:
             self._progress_callback(self._bytes_read, self._bytes_read + self._offset)
         return chunk
@@ -88,9 +140,14 @@ class PassthroughChecksum:
     @property
     def checksum(self):
         """The {hash_name}:{hash} string for the bytes read so far."""
-        return '{0}:{1}'.format(
-            self.hash_name, self._sum.hexdigest())
+        if self._sum:
+            return '{0}:{1}'.format(
+                self.hash_name, self._sum.hexdigest())
 
     @property
     def bytes_read(self):
         return self._bytes_read
+
+    @property
+    def total_size(self):
+        return self._bytes_read + self._offset

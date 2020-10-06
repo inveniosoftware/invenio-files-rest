@@ -64,10 +64,11 @@ from .errors import BucketLockedError, FileInstanceAlreadySetError, \
     MultipartInvalidChunkSize, MultipartInvalidPartNumber, \
     MultipartInvalidSize, MultipartMissingParts, MultipartNotCompleted
 from .proxies import current_files_rest
+from .storage.base import StorageBackend
 from .utils import ENCODING_MIMETYPES, PassthroughChecksum, guess_mimetype
 
 if TYPE_CHECKING:
-    from .storage import FileStorage
+    from .storage import StorageBackend
 
 slug_pattern = re.compile('^[a-z][a-z0-9-]+$')
 
@@ -754,7 +755,7 @@ class FileInstance(db.Model, Timestamp):
         self.query.filter_by(id=self.id).delete()
         return self
 
-    def storage(self, **kwargs) -> FileStorage:
+    def storage(self, **kwargs) -> StorageBackend:
         """Get storage interface for object.
 
         Uses the applications storage factory to create a storage interface
@@ -814,6 +815,7 @@ class FileInstance(db.Model, Timestamp):
     @ensure_writable()
     def initialize(self, preferred_location: Location, size=0, **kwargs):
         """Initialize file."""
+        print("WRI1", self.writable)
         if hasattr(current_files_rest.storage_factory, 'initialize'):
             # New behaviour, with a new-style storage factory
             result = current_files_rest.storage_factory.initialize(
@@ -821,23 +823,19 @@ class FileInstance(db.Model, Timestamp):
                 preferred_location=preferred_location,
                 size=size,
             )
+            print("WRI2", self.writable)
         else:
             # Old behaviour, with an old-style storage factory
             storage = self.storage(default_location=preferred_location.uri, **kwargs)
-            if isinstance(storage.initialize.__self__, type):
-                # New storage backend, but old storage factory
-                # New storage backends have `initialize` as a classmethod. The storage backend will have constructed
-                # a URI and passed it to the storage's __init__, so we can grab it from there.
-                result = storage.initialize(suggested_uri=storage.uri, size=size)
-            else:
-                result = storage.initialize(size=size)
+            result = storage.initialize(size=size)
+            print("WRI3", self.writable, storage)
         self.update_file_metadata(
             result,
             readable=False,
             writable=True,
-            storage_backend=type(storage).backend_name,
+            storage_backend=type(storage).backend_name if isinstance(storage, StorageBackend) else None,
         )
-
+        print("WRI4", self.writable, result)
 
     @ensure_writable()
     def init_contents(self, size=0, default_location: str=None, **kwargs):
@@ -880,18 +878,11 @@ class FileInstance(db.Model, Timestamp):
                                              progress_callback=progress_callback)
 
         storage = self.storage(**kwargs)
-        storage.save(wrapped_stream, chunk_size=chunk_size, size=size,
-                size_limit=size_limit, progress_callback=progress_callback)
+        self.update_file_metadata(storage.save(wrapped_stream, chunk_size=chunk_size, size=size,
+                size_limit=size_limit, progress_callback=progress_callback))
 
-        self.storage_backend = type(storage).backend_name
-        self.size = wrapped_stream.bytes_read
-        self.checksum = wrapped_stream.checksum
-        self.uri = storage.filepath
+        self.storage_backend = type(storage).backend_name if isinstance(storage, StorageBackend) else None
 
-        # TODO: Should these be set here, or sent back from the storage backend?
-        self.readable = True
-        self.writable = False
-        self.storage_class = 'S'
 
     @ensure_writable()
     def copy_contents(self, fileinstance, progress_callback=None,
@@ -941,6 +932,15 @@ class FileInstance(db.Model, Timestamp):
             file_metadata = {}
 
         if isinstance(file_metadata, tuple):
+            assert len(file_metadata) >= 3
+            # Carry across defaults from **kwargs
+            if len(file_metadata) < 4:
+                file_metadata += (kwargs.get('readable', True),)
+            if len(file_metadata) < 5:
+                file_metadata += (kwargs.get('writable', False),)
+            if len(file_metadata) < 6:
+                file_metadata += (kwargs.get('storage_class', None),)
+            print(file_metadata)
             self.set_uri(*file_metadata)
         elif isinstance(file_metadata, dict):
             file_metadata.update(kwargs)
@@ -1626,6 +1626,7 @@ class MultipartObject(db.Model, Timestamp):
 
         with db.session.begin_nested():
             file_ = FileInstance.create()
+            print("WR2", file_.writable)
             file_.size = size
             obj = cls(
                 upload_id=uuid.uuid4(),
@@ -1638,11 +1639,13 @@ class MultipartObject(db.Model, Timestamp):
             )
             bucket.size += size
             db.session.add(obj)
+        print("WR3", file_.writable)
         file_.init_contents(
             size=size,
             default_location=bucket.location.uri,
             default_storage_class=bucket.default_storage_class,
         )
+        print("WR4", file_.writable)
         return obj
 
     @classmethod
@@ -1783,6 +1786,7 @@ class Part(db.Model, Timestamp):
         :param chunk_size: Desired chunk size to read stream in. It is up to
             the storage interface if it respects this value.
         """
+        print("writable", self.multipart.file.writable)
         size, checksum = self.multipart.file.update_contents(
             stream, seek=self.start_byte, size=self.part_size,
             progress_callback=progress_callback,

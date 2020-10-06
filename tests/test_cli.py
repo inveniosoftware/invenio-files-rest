@@ -103,6 +103,7 @@ def test_simple_workflow(app, db, tmpdir):
     ], obj=script_info)
     assert 0 == result.exit_code
 
+    print(tmpdir.listdir())
     assert len(tmpdir.listdir()) == 2
 
     # Specify a file.

@@ -154,7 +154,7 @@ setup(
             'invenio_files_rest = invenio_files_rest.models',
         ],
         'invenio_files_rest.storage': [
-            'pyfs = invenio_files_rest.storage:PyFSFileStorage',
+            'pyfs = invenio_files_rest.storage:PyFSStorageBackend',
         ]
     },
     extras_require=extras_require,

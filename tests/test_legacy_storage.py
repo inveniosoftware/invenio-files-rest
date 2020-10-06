@@ -24,14 +24,12 @@ from invenio_files_rest.errors import FileSizeError, StorageError, \
     UnexpectedFileSizeError
 from invenio_files_rest.limiters import FileSizeLimit
 from invenio_files_rest.storage import FileStorage, PyFSFileStorage
-from tests import legacy_storage_interface
-
 
 def test_storage_interface():
     """Test storage interface."""
     s = FileStorage('some-path')
     pytest.raises(NotImplementedError, s.open)
-    pytest.raises(NotImplementedError, s.initialize, None, 'file:///')
+    pytest.raises(NotImplementedError, s.initialize, 'file:///some/path')
     pytest.raises(NotImplementedError, s.delete)
     pytest.raises(NotImplementedError, s.save, None)
     pytest.raises(NotImplementedError, s.update, None)
@@ -56,14 +54,14 @@ def test_pyfs_initialize(legacy_pyfs, pyfs_testpath):
 def test_pyfs_delete(app, db, dummy_location):
     """Test init of files."""
     testurl = join(dummy_location.uri, 'subpath/data')
-    s = legacy_storage_interface.PyFSFileStorage(testurl)
+    s = PyFSFileStorage(testurl)
     s.initialize(size=100)
     assert exists(testurl)
 
     s.delete()
     assert not exists(testurl)
 
-    s = legacy_storage_interface.PyFSFileStorage(join(dummy_location.uri, 'anotherpath/data'))
+    s = PyFSFileStorage(join(dummy_location.uri, 'anotherpath/data'))
     pytest.raises(ResourceNotFoundError, s.delete)
 
 
@@ -191,13 +189,13 @@ def test_pyfs_checksum(get_md5):
         counter['size'] = size
 
     # Now do it with storage interface
-    s = legacy_storage_interface.PyFSFileStorage('LICENSE', size=getsize('LICENSE'))
+    s = PyFSFileStorage('LICENSE', size=getsize('LICENSE'))
     assert checksum == s.checksum(chunk_size=2, progress_callback=callback)
     assert counter['size'] == getsize('LICENSE')
 
     # No size provided, means progress callback isn't called
     counter['size'] = 0
-    s = legacy_storage_interface.PyFSFileStorage('LICENSE')
+    s = PyFSFileStorage('LICENSE')
     assert checksum == s.checksum(chunk_size=2, progress_callback=callback)
     assert counter['size'] == 0
 
@@ -208,7 +206,7 @@ def test_pyfs_checksum_fail():
     def callback(total, size):
         raise OSError(errno.EPERM, "Permission")
 
-    s = legacy_storage_interface.PyFSFileStorage('LICENSE', size=getsize('LICENSE'))
+    s = PyFSFileStorage('LICENSE', size=getsize('LICENSE'))
 
     pytest.raises(StorageError, s.checksum, progress_callback=callback)
 
@@ -311,7 +309,7 @@ def test_pyfs_send_file_fail(app, legacy_pyfs):
     """Test send file."""
     legacy_pyfs.save(BytesIO(b'content'))
 
-    with patch('tests.legacy_storage_interface.send_stream') as send_stream:
+    with patch('invenio_files_rest.storage.legacy.send_stream') as send_stream:
         send_stream.side_effect = OSError(errno.EPERM, "Permission problem")
         with app.test_request_context():
             pytest.raises(StorageError, legacy_pyfs.send_file, 'test.txt')

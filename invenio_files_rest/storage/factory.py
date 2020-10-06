@@ -1,6 +1,6 @@
 import os
 import urllib.parse
-from typing import Any, Dict, Type
+from typing import Any, Dict, Optional, Type
 
 from flask import current_app
 
@@ -18,7 +18,7 @@ class StorageFactory:
     def __call__(
         self,
         fileinstance: FileInstance,
-    ) -> FileStorage:
+    ) -> Optional[FileStorage]:
         """Returns a FileStorage instance for a file, for manipulating file contents.
         """
         if not fileinstance.storage_backend:
@@ -29,6 +29,7 @@ class StorageFactory:
 
         return storage_backend_cls(
             uri=fileinstance.uri,
+            size=fileinstance.size,
             **storage_backend_kwargs
         )
 
@@ -48,22 +49,18 @@ class StorageFactory:
         storage_backend_cls = self.resolve_storage_backend(fileinstance.storage_backend)
         storage_backend_kwargs = self.get_storage_backend_kwargs(fileinstance, storage_backend_cls)
 
-        if storage_backend_cls.initialize.__self__ == storage_backend_cls:
-            # New behaviour, as initialize should now be a classmethod
-            return storage_backend_cls.initialize(
-                suggested_uri=self.get_suggested_uri(
-                    fileinstance=fileinstance,
-                    location=location,
-                    storage_backend_cls=storage_backend_cls,
-                ),
-                size=size,
-            )
-        else:
-            # Old behaviour
-            return self(
-                fileinstance,
-                default_location=location.uri,
-            ).initialize(size=size)
+        uri = self.get_suggested_uri(
+            fileinstance=fileinstance,
+            location=location,
+            storage_backend_cls=storage_backend_cls,
+        )
+
+        return storage_backend_cls(
+            uri=uri,
+            **storage_backend_kwargs,
+        ).initialize(
+            size=size,
+        )
 
     def get_location(self, fileinstance: FileInstance, preferred_location: Location = None) -> Location:
         return preferred_location or Location.get_default()
@@ -90,7 +87,7 @@ class StorageFactory:
         location: Location,
         storage_backend_cls: Type[FileStorage],
     ):
-        make_path(
+        return make_path(
             location,
             str(fileinstance.id),
             'data',

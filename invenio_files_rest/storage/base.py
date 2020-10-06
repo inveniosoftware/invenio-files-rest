@@ -8,7 +8,7 @@
 
 """File storage base module."""
 
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, annotations, print_function
 
 import hashlib
 import urllib.parse
@@ -16,50 +16,24 @@ import warnings
 from calendar import timegm
 from datetime import datetime
 from functools import partial
+from typing import Any, Callable, Dict, TYPE_CHECKING, Tuple
 
 from flask import current_app
 
 from ..errors import FileSizeError, StorageError, UnexpectedFileSizeError
 from ..helpers import chunk_size_or_default, compute_checksum, make_path, send_stream
-from ..models import FileInstance
+from ..utils import check_size, check_sizelimit, PassthroughChecksum
+
+from .legacy import FileStorage
+
+if TYPE_CHECKING:
+    from ..models import FileInstance
 
 
-def check_sizelimit(size_limit, bytes_written, total_size):
-    """Check if size limit was exceeded.
-
-    :param size_limit: The size limit.
-    :param bytes_written: The total number of bytes written.
-    :param total_size: The total file size.
-    :raises invenio_files_rest.errors.UnexpectedFileSizeError: If the bytes
-        written exceed the total size.
-    :raises invenio_files_rest.errors.FileSizeError: If the bytes
-        written are major than the limit size.
-    """
-    if size_limit is not None and bytes_written > size_limit:
-        desc = 'File size limit exceeded.' \
-            if isinstance(size_limit, int) else size_limit.reason
-        raise FileSizeError(description=desc)
-
-    # Never write more than advertised
-    if total_size is not None and bytes_written > total_size:
-        raise UnexpectedFileSizeError(
-            description='File is bigger than expected.')
+__all__ = ['FileStorage', 'StorageBackend']
 
 
-def check_size(bytes_written, total_size):
-    """Check if expected amounts of bytes have been written.
-
-    :param bytes_written: The total number of bytes written.
-    :param total_size: The total file size.
-    :raises invenio_files_rest.errors.UnexpectedFileSizeError: If the bytes
-        written exceed the total size.
-    """
-    if total_size and bytes_written < total_size:
-        raise UnexpectedFileSizeError(
-            description='File is smaller than expected.')
-
-
-class FileStorageMeta(type):
+class StorageBackendMeta(type):
     @property
     def backend_name(cls):
         try:
@@ -74,8 +48,10 @@ class FileStorageMeta(type):
             return cls._backend_name
 
 
-class FileStorage(metaclass=FileStorageMeta):
+class StorageBackend(metaclass=StorageBackendMeta):
     """Base class for storage interface to a single file."""
+
+    checksum_hash_name = 'md5'
 
     def __init__(self, uri: str=None, size: int=None, modified: datetime=None, *, filepath=None):
         """Initialize storage object."""
@@ -94,20 +70,76 @@ class FileStorage(metaclass=FileStorageMeta):
         """Delete the file."""
         raise NotImplementedError
 
-    @classmethod
-    def initialize(cls, suggested_uri, size=0):
+    def initialize(self, size=0):
         """Initialize the file on the storage + truncate to the given size."""
+        return {
+            'readable': False,
+            'writable': True,
+            'uri': self.uri,
+            'size': size,
+            **self._initialize(size=size),
+        }
+
+    def _initialize(self, size=0):
         raise NotImplementedError
 
-
     def save(self, incoming_stream, size_limit=None, size=None,
-             chunk_size=None, progress_callback=None):
+             chunk_size=None, progress_callback: Callable[[int, int], None] = None
+             ):
+        """Save incoming stream to file storage."""
+
+        incoming_stream = PassthroughChecksum(
+            incoming_stream,
+            hash_name=self.checksum_hash_name,
+            progress_callback=progress_callback,
+            size_limit=size_limit,
+            size=size,
+        )
+
+        result = self._save(
+            incoming_stream,
+            size=None,
+            chunk_size=None
+        )
+
+        check_size(incoming_stream.bytes_read, size)
+        self._size = incoming_stream.total_size
+
+        return {
+            'checksum': incoming_stream.checksum,
+            'size': incoming_stream.total_size,
+            'uri': self.uri,
+            'readable': True,
+            'writable': False,
+            'storage_class': 'S',
+            **result,
+        }
+
+    def _save(self, incoming_stream, size_limit=None, size=None,
+             chunk_size=None) -> Dict[str, Any]:
         """Save incoming stream to file storage."""
         raise NotImplementedError
 
     def update(self, incoming_stream, seek=0, size=None, chunk_size=None,
-               progress_callback=None):
+               progress_callback=None) -> Tuple[int, str]:
         """Update part of file with incoming stream."""
+        incoming_stream = PassthroughChecksum(
+            incoming_stream,
+            hash_name=self.checksum_hash_name,
+            progress_callback=progress_callback,
+            size=size,
+        )
+
+        self._update(
+            incoming_stream,
+            seek=seek,
+            size=None,
+            chunk_size=chunk_size,
+        )
+
+        return incoming_stream.bytes_read, incoming_stream.checksum
+
+    def _update(self, incoming_stream, seek=0, size=None, chunk_size=None):
         raise NotImplementedError
 
     #
@@ -218,45 +250,3 @@ class FileStorage(metaclass=FileStorageMeta):
         except Exception as e:
             raise StorageError(
                 'Could not compute checksum of file: {0}'.format(e))
-
-    def _write_stream(self, src, dst, size=None, size_limit=None,
-                      chunk_size=None, progress_callback=None):
-        """Get helper to save stream from src to dest + compute checksum.
-
-        :param src: Source stream.
-        :param dst: Destination stream.
-        :param size: If provided, this exact amount of bytes will be
-            written to the destination file.
-        :param size_limit: ``FileSizeLimit`` instance to limit number of bytes
-            to write.
-        """
-        chunk_size = chunk_size_or_default(chunk_size)
-
-        algo, m = self._init_hash()
-        bytes_written = 0
-
-        while 1:
-            # Check that size limits aren't bypassed
-            check_sizelimit(size_limit, bytes_written, size)
-
-            chunk = src.read(chunk_size)
-
-            if not chunk:
-                if progress_callback:
-                    progress_callback(bytes_written, bytes_written)
-                break
-
-            dst.write(chunk)
-
-            bytes_written += len(chunk)
-
-            if m:
-                m.update(chunk)
-
-            if progress_callback:
-                progress_callback(None, bytes_written)
-
-        check_size(bytes_written, size)
-
-        return bytes_written, '{0}:{1}'.format(
-            algo, m.hexdigest()) if m else None

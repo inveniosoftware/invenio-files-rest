@@ -29,26 +29,26 @@ def test_storage_interface():
     """Test storage interface."""
     s = FileStorage('some-path')
     pytest.raises(NotImplementedError, s.open)
-    pytest.raises(NotImplementedError, s.initialize, None, 'file:///')
+    pytest.raises(NotImplementedError, s.initialize, 'file:///some/path')
     pytest.raises(NotImplementedError, s.delete)
     pytest.raises(NotImplementedError, s.save, None)
     pytest.raises(NotImplementedError, s.update, None)
     pytest.raises(NotImplementedError, s.checksum)
 
 
-def test_pyfs_initialize(pyfs_testpath):
+def test_pyfs_initialize(pyfs, pyfs_testpath):
     """Test init of files."""
     # Create file object.
     assert not exists(pyfs_testpath)
-    uri, size, checksum = PyFSFileStorage.initialize(suggested_uri=pyfs_testpath, size=100)
+    result = pyfs.initialize(size=100)
 
-    assert size == 100
-    assert checksum is None
-    assert os.stat(pyfs_testpath).st_size == size
+    assert result.get('size') == 100
+    assert 'checksum' not in result
+    assert os.stat(pyfs_testpath).st_size == result['size']
 
-    uri, size, checksum = PyFSFileStorage.initialize(suggested_uri=pyfs_testpath)
-    assert size == 0
-    assert size == os.stat(pyfs_testpath).st_size
+    result = pyfs.initialize()
+    assert result.get('size') == 0
+    assert result['size'] == os.stat(pyfs_testpath).st_size
 
 
 def test_pyfs_delete(app, db, dummy_location):
@@ -107,7 +107,7 @@ def test_pyfs_save_callback(pyfs):
     def callback(total, size):
         counter['size'] = size
 
-    uri, size, checksum = pyfs.save(
+    result = pyfs.save(
         BytesIO(data), progress_callback=callback)
 
     assert counter['size'] == len(data)
@@ -116,12 +116,13 @@ def test_pyfs_save_callback(pyfs):
 def test_pyfs_save_limits(pyfs):
     """Test progress callback."""
     data = b'somedata'
-    uri, size, checksum = pyfs.save(BytesIO(data), size=len(data))
-    assert size == len(data)
+    result = pyfs.save(BytesIO(data), size=len(data))
+    assert result['size'] == len(data)
 
-    uri, size, checksum = pyfs.save(BytesIO(data), size_limit=len(data))
-    assert size == len(data)
+    result = pyfs.save(BytesIO(data), size_limit=len(data))
+    assert result['size'] == len(data)
 
+    print("-----")
     # Size doesn't match
     pytest.raises(
         UnexpectedFileSizeError, pyfs.save, BytesIO(data), size=len(data) - 1)
@@ -137,8 +138,11 @@ def test_pyfs_save_limits(pyfs):
 def test_pyfs_update(pyfs, pyfs_testpath, get_md5):
     """Test update of file."""
     pyfs.initialize(size=100)
+    print("E1", pyfs.open().read()[:6])
     pyfs.update(BytesIO(b'cd'), seek=2, size=2)
+    print("E2", pyfs.open().read()[:6])
     pyfs.update(BytesIO(b'ab'), seek=0, size=2)
+    print("E3", pyfs.open().read()[:6])
 
     with open(pyfs_testpath) as fp:
         content = fp.read()
@@ -155,7 +159,9 @@ def test_pyfs_update_fail(pyfs, pyfs_testpath, get_md5):
     """Test update of file."""
     def fail_callback(total, size):
         assert exists(pyfs_testpath)
-        raise Exception('Something bad happened')
+        #
+        if total > 2:
+            raise Exception('Something bad happened')
 
     pyfs.initialize(size=100)
     pyfs.update(BytesIO(b'ab'), seek=0, size=2)
@@ -214,17 +220,17 @@ def test_pyfs_checksum_fail():
 def test_pyfs_send_file(app, pyfs):
     """Test send file."""
     data = b'sendthis'
-    uri, size, checksum = pyfs.save(BytesIO(data))
+    result = pyfs.save(BytesIO(data))
 
     with app.test_request_context():
         res = pyfs.send_file(
-            'myfilename.txt', mimetype='text/plain', checksum=checksum)
+            'myfilename.txt', mimetype='text/plain', checksum=result['checksum'])
         assert res.status_code == 200
         h = res.headers
         assert h['Content-Type'] == 'text/plain; charset=utf-8'
-        assert h['Content-Length'] == str(size)
-        assert h['Content-MD5'] == checksum[4:]
-        assert h['ETag'] == '"{0}"'.format(checksum)
+        assert h['Content-Length'] == str(result['size'])
+        assert h['Content-MD5'] == result['checksum'][4:]
+        assert h['ETag'] == '"{0}"'.format(result['checksum'])
 
         # Content-Type: application/octet-stream
         # ETag: "b234ee4d69f5fce4486a80fdaf4a4263"
@@ -241,7 +247,7 @@ def test_pyfs_send_file(app, pyfs):
         # Test for absence of Content-Disposition header to make sure that
         # it's not present when as_attachment=False
         res = pyfs.send_file('myfilename.txt', mimetype='text/plain',
-                             checksum=checksum, as_attachment=False)
+                             checksum=result['checksum'], as_attachment=False)
         assert res.status_code == 200
         assert 'attachment' not in res.headers['Content-Disposition']
 
@@ -249,13 +255,13 @@ def test_pyfs_send_file(app, pyfs):
 def test_pyfs_send_file_for_download(app, pyfs):
     """Test send file."""
     data = b'sendthis'
-    uri, size, checksum = pyfs.save(BytesIO(data))
+    result = pyfs.save(BytesIO(data))
 
     with app.test_request_context():
         # Test for presence of Content-Disposition header to make sure that
         # it's present when as_attachment=True
         res = pyfs.send_file('myfilename.txt', mimetype='text/plain',
-                             checksum=checksum, as_attachment=True)
+                             checksum=result['checksum'], as_attachment=True)
         assert res.status_code == 200
         assert (res.headers['Content-Disposition'] ==
                 'attachment; filename=myfilename.txt')
@@ -264,17 +270,17 @@ def test_pyfs_send_file_for_download(app, pyfs):
 def test_pyfs_send_file_xss_prevention(app, pyfs):
     """Test send file."""
     data = b'<html><body><script>alert("xss");</script></body></html>'
-    uri, size, checksum = pyfs.save(BytesIO(data))
+    result = pyfs.save(BytesIO(data))
 
     with app.test_request_context():
         res = pyfs.send_file(
-            'myfilename.html', mimetype='text/html', checksum=checksum)
+            'myfilename.html', mimetype='text/html', checksum=result['checksum'])
         assert res.status_code == 200
         h = res.headers
         assert h['Content-Type'] == 'text/plain; charset=utf-8'
-        assert h['Content-Length'] == str(size)
-        assert h['Content-MD5'] == checksum[4:]
-        assert h['ETag'] == '"{0}"'.format(checksum)
+        assert h['Content-Length'] == str(result['size'])
+        assert h['Content-MD5'] == result['checksum'][4:]
+        assert h['ETag'] == '"{0}"'.format(result['checksum'])
         # XSS prevention
         assert h['Content-Security-Policy'] == 'default-src \'none\';'
         assert h['X-Content-Type-Options'] == 'nosniff'
@@ -328,12 +334,12 @@ def test_pyfs_copy(pyfs, dummy_location):
 def test_non_unicode_filename(app, pyfs):
     """Test sending the non-unicode filename in the header."""
     data = b'HelloWorld'
-    uri, size, checksum = pyfs.save(BytesIO(data))
+    result = pyfs.save(BytesIO(data))
 
     with app.test_request_context():
         res = pyfs.send_file(
             u'żółć.dat', mimetype='application/octet-stream',
-            checksum=checksum)
+            checksum=result['checksum'])
         assert res.status_code == 200
         assert set(res.headers['Content-Disposition'].split('; ')) == \
             set(["attachment", "filename=zoc.dat",
@@ -341,6 +347,6 @@ def test_non_unicode_filename(app, pyfs):
 
     with app.test_request_context():
         res = pyfs.send_file(
-            'żółć.txt', mimetype='text/plain', checksum=checksum)
+            'żółć.txt', mimetype='text/plain', checksum=result['checksum'])
         assert res.status_code == 200
         assert res.headers['Content-Disposition'] == 'inline'

@@ -16,11 +16,16 @@ from flask import current_app
 from fs.opener import opener
 from fs.path import basename, dirname
 
-from ..helpers import make_path
-from .base import FileStorage
+from ..helpers import chunk_size_or_default, make_path
+from .base import StorageBackend
+from .legacy import PyFSFileStorage, pyfs_storage_factory
+
+__all__ = ['PyFSFileStorage', 'pyfs_storage_factory', 'PyFSStorageBackend']
+
+from ..utils import check_size, check_sizelimit
 
 
-class PyFSFileStorage(FileStorage):
+class PyFSStorageBackend(StorageBackend):
     """File system storage using PyFilesystem for access the file.
 
     This storage class will store files according to the following pattern:
@@ -40,7 +45,7 @@ class PyFSFileStorage(FileStorage):
         # if isinstance(args[0], str):
         #     raise NotImplementedError
         self.clean_dir = clean_dir
-        super(PyFSFileStorage, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @property
     def filepath(self):
@@ -77,10 +82,8 @@ class PyFSFileStorage(FileStorage):
             fs.removedir('.')
         return True
 
-    @classmethod
-    def initialize(cls, suggested_uri, size=0):
+    def _initialize(self, size=0):
         """Initialize file on storage and truncate to given size."""
-        self = cls(uri=suggested_uri)
         fs, path = self._get_fs()
 
         # Required for reliably opening the file on certain file systems:
@@ -100,10 +103,10 @@ class PyFSFileStorage(FileStorage):
 
         self._size = size
 
-        return {'uri': self.uri, 'size': size}
+        return {}
 
-    def save(self, incoming_stream, size_limit=None, size=None,
-             chunk_size=None, progress_callback=None):
+    def _save(self, incoming_stream, size_limit=None, size=None,
+             chunk_size=None):
         """Save file in the file system."""
         fp = self.open(mode='wb')
         try:
@@ -115,50 +118,56 @@ class PyFSFileStorage(FileStorage):
         finally:
             fp.close()
 
-    def update(self, incoming_stream, seek=0, size=None, chunk_size=None,
+        return {}
+
+    def _update(self, incoming_stream, seek=0, size=None, chunk_size=None,
                progress_callback=None):
         """Update a file in the file system."""
         fp = self.open(mode='r+b')
         try:
             fp.seek(seek)
-            bytes_written, checksum = self._write_stream(
-                incoming_stream, fp, chunk_size=chunk_size,
-                size=size, progress_callback=progress_callback)
+            shutil.copyfileobj(incoming_stream, fp, length=chunk_size)
         finally:
             fp.close()
 
-        return bytes_written, checksum
+    def _write_stream(self, src, dst, size=None, size_limit=None,
+                      chunk_size=None, progress_callback=None):
+        """Get helper to save stream from src to dest + compute checksum.
 
+        :param src: Source stream.
+        :param dst: Destination stream.
+        :param size: If provided, this exact amount of bytes will be
+            written to the destination file.
+        :param size_limit: ``FileSizeLimit`` instance to limit number of bytes
+            to write.
+        """
+        chunk_size = chunk_size_or_default(chunk_size)
 
-def pyfs_storage_factory(fileinstance=None, default_location=None,
-                         default_storage_class=None,
-                         filestorage_class=PyFSFileStorage, fileurl=None,
-                         size=None, modified=None, clean_dir=True):
-    """Get factory function for creating a PyFS file storage instance."""
-    # Either the FileInstance needs to be specified or all filestorage
-    # class parameters need to be specified
-    assert fileinstance or (fileurl and size)
+        algo, m = self._init_hash()
+        bytes_written = 0
 
-    if fileinstance:
-        # FIXME: Code here should be refactored since it assumes a lot on the
-        # directory structure where the file instances are written
-        fileurl = None
-        size = fileinstance.size
-        modified = fileinstance.updated
+        while 1:
+            # Check that size limits aren't bypassed
+            check_sizelimit(size_limit, bytes_written, size)
 
-        if fileinstance.uri:
-            # Use already existing URL.
-            fileurl = fileinstance.uri
-        else:
-            assert default_location
-            # Generate a new URL.
-            fileurl = make_path(
-                default_location,
-                str(fileinstance.id),
-                'data',
-                current_app.config['FILES_REST_STORAGE_PATH_DIMENSIONS'],
-                current_app.config['FILES_REST_STORAGE_PATH_SPLIT_LENGTH'],
-            )
+            chunk = src.read(chunk_size)
 
-    return filestorage_class(
-        fileurl, size=size, modified=modified, clean_dir=clean_dir)
+            if not chunk:
+                if progress_callback:
+                    progress_callback(bytes_written, bytes_written)
+                break
+
+            dst.write(chunk)
+
+            bytes_written += len(chunk)
+
+            if m:
+                m.update(chunk)
+
+            if progress_callback:
+                progress_callback(None, bytes_written)
+
+        check_size(bytes_written, size)
+
+        return bytes_written, '{0}:{1}'.format(
+            algo, m.hexdigest()) if m else None

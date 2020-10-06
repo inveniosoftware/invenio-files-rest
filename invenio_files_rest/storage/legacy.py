@@ -22,41 +22,10 @@ from flask import current_app
 from invenio_files_rest.helpers import make_path
 from invenio_files_rest.errors import FileSizeError, StorageError, UnexpectedFileSizeError
 from invenio_files_rest.helpers import chunk_size_or_default, compute_checksum, send_stream
+from invenio_files_rest.utils import check_size, check_sizelimit
 
 from fs.opener import opener
 from fs.path import basename, dirname
-
-def check_sizelimit(size_limit, bytes_written, total_size):
-    """Check if size limit was exceeded.
-    :param size_limit: The size limit.
-    :param bytes_written: The total number of bytes written.
-    :param total_size: The total file size.
-    :raises invenio_files_rest.errors.UnexpectedFileSizeError: If the bytes
-        written exceed the total size.
-    :raises invenio_files_rest.errors.FileSizeError: If the bytes
-        written are major than the limit size.
-    """
-    if size_limit is not None and bytes_written > size_limit:
-        desc = 'File size limit exceeded.' \
-            if isinstance(size_limit, int) else size_limit.reason
-        raise FileSizeError(description=desc)
-
-    # Never write more than advertised
-    if total_size is not None and bytes_written > total_size:
-        raise UnexpectedFileSizeError(
-            description='File is bigger than expected.')
-
-
-def check_size(bytes_written, total_size):
-    """Check if expected amounts of bytes have been written.
-    :param bytes_written: The total number of bytes written.
-    :param total_size: The total file size.
-    :raises invenio_files_rest.errors.UnexpectedFileSizeError: If the bytes
-        written exceed the total size.
-    """
-    if total_size and bytes_written < total_size:
-        raise UnexpectedFileSizeError(
-            description='File is smaller than expected.')
 
 
 class FileStorage(object):
