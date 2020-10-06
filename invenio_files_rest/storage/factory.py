@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional, Type
 from flask import current_app
 
 from invenio_files_rest.models import FileInstance, Location
-from .base import FileStorage
+from .base import StorageBackend
 from ..helpers import make_path
 
 
@@ -18,7 +18,7 @@ class StorageFactory:
     def __call__(
         self,
         fileinstance: FileInstance,
-    ) -> Optional[FileStorage]:
+    ) -> Optional[StorageBackend]:
         """Returns a FileStorage instance for a file, for manipulating file contents.
         """
         if not fileinstance.storage_backend:
@@ -38,9 +38,9 @@ class StorageFactory:
         fileinstance: FileInstance,
         size: int = 0,
         preferred_location: Location = None
-    ) -> FileStorage:
+    ) -> StorageBackend:
         if fileinstance.storage_backend:
-            return self(fileinstance)
+            return self(fileinstance)  # type: ignore
 
         location = self.get_location(fileinstance, preferred_location)
 
@@ -71,13 +71,13 @@ class StorageFactory:
             raise ValueError("preferred_location required for default storage factory")
         return preferred_location.storage_backend
 
-    def resolve_storage_backend(self, backend_name: str) -> Type[FileStorage]:
+    def resolve_storage_backend(self, backend_name: str) -> Type[StorageBackend]:
         return self.app.config['FILES_REST_STORAGE_BACKENDS'][backend_name]
 
     def get_storage_backend_kwargs(
         self,
         fileinstance: FileInstance,
-        storage_backend_cls: Type[FileStorage],
+        storage_backend_cls: Type[StorageBackend],
     ) -> Dict[str, Any]:
         return {}
 
@@ -85,7 +85,7 @@ class StorageFactory:
         self,
         fileinstance: FileInstance,
         location: Location,
-        storage_backend_cls: Type[FileStorage],
+        storage_backend_cls: Type[StorageBackend],
     ):
         return make_path(
             location,

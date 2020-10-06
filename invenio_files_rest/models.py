@@ -48,6 +48,7 @@ from os.path import basename
 from typing import Dict, TYPE_CHECKING, Tuple, Union
 
 import six
+import typing
 from flask import current_app
 from functools import wraps
 from invenio_db import db
@@ -835,6 +836,7 @@ class FileInstance(db.Model, Timestamp):
 
     @ensure_writable()
     def init_contents(self, size=0, default_location: str=None, **kwargs):
+        preferred_location: typing.Optional[Location]
         if default_location:
             preferred_location = Location(uri=default_location)
         else:
@@ -1042,7 +1044,7 @@ class ObjectVersion(db.Model, Timestamp):
         """Get MIME type of object."""
         return self._mimetype if self._mimetype else guess_mimetype(self.key)
 
-    @mimetype.setter
+    @mimetype.setter  # type: ignore
     def mimetype(self, value):
         """Setter for MIME type."""
         self._mimetype = value
