@@ -122,7 +122,6 @@ def test_pyfs_save_limits(pyfs):
     result = pyfs.save(BytesIO(data), size_limit=len(data))
     assert result['size'] == len(data)
 
-    print("-----")
     # Size doesn't match
     pytest.raises(
         UnexpectedFileSizeError, pyfs.save, BytesIO(data), size=len(data) - 1)
@@ -138,11 +137,8 @@ def test_pyfs_save_limits(pyfs):
 def test_pyfs_update(pyfs, pyfs_testpath, get_md5):
     """Test update of file."""
     pyfs.initialize(size=100)
-    print("E1", pyfs.open().read()[:6])
     pyfs.update(BytesIO(b'cd'), seek=2, size=2)
-    print("E2", pyfs.open().read()[:6])
     pyfs.update(BytesIO(b'ab'), seek=0, size=2)
-    print("E3", pyfs.open().read()[:6])
 
     with open(pyfs_testpath) as fp:
         content = fp.read()

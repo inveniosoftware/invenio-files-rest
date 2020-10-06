@@ -815,7 +815,6 @@ class FileInstance(db.Model, Timestamp):
     @ensure_writable()
     def initialize(self, preferred_location: Location, size=0, **kwargs):
         """Initialize file."""
-        print("WRI1", self.writable)
         if hasattr(current_files_rest.storage_factory, 'initialize'):
             # New behaviour, with a new-style storage factory
             result = current_files_rest.storage_factory.initialize(
@@ -823,19 +822,16 @@ class FileInstance(db.Model, Timestamp):
                 preferred_location=preferred_location,
                 size=size,
             )
-            print("WRI2", self.writable)
         else:
             # Old behaviour, with an old-style storage factory
             storage = self.storage(default_location=preferred_location.uri, **kwargs)
             result = storage.initialize(size=size)
-            print("WRI3", self.writable, storage)
         self.update_file_metadata(
             result,
             readable=False,
             writable=True,
             storage_backend=type(storage).backend_name if isinstance(storage, StorageBackend) else None,
         )
-        print("WRI4", self.writable, result)
 
     @ensure_writable()
     def init_contents(self, size=0, default_location: str=None, **kwargs):
@@ -940,7 +936,6 @@ class FileInstance(db.Model, Timestamp):
                 file_metadata += (kwargs.get('writable', False),)
             if len(file_metadata) < 6:
                 file_metadata += (kwargs.get('storage_class', None),)
-            print(file_metadata)
             self.set_uri(*file_metadata)
         elif isinstance(file_metadata, dict):
             file_metadata.update(kwargs)
@@ -1626,7 +1621,6 @@ class MultipartObject(db.Model, Timestamp):
 
         with db.session.begin_nested():
             file_ = FileInstance.create()
-            print("WR2", file_.writable)
             file_.size = size
             obj = cls(
                 upload_id=uuid.uuid4(),
@@ -1639,13 +1633,11 @@ class MultipartObject(db.Model, Timestamp):
             )
             bucket.size += size
             db.session.add(obj)
-        print("WR3", file_.writable)
         file_.init_contents(
             size=size,
             default_location=bucket.location.uri,
             default_storage_class=bucket.default_storage_class,
         )
-        print("WR4", file_.writable)
         return obj
 
     @classmethod
@@ -1786,7 +1778,6 @@ class Part(db.Model, Timestamp):
         :param chunk_size: Desired chunk size to read stream in. It is up to
             the storage interface if it respects this value.
         """
-        print("writable", self.multipart.file.writable)
         size, checksum = self.multipart.file.update_contents(
             stream, seek=self.start_byte, size=self.part_size,
             progress_callback=progress_callback,
