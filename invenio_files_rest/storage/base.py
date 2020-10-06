@@ -93,14 +93,16 @@ class StorageBackend:
                 chunk_size=chunk_size,
                 progress_callback=progress_callback,
             )
-            self._size = result['size']
-            return {
-                'uri': self.uri,
-                'readable': True,
-                'writable': False,
-                'storage_class': 'S',
-                **result,
-            }
+        self._size = result['size']
+        if not result['checksum']:
+            result['checksum'] = self.checksum(chunk_size=chunk_size)
+        return {
+            'uri': self.uri,
+            'readable': True,
+            'writable': False,
+            'storage_class': 'S',
+            **result,
+        }
 
     def get_save_stream(self) -> typing.ContextManager:
         """Save incoming stream to file storage."""
@@ -117,15 +119,16 @@ class StorageBackend:
                     chunk_size=chunk_size,
                     progress_callback=progress_callback,
                 )
-            self._size = seek + result['size']
-            return result['size'], result['checksum']
+        self._size = seek + result['size']
+        return result['size'], result['checksum']
 
     def get_update_stream(self, seek) -> typing.ContextManager:
         raise NotImplementedError
 
     def _write_stream(self, incoming_stream, output_stream, *, size_limit=None, size=None, chunk_size=None, progress_callback=None):
         chunk_size = chunk_size_or_default(chunk_size)
-        checksum = hashlib.new(self.checksum_hash_name) if self.checksum_hash_name else None
+
+        algo, checksum = self._init_hash()
         update_sum = checksum.update if checksum else lambda chunk: None
 
         bytes_written = 0
@@ -194,18 +197,22 @@ class StorageBackend:
             fp.close()
             raise StorageError('Could not send file: {}'.format(e))
 
-    def checksum(self, chunk_size=None, progress_callback=None, **kwargs):
+    def checksum(self, chunk_size=None, progress_callback=None):
         """Compute checksum of file."""
-        fp = self.open(mode='rb')
-        try:
-            value = self._compute_checksum(
-                fp, size=self._size, chunk_size=None,
-                progress_callback=progress_callback)
-        except StorageError:
-            raise
-        finally:
-            fp.close()
-        return value
+
+        algo, m = self._init_hash()
+        if not m:
+            return None
+
+        chunk_size = chunk_size_or_default(chunk_size)
+
+        with self.open(mode='rb') as fp:
+            algo, m = self._init_hash()
+            return compute_checksum(
+                fp, algo, m,
+                chunk_size=chunk_size,
+                progress_callback=progress_callback
+            )
 
     def copy(self, src, chunk_size=None, progress_callback=None):
         """Copy data from another file instance.
@@ -240,28 +247,7 @@ class StorageBackend:
         Overwrite this method if you want to use different checksum
         algorithm for your storage backend.
         """
-        return 'md5', hashlib.md5()
-
-    def _compute_checksum(self, stream, size=None, chunk_size=None,
-                          progress_callback=None, **kwargs):
-        """Get helper method to compute checksum from a stream.
-
-        Naive implementation that can be overwritten by subclasses in order to
-        provide more efficient implementation.
-        """
-        if progress_callback and size:
-            progress_callback = partial(progress_callback, size)
+        if self.checksum_hash_name:
+            return self.checksum_hash_name, hashlib.new(self.checksum_hash_name)
         else:
-            progress_callback = None
-
-        try:
-            algo, m = self._init_hash()
-            return compute_checksum(
-                stream, algo, m,
-                chunk_size=chunk_size,
-                progress_callback=progress_callback,
-                **kwargs
-            )
-        except Exception as e:
-            raise StorageError(
-                'Could not compute checksum of file: {0}'.format(e))
+            return None, None
