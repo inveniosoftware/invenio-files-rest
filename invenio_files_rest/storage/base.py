@@ -38,7 +38,7 @@ class StorageBackend:
 
     checksum_hash_name = 'md5'
 
-    def __init__(self, uri: str=None, size: int=None, modified: datetime=None, *):
+    def __init__(self, uri: str=None, size: int=None, modified: datetime=None):
         """Initialize storage object."""
         self.uri = uri
         self._size = size
