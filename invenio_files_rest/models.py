@@ -831,7 +831,7 @@ class FileInstance(db.Model, Timestamp):
             result,
             readable=False,
             writable=True,
-            storage_backend=type(storage).backend_name if isinstance(storage, StorageBackend) else None,
+            storage_backend=storage.get_backend_name() if isinstance(storage, StorageBackend) else None,
         )
 
     @ensure_writable()

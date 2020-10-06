@@ -33,9 +33,19 @@ if TYPE_CHECKING:
 __all__ = ['FileStorage', 'StorageBackend']
 
 
-class StorageBackendMeta(type):
-    @property
-    def backend_name(cls):
+class StorageBackend:
+    """Base class for storage interface to a single file."""
+
+    checksum_hash_name = 'md5'
+
+    def __init__(self, uri: str=None, size: int=None, modified: datetime=None, *):
+        """Initialize storage object."""
+        self.uri = uri
+        self._size = size
+        self._modified = timegm(modified.timetuple()) if modified else None
+
+    @classmethod
+    def get_backend_name(cls):
         try:
             return cls._backend_name
         except AttributeError:
@@ -46,18 +56,6 @@ class StorageBackendMeta(type):
             else:
                 raise RuntimeError("{} isn't listed in FILES_REST_STORAGE_BACKENDS config".format(cls))
             return cls._backend_name
-
-
-class StorageBackend(metaclass=StorageBackendMeta):
-    """Base class for storage interface to a single file."""
-
-    checksum_hash_name = 'md5'
-
-    def __init__(self, uri: str=None, size: int=None, modified: datetime=None, *, filepath=None):
-        """Initialize storage object."""
-        self.uri = uri or filepath
-        self._size = size
-        self._modified = timegm(modified.timetuple()) if modified else None
 
     def open(self, mode=None):
         """Open the file.
