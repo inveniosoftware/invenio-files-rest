@@ -66,7 +66,7 @@ from .errors import BucketLockedError, FileInstanceAlreadySetError, \
     MultipartInvalidSize, MultipartMissingParts, MultipartNotCompleted
 from .proxies import current_files_rest
 from .storage.base import StorageBackend
-from .utils import ENCODING_MIMETYPES, PassthroughChecksum, guess_mimetype
+from .utils import ENCODING_MIMETYPES, guess_mimetype
 
 if TYPE_CHECKING:
     from .storage import StorageBackend
@@ -871,12 +871,8 @@ class FileInstance(db.Model, Timestamp):
             from.
         :param stream: File-like stream.
         """
-        wrapped_stream = PassthroughChecksum(stream,
-                                             hash_name='md5',
-                                             progress_callback=progress_callback)
-
         storage = self.storage(**kwargs)
-        self.update_file_metadata(storage.save(wrapped_stream, chunk_size=chunk_size, size=size,
+        self.update_file_metadata(storage.save(stream, chunk_size=chunk_size, size=size,
                 size_limit=size_limit, progress_callback=progress_callback))
 
         self.storage_backend = type(storage).backend_name if isinstance(storage, StorageBackend) else None

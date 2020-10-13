@@ -23,7 +23,7 @@ from flask import current_app
 from .legacy import FileStorage
 from ..errors import StorageError
 from ..helpers import chunk_size_or_default, compute_checksum, make_path, send_stream
-from ..utils import PassthroughChecksum, check_size, check_sizelimit
+from ..utils import check_size, check_sizelimit
 
 if TYPE_CHECKING:
     from ..models import FileInstance
