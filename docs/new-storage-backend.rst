@@ -2,7 +2,7 @@ Developing a new storage backend
 ================================
 
 A storage backend should subclass ``invenio_files_rest.storage.StorageBackend`` and should minimally implement the
-``open()``, ``_initialize(size)``, ``get_save_stream()`` and ``update_stream(seek)`` methods. You should
+``open()``, ``delete()``, ``_initialize(size)``, ``get_save_stream()`` and ``update_stream(seek)`` methods. You should
 register the backend with an entry point in your ``setup.py``:
 
 .. code-block:: python
@@ -34,6 +34,7 @@ Here's an example implementation of a storage backend that stores files remotely
    import urllib.parse
 
    from invenio_files_rest.storage import StorageBackend
+
 
    class StorageBackend(StorageBackend):
        def open(self):
