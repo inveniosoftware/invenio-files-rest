@@ -836,6 +836,7 @@ class FileInstance(db.Model, Timestamp):
 
     @ensure_writable()
     def init_contents(self, size=0, default_location: str=None, **kwargs):
+        """Initialize storage for this FileInstance."""
         preferred_location: typing.Optional[Location]
         if default_location:
             preferred_location = Location(uri=default_location)
@@ -922,6 +923,7 @@ class FileInstance(db.Model, Timestamp):
     _FILE_METADATA_FIELDS = {'uri', 'size', 'checksum', 'writable', 'readable', 'storage_class'}
 
     def update_file_metadata(self, file_metadata: Union[Tuple,Dict] = None, **kwargs):
+        """Update the file metadata, usually as a result of a storage backend operation."""
         if file_metadata is None:
             file_metadata = {}
 

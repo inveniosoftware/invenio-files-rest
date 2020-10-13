@@ -104,6 +104,7 @@ class PyFSStorageBackend(StorageBackend):
 
     @contextlib.contextmanager
     def get_save_stream(self):
+        """Open the underlying file for writing, and delete it if there was a problem."""
         fp = self.open(mode='wb')
         try:
             yield fp
@@ -114,6 +115,7 @@ class PyFSStorageBackend(StorageBackend):
             fp.close()
 
     def get_update_stream(self, seek):
+        """Open the underlying file for updates, seeking as requested."""
         fp = self.open(mode='r+b')
         fp.seek(seek)
         return contextlib.closing(fp)

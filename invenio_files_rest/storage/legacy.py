@@ -9,7 +9,8 @@
 """The previous invenio_files_rest.storage implementation.
 
 These classes and factory are included so that we can test that there are no regressions against them when
-implementing the new storage interface, and so ensure backwards compatibility."""
+implementing the new storage interface, and so ensure backwards compatibility.
+"""
 
 from __future__ import absolute_import, print_function
 
@@ -38,6 +39,7 @@ class FileStorage(object):
 
     def open(self, mode=None):
         """Open the file.
+
         The caller is responsible for closing the file.
         """
         raise NotImplementedError
@@ -112,6 +114,7 @@ class FileStorage(object):
 
     def copy(self, src, chunk_size=None, progress_callback=None):
         """Copy data from another file instance.
+
         :param src: Source stream.
         :param chunk_size: Chunk size to read from source stream.
         """
@@ -127,6 +130,7 @@ class FileStorage(object):
     #
     def _init_hash(self):
         """Initialize message digest object.
+
         Overwrite this method if you want to use different checksum
         algorithm for your storage backend.
         """
@@ -135,6 +139,7 @@ class FileStorage(object):
     def _compute_checksum(self, stream, size=None, chunk_size=None,
                           progress_callback=None, **kwargs):
         """Get helper method to compute checksum from a stream.
+
         Naive implementation that can be overwritten by subclasses in order to
         provide more efficient implementation.
         """
@@ -158,6 +163,7 @@ class FileStorage(object):
     def _write_stream(self, src, dst, size=None, size_limit=None,
                       chunk_size=None, progress_callback=None):
         """Get helper to save stream from src to dest + compute checksum.
+
         :param src: Source stream.
         :param dst: Destination stream.
         :param size: If provided, this exact amount of bytes will be
@@ -199,6 +205,7 @@ class FileStorage(object):
 
 class PyFSFileStorage(FileStorage):
     """File system storage using PyFilesystem for access the file.
+
     This storage class will store files according to the following pattern:
     ``<base_uri>/<file instance uuid>/data``.
     .. warning::
@@ -226,6 +233,7 @@ class PyFSFileStorage(FileStorage):
 
     def open(self, mode='rb'):
         """Open file.
+
         The caller is responsible for closing the file.
         """
         fs, path = self._get_fs()
@@ -233,6 +241,7 @@ class PyFSFileStorage(FileStorage):
 
     def delete(self):
         """Delete a file.
+
         The base directory is also removed, as it is assumed that only one file
         exists in the directory.
         """

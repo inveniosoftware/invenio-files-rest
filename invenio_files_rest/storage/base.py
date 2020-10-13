@@ -15,7 +15,7 @@ import warnings
 from calendar import timegm
 from datetime import datetime
 from functools import partial
-from typing import Callable, TYPE_CHECKING, Tuple
+from typing import Any, Callable, Dict, TYPE_CHECKING, Tuple
 
 import typing
 from flask import current_app
@@ -45,6 +45,10 @@ class StorageBackend:
 
     @classmethod
     def get_backend_name(cls):
+        """Return the backend name for this StorageBackend.
+
+        This performs a reverse-lookup in FILES_REST_STORAGE_BACKENDS and then caches the result.
+        """
         try:
             return cls._backend_name
         except AttributeError:
@@ -68,7 +72,7 @@ class StorageBackend:
         raise NotImplementedError
 
     def initialize(self, size=0):
-        """Initialize the file on the storage + truncate to the given size."""
+        """Initialize the file on the storage and truncate to the given size."""
         return {
             'readable': False,
             'writable': True,
@@ -77,7 +81,8 @@ class StorageBackend:
             **self._initialize(size=size),
         }
 
-    def _initialize(self, size=0):
+    def _initialize(self, size=0) -> Dict[Any, str]:
+        """Override this to perform file storage initialization."""
         raise NotImplementedError
 
     def save(self, incoming_stream, size_limit=None, size=None,
@@ -105,7 +110,11 @@ class StorageBackend:
         }
 
     def get_save_stream(self) -> typing.ContextManager:
-        """Save incoming stream to file storage."""
+        """Return a context manager for a file-like object for writing to the file.
+
+        The return value should be a context manager that provides a file-like object when entered, and performs any necessary
+        clean-up when exited (e.g. closing the file).
+        """
         raise NotImplementedError
 
     def update(self,incoming_stream, seek=0, size=None, chunk_size=None,
@@ -123,9 +132,15 @@ class StorageBackend:
         return result['size'], result['checksum']
 
     def get_update_stream(self, seek) -> typing.ContextManager:
+        """Return a context manager for a file-like object for updating the file.
+
+        The return value should be a context manager that provides a file-like object when entered, and performs any necessary
+        clean-up when exited (e.g. closing the file).
+        """
         raise NotImplementedError
 
     def _write_stream(self, incoming_stream, output_stream, *, size_limit=None, size=None, chunk_size=None, progress_callback=None):
+        """Copy from one stream to another while honoring size limits and requested progress callbacks."""
         chunk_size = chunk_size_or_default(chunk_size)
 
         algo, checksum = self._init_hash()
@@ -199,7 +214,6 @@ class StorageBackend:
 
     def checksum(self, chunk_size=None, progress_callback=None):
         """Compute checksum of file."""
-
         algo, m = self._init_hash()
         if not m:
             return None
