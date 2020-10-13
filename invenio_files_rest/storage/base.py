@@ -242,16 +242,6 @@ class StorageBackend:
         finally:
             fp.close()
 
-    @classmethod
-    def get_uri(self, fileinstance: FileInstance, base_uri: str) -> str:
-        return make_path(
-            base_uri,
-            str(fileinstance.id),
-            'data',
-            current_app.config['FILES_REST_STORAGE_PATH_DIMENSIONS'],
-            current_app.config['FILES_REST_STORAGE_PATH_SPLIT_LENGTH'],
-        )
-
     #
     # Helpers
     #
