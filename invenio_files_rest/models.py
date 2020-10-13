@@ -875,7 +875,7 @@ class FileInstance(db.Model, Timestamp):
         self.update_file_metadata(storage.save(stream, chunk_size=chunk_size, size=size,
                 size_limit=size_limit, progress_callback=progress_callback))
 
-        self.storage_backend = type(storage).backend_name if isinstance(storage, StorageBackend) else None
+        self.storage_backend = storage.get_backend_name() if isinstance(storage, StorageBackend) else None
 
 
     @ensure_writable()
