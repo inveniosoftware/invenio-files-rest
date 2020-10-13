@@ -56,7 +56,7 @@ class StorageBackend:
                 raise RuntimeError("{} isn't listed in FILES_REST_STORAGE_BACKENDS config".format(cls))
             return cls._backend_name
 
-    def open(self, mode=None):
+    def open(self):
         """Open the file.
 
         The caller is responsible for closing the file.
