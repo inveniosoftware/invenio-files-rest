@@ -21,7 +21,7 @@ from ..helpers import chunk_size_or_default, make_path
 from .base import StorageBackend
 from .legacy import PyFSFileStorage, pyfs_storage_factory
 
-__all__ = ['PyFSFileStorage', 'pyfs_storage_factory', 'PyFSStorageBackend']
+__all__ = ('PyFSFileStorage', 'pyfs_storage_factory', 'PyFSStorageBackend')
 
 from ..utils import check_size, check_sizelimit
 

@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from ..models import FileInstance
 
 
-__all__ = ['FileStorage', 'StorageBackend']
+__all__ = ('FileStorage', 'StorageBackend')
 
 
 class StorageBackend:
