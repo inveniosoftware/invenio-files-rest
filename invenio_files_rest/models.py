@@ -671,7 +671,7 @@ class FileInstance(db.Model, Timestamp):
     storage_class = db.Column(db.String(1), nullable=True)
     """Storage class of file."""
 
-    backend_name = db.Column(db.String(32), nullable=True)
+    storage_backend = db.Column(db.String(32), nullable=True)
 
     size = db.Column(db.BigInteger, default=0, nullable=True)
     """Size of file."""
