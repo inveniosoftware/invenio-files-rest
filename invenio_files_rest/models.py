@@ -35,8 +35,6 @@ model.
 
 from __future__ import absolute_import, print_function
 
-import mimetypes
-
 import re
 import six
 import sys
@@ -53,7 +51,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import validates
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy_utils.types import UUIDType
-from typing import TYPE_CHECKING, Dict, Tuple, Union
+from typing import Dict, Tuple, Union
 
 from .errors import BucketLockedError, FileInstanceAlreadySetError, \
     FileInstanceUnreadableError, FileSizeError, InvalidKeyError, \
@@ -61,11 +59,9 @@ from .errors import BucketLockedError, FileInstanceAlreadySetError, \
     MultipartInvalidChunkSize, MultipartInvalidPartNumber, \
     MultipartInvalidSize, MultipartMissingParts, MultipartNotCompleted
 from .proxies import current_files_rest
-from .storage.base import StorageBackend
-from .utils import ENCODING_MIMETYPES, guess_mimetype
+from .storage import StorageBackend
+from .utils import guess_mimetype
 
-if TYPE_CHECKING:
-    from .storage import StorageBackend
 
 slug_pattern = re.compile('^[a-z][a-z0-9-]+$')
 
