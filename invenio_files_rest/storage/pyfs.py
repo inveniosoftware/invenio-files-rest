@@ -38,7 +38,6 @@ class PyFSStorageBackend(StorageBackend):
        updating part of a file it will leave the file in an inconsistent
        state. The storage class tries as best as possible to handle errors
        and leave the system in a consistent state.
-
     """
 
     def __init__(self, *args, clean_dir=True, **kwargs):

@@ -208,7 +208,9 @@ class PyFSFileStorage(FileStorage):
 
     This storage class will store files according to the following pattern:
     ``<base_uri>/<file instance uuid>/data``.
+
     .. warning::
+
        File operations are not atomic. E.g. if errors happens during e.g.
        updating part of a file it will leave the file in an inconsistent
        state. The storage class tries as best as possible to handle errors
