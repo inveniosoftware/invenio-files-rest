@@ -11,19 +11,17 @@
 from __future__ import absolute_import, print_function
 
 import hashlib
+import typing
 import warnings
 from calendar import timegm
 from datetime import datetime
+from flask import current_app
 from typing import Any, Callable, Dict, Tuple
 
-import typing
-from flask import current_app
-
-from .legacy import FileStorage
 from ..errors import StorageError
 from ..helpers import chunk_size_or_default, compute_checksum, send_stream
 from ..utils import check_size, check_sizelimit
-
+from .legacy import FileStorage
 
 __all__ = ('FileStorage', 'StorageBackend')
 

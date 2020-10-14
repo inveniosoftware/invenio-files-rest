@@ -40,15 +40,10 @@ import mimetypes
 import re
 import six
 import sys
+import typing
 import uuid
 import warnings
 from datetime import datetime
-from functools import wraps
-from os.path import basename
-from typing import Dict, TYPE_CHECKING, Tuple, Union
-
-import six
-import typing
 from flask import current_app
 from functools import wraps
 from invenio_db import db
@@ -58,6 +53,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import validates
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy_utils.types import UUIDType
+from typing import TYPE_CHECKING, Dict, Tuple, Union
 
 from .errors import BucketLockedError, FileInstanceAlreadySetError, \
     FileInstanceUnreadableError, FileSizeError, InvalidKeyError, \

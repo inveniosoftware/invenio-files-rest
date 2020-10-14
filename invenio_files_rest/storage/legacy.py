@@ -17,19 +17,15 @@ from __future__ import absolute_import, print_function
 
 import hashlib
 from calendar import timegm
-from functools import partial
-
 from flask import current_app
-
-from invenio_files_rest.helpers import make_path
-from invenio_files_rest.errors import StorageError
-from invenio_files_rest.helpers import (
-    chunk_size_or_default, compute_checksum, send_stream
-)
-from invenio_files_rest.utils import check_size, check_sizelimit
-
 from fs.opener import opener
 from fs.path import basename, dirname
+from functools import partial
+
+from invenio_files_rest.errors import StorageError
+from invenio_files_rest.helpers import chunk_size_or_default, \
+    compute_checksum, make_path, send_stream
+from invenio_files_rest.utils import check_size, check_sizelimit
 
 
 class FileStorage(object):

@@ -1,12 +1,12 @@
 """Contains the base storage factory implementation."""
 
+from flask import current_app
 from typing import Any, Dict, Optional, Type
 
-from flask import current_app
-
 from invenio_files_rest.models import FileInstance, Location
-from .base import StorageBackend
+
 from ..helpers import make_path
+from .base import StorageBackend
 
 
 class StorageFactory:

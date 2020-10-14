@@ -11,8 +11,8 @@
 from __future__ import absolute_import, print_function
 
 from .base import FileStorage, StorageBackend
-from .pyfs import PyFSFileStorage, pyfs_storage_factory, PyFSStorageBackend
 from .factory import StorageFactory
+from .pyfs import PyFSFileStorage, PyFSStorageBackend, pyfs_storage_factory
 
 __all__ = (
     'FileStorage',

@@ -8,9 +8,8 @@
 
 """Invenio Files Rest module configuration file."""
 
-from datetime import timedelta
-
 import pkg_resources
+from datetime import timedelta
 
 from invenio_files_rest.helpers import create_file_streaming_redirect_response
 

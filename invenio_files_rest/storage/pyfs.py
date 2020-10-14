@@ -11,7 +11,6 @@
 from __future__ import absolute_import, print_function
 
 import contextlib
-
 from fs.opener import opener
 from fs.path import basename, dirname
 
