@@ -946,7 +946,9 @@ class FileInstance(db.Model, Timestamp):
     }
 
     def update_file_metadata(
-        self, file_metadata: Union[Tuple, Dict] = None, **kwargs
+        self,
+        file_metadata=None,  # type: Union[Tuple, Dict]
+        **kwargs
     ):
         """Update the file metadata as a result of a storage operation."""
         if file_metadata is None:

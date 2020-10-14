@@ -124,10 +124,10 @@ def test_pyfs_save_limits(legacy_pyfs):
     assert size == len(data)
 
     # Size doesn't match
-    pytest.raises(
-        UnexpectedFileSizeError, legacy_pyfs.save, BytesIO(data), size=len(data) - 1)
-    pytest.raises(
-        UnexpectedFileSizeError, legacy_pyfs.save, BytesIO(data), size=len(data) + 1)
+    with pytest.raises(UnexpectedFileSizeError):
+        legacy_pyfs.save(BytesIO(data), size=len(data) - 1)
+    with pytest.raises(UnexpectedFileSizeError):
+        legacy_pyfs.save(BytesIO(data), size=len(data) + 1)
 
     # Exceeds size limits
     pytest.raises(

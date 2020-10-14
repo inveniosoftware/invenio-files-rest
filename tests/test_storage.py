@@ -220,7 +220,10 @@ def test_pyfs_send_file(app, pyfs):
 
     with app.test_request_context():
         res = pyfs.send_file(
-            'myfilename.txt', mimetype='text/plain', checksum=result['checksum'])
+            'myfilename.txt',
+            mimetype='text/plain',
+            checksum=result['checksum']
+        )
         assert res.status_code == 200
         h = res.headers
         assert h['Content-Type'] == 'text/plain; charset=utf-8'
@@ -270,7 +273,10 @@ def test_pyfs_send_file_xss_prevention(app, pyfs):
 
     with app.test_request_context():
         res = pyfs.send_file(
-            'myfilename.html', mimetype='text/html', checksum=result['checksum'])
+            'myfilename.html',
+            mimetype='text/html',
+            checksum=result['checksum']
+        )
         assert res.status_code == 200
         h = res.headers
         assert h['Content-Type'] == 'text/plain; charset=utf-8'

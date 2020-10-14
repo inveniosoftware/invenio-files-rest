@@ -96,7 +96,7 @@ class StorageBackend:
         size_limit=None,
         size=None,
         chunk_size=None,
-        progress_callback: Callable[[int, int], None] = None
+        progress_callback=None,  # type: Callable[[int, int], None]
     ):
         """Save incoming stream to file storage."""
         with self.get_save_stream() as output_stream:
