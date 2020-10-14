@@ -1,7 +1,5 @@
 """Contains the base storage factory implementation."""
 
-import os
-import urllib.parse
 from typing import Any, Dict, Optional, Type
 
 from flask import current_app

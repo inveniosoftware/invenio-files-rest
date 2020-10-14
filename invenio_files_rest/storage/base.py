@@ -8,25 +8,22 @@
 
 """File storage base module."""
 
-from __future__ import absolute_import, annotations, print_function
+from __future__ import absolute_import, print_function
 
 import hashlib
 import warnings
 from calendar import timegm
 from datetime import datetime
-from functools import partial
-from typing import Any, Callable, Dict, TYPE_CHECKING, Tuple
+from typing import Any, Callable, Dict, Tuple
 
 import typing
 from flask import current_app
 
 from .legacy import FileStorage
 from ..errors import StorageError
-from ..helpers import chunk_size_or_default, compute_checksum, make_path, send_stream
+from ..helpers import chunk_size_or_default, compute_checksum, send_stream
 from ..utils import check_size, check_sizelimit
 
-if TYPE_CHECKING:
-    from ..models import FileInstance
 
 
 __all__ = ('FileStorage', 'StorageBackend')
@@ -37,7 +34,7 @@ class StorageBackend:
 
     checksum_hash_name = 'md5'
 
-    def __init__(self, uri: str=None, size: int=None, modified: datetime=None):
+    def __init__(self, uri: str = None, size: int = None, modified: datetime = None):
         """Initialize storage object."""
         self.uri = uri
         self._size = size

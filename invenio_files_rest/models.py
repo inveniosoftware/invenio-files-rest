@@ -33,7 +33,7 @@ have their own model, but are represented via the :py:data:`ObjectVersion`
 model.
 """
 
-from __future__ import absolute_import, annotations, print_function
+from __future__ import absolute_import, print_function
 
 import mimetypes
 

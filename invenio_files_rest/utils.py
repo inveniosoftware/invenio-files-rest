@@ -7,9 +7,8 @@
 # under the terms of the MIT License; see LICENSE file for more details.
 
 """Implementation of various utility functions."""
-import hashlib
+
 import mimetypes
-from typing import Callable
 
 import six
 from flask import current_app
