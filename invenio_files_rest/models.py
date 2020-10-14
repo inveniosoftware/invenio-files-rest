@@ -846,11 +846,9 @@ class FileInstance(db.Model, Timestamp):
     @ensure_writable()
     def init_contents(self, size=0, default_location: str = None, **kwargs):
         """Initialize storage for this FileInstance."""
-        preferred_location: typing.Optional[Location]
-        if default_location:
-            preferred_location = Location(uri=default_location)
-        else:
-            preferred_location = None
+        preferred_location = (  # type: typing.Optional[Location]
+            Location(uri=default_location) if default_location else None
+        )
         return self.initialize(
             preferred_location=preferred_location,
             size=size,

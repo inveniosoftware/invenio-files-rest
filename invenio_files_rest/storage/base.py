@@ -77,7 +77,7 @@ class StorageBackend:
         raise NotImplementedError
 
     def initialize(self, size=0):
-        """Initialize the file on the storage and truncate to the given size."""
+        """Initialize the file on the storage and truncate to given size."""
         return {
             'readable': False,
             'writable': True,
@@ -163,9 +163,9 @@ class StorageBackend:
     ):
         """Copy from one stream to another.
 
-         This honors size limits and performs requested progress callbacks once
-         data has been written to the output stream.
-         """
+        This honors size limits and performs requested progress callbacks once
+        data has been written to the output stream.
+        """
         chunk_size = chunk_size_or_default(chunk_size)
 
         algo, checksum = self._init_hash()
@@ -288,6 +288,8 @@ class StorageBackend:
         algorithm for your storage backend.
         """
         if self.checksum_hash_name:
-            return self.checksum_hash_name, hashlib.new(self.checksum_hash_name)
+            return (
+                self.checksum_hash_name, hashlib.new(self.checksum_hash_name)
+            )
         else:
             return None, None
