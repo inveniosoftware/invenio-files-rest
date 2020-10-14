@@ -8,8 +8,9 @@
 
 """The previous invenio_files_rest.storage implementation.
 
-These classes and factory are included so that we can test that there are no regressions against them when
-implementing the new storage interface, and so ensure backwards compatibility.
+These classes and factory are included so that we can test that there are no
+regressions against them when implementing the new storage interface, and so
+ensure backwards compatibility.
 """
 
 from __future__ import absolute_import, print_function
@@ -21,8 +22,10 @@ from functools import partial
 from flask import current_app
 
 from invenio_files_rest.helpers import make_path
-from invenio_files_rest.errors import FileSizeError, StorageError, UnexpectedFileSizeError
-from invenio_files_rest.helpers import chunk_size_or_default, compute_checksum, send_stream
+from invenio_files_rest.errors import StorageError
+from invenio_files_rest.helpers import (
+    chunk_size_or_default, compute_checksum, send_stream
+)
 from invenio_files_rest.utils import check_size, check_sizelimit
 
 from fs.opener import opener

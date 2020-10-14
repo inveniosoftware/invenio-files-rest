@@ -25,7 +25,6 @@ from ..helpers import chunk_size_or_default, compute_checksum, send_stream
 from ..utils import check_size, check_sizelimit
 
 
-
 __all__ = ('FileStorage', 'StorageBackend')
 
 
@@ -34,7 +33,11 @@ class StorageBackend:
 
     checksum_hash_name = 'md5'
 
-    def __init__(self, uri: str = None, size: int = None, modified: datetime = None):
+    def __init__(
+        self, uri: str = None,
+        size: int = None,
+        modified: datetime = None
+    ):
         """Initialize storage object."""
         self.uri = uri
         self._size = size
@@ -44,17 +47,22 @@ class StorageBackend:
     def get_backend_name(cls):
         """Return the backend name for this StorageBackend.
 
-        This performs a reverse-lookup in FILES_REST_STORAGE_BACKENDS and then caches the result.
+        This performs a reverse-lookup in FILES_REST_STORAGE_BACKENDS and then
+        caches the result.
         """
         try:
             return cls._backend_name
         except AttributeError:
-            for name, backend_cls in current_app.config['FILES_REST_STORAGE_BACKENDS'].items():
+            backends = current_app.config['FILES_REST_STORAGE_BACKENDS']
+            for name, backend_cls in backends.items():
                 if cls is backend_cls:
                     cls._backend_name = name
                     break
             else:
-                raise RuntimeError("{} isn't listed in FILES_REST_STORAGE_BACKENDS config".format(cls))
+                raise RuntimeError(
+                    "{} isn't listed in FILES_REST_STORAGE_BACKENDS "
+                    "config".format(cls)
+                )
             return cls._backend_name
 
     def open(self):
@@ -82,9 +90,14 @@ class StorageBackend:
         """Override this to perform file storage initialization."""
         raise NotImplementedError
 
-    def save(self, incoming_stream, size_limit=None, size=None,
-             chunk_size=None, progress_callback: Callable[[int, int], None] = None
-             ):
+    def save(
+        self,
+        incoming_stream,
+        size_limit=None,
+        size=None,
+        chunk_size=None,
+        progress_callback: Callable[[int, int], None] = None
+    ):
         """Save incoming stream to file storage."""
         with self.get_save_stream() as output_stream:
             result = self._write_stream(
@@ -107,14 +120,15 @@ class StorageBackend:
         }
 
     def get_save_stream(self) -> typing.ContextManager:
-        """Return a context manager for a file-like object for writing to the file.
+        """Return a context manager for a file-like object for writing.
 
-        The return value should be a context manager that provides a file-like object when entered, and performs any necessary
-        clean-up when exited (e.g. closing the file).
+        The return value should be a context manager that provides a file-like
+        object when entered, and performs any necessary clean-up when exited
+        (e.g. closing the file).
         """
         raise NotImplementedError
 
-    def update(self,incoming_stream, seek=0, size=None, chunk_size=None,
+    def update(self, incoming_stream, seek=0, size=None, chunk_size=None,
                progress_callback=None) -> Tuple[int, str]:
         """Update part of file with incoming stream."""
         with self.get_update_stream(seek) as output_stream:
@@ -129,15 +143,29 @@ class StorageBackend:
         return result['size'], result['checksum']
 
     def get_update_stream(self, seek) -> typing.ContextManager:
-        """Return a context manager for a file-like object for updating the file.
+        """Return a context manager for a file-like object for updating.
 
-        The return value should be a context manager that provides a file-like object when entered, and performs any necessary
-        clean-up when exited (e.g. closing the file).
+        The return value should be a context manager that provides a file-like
+        object when entered, and performs any necessary clean-up when exited
+        (e.g. closing the file).
         """
         raise NotImplementedError
 
-    def _write_stream(self, incoming_stream, output_stream, *, size_limit=None, size=None, chunk_size=None, progress_callback=None):
-        """Copy from one stream to another while honoring size limits and requested progress callbacks."""
+    def _write_stream(
+        self,
+        incoming_stream,
+        output_stream,
+        *,
+        size_limit=None,
+        size=None,
+        chunk_size=None,
+        progress_callback=None,
+    ):
+        """Copy from one stream to another.
+
+         This honors size limits and performs requested progress callbacks once
+         data has been written to the output stream.
+         """
         chunk_size = chunk_size_or_default(chunk_size)
 
         algo, checksum = self._init_hash()
@@ -168,16 +196,26 @@ class StorageBackend:
         check_size(bytes_written, size)
 
         return {
-            'checksum': f'{self.checksum_hash_name}:{checksum.hexdigest()}' if checksum else None,
+            'checksum': (
+                f'{self.checksum_hash_name}:{checksum.hexdigest()}'
+                if checksum else None
+            ),
             'size': bytes_written,
         }
 
     #
     # Default implementation
     #
-    def send_file(self, filename, mimetype=None, restricted=True,
-                  checksum=None, trusted=False, chunk_size=None,
-                  as_attachment=False):
+    def send_file(
+        self,
+        filename,
+        mimetype=None,
+        restricted=True,
+        checksum=None,
+        trusted=False,
+        chunk_size=None,
+        as_attachment=False
+    ):
         """Send the file to the client."""
         try:
             fp = self.open(mode='rb')
@@ -231,13 +269,14 @@ class StorageBackend:
         :param src: Source stream.
         :param chunk_size: Chunk size to read from source stream.
         """
-        warnings.warn("Call save with the other already-open FileStorage passed in instead.", DeprecationWarning)
-        fp = src.open(mode='rb')
-        try:
+        warnings.warn(
+            "Call save() with the other already-open FileStorage passed in "
+            "instead.",
+            DeprecationWarning
+        )
+        with src.open() as fp:
             return self.save(
                 fp, chunk_size=chunk_size, progress_callback=progress_callback)
-        finally:
-            fp.close()
 
     #
     # Helpers

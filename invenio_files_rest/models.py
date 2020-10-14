@@ -111,7 +111,7 @@ def as_bucket_id(value):
 
 
 def as_object_version(value):
-    """Get an object version object from an object version ID or an object version.
+    """Get an ObjectVersion object from an ID or an ObjectVersion.
 
     :param value: A :class:`invenio_files_rest.models.ObjectVersion` or an
         object version ID.
@@ -765,9 +765,13 @@ class FileInstance(db.Model, Timestamp):
         :returns: Storage interface.
         """
         if kwargs:
-            warnings.warn("Passing **kwargs to .storage() is deprecated; override the storage factory with a subclass "
-                          "of invenio_files_rest.storage.StorageFactory and implement get_storage_backend_kwargs() "
-                          "instead.", DeprecationWarning)
+            warnings.warn(
+                "Passing **kwargs to .storage() is deprecated; override the "
+                "storage factory with a subclass of "
+                "invenio_files_rest.storage.StorageFactory and implement "
+                "get_storage_backend_kwargs() instead.",
+                DeprecationWarning
+            )
         return current_files_rest.storage_factory(fileinstance=self, **kwargs)
 
     @ensure_readable()
@@ -825,17 +829,22 @@ class FileInstance(db.Model, Timestamp):
             )
         else:
             # Old behaviour, with an old-style storage factory
-            storage = self.storage(default_location=preferred_location.uri, **kwargs)
+            storage = self.storage(
+                default_location=preferred_location.uri, **kwargs
+            )
             result = storage.initialize(size=size)
         self.update_file_metadata(
             result,
             readable=False,
             writable=True,
-            storage_backend=storage.get_backend_name() if isinstance(storage, StorageBackend) else None,
+            storage_backend=(
+                storage.get_backend_name()
+                if isinstance(storage, StorageBackend) else None
+            ),
         )
 
     @ensure_writable()
-    def init_contents(self, size=0, default_location: str=None, **kwargs):
+    def init_contents(self, size=0, default_location: str = None, **kwargs):
         """Initialize storage for this FileInstance."""
         preferred_location: typing.Optional[Location]
         if default_location:
@@ -873,11 +882,20 @@ class FileInstance(db.Model, Timestamp):
         :param stream: File-like stream.
         """
         storage = self.storage(**kwargs)
-        self.update_file_metadata(storage.save(stream, chunk_size=chunk_size, size=size,
-                size_limit=size_limit, progress_callback=progress_callback))
+        self.update_file_metadata(
+            storage.save(
+                stream,
+                chunk_size=chunk_size,
+                size=size,
+                size_limit=size_limit,
+                progress_callback=progress_callback,
+            )
+        )
 
-        self.storage_backend = storage.get_backend_name() if isinstance(storage, StorageBackend) else None
-
+        self.storage_backend = (
+            storage.get_backend_name()
+            if isinstance(storage, StorageBackend) else None
+        )
 
     @ensure_writable()
     def copy_contents(self, fileinstance, progress_callback=None,
@@ -889,7 +907,12 @@ class FileInstance(db.Model, Timestamp):
             raise ValueError('File instance has data.')
 
         with fileinstance.storage(**kwargs).open() as f:
-            self.set_contents(f, progress_callback=progress_callback, chunk_size=chunk_size, **kwargs)
+            self.set_contents(
+                f,
+                progress_callback=progress_callback,
+                chunk_size=chunk_size,
+                **kwargs
+            )
 
     @ensure_readable()
     def send_file(self, filename, restricted=True, mimetype=None,
@@ -920,10 +943,14 @@ class FileInstance(db.Model, Timestamp):
             storage_class
         return self
 
-    _FILE_METADATA_FIELDS = {'uri', 'size', 'checksum', 'writable', 'readable', 'storage_class'}
+    _FILE_METADATA_FIELDS = {
+        'uri', 'size', 'checksum', 'writable', 'readable', 'storage_class'
+    }
 
-    def update_file_metadata(self, file_metadata: Union[Tuple,Dict] = None, **kwargs):
-        """Update the file metadata, usually as a result of a storage backend operation."""
+    def update_file_metadata(
+        self, file_metadata: Union[Tuple, Dict] = None, **kwargs
+    ):
+        """Update the file metadata as a result of a storage operation."""
         if file_metadata is None:
             file_metadata = {}
 
@@ -942,8 +969,6 @@ class FileInstance(db.Model, Timestamp):
             for key in file_metadata:
                 if key in self._FILE_METADATA_FIELDS:
                     setattr(self, key, file_metadata[key])
-
-
 
 
 class ObjectVersion(db.Model, Timestamp):
@@ -1086,7 +1111,9 @@ class ObjectVersion(db.Model, Timestamp):
 
     @ensure_no_file()
     @update_bucket_size
-    def set_location(self, uri, size, checksum, storage_class=None, storage_backend=None):
+    def set_location(
+        self, uri, size, checksum, storage_class=None, storage_backend=None
+    ):
         """Set only URI location of for object.
 
         Useful to link files on externally controlled storage. If a file

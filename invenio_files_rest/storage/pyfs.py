@@ -103,7 +103,11 @@ class PyFSStorageBackend(StorageBackend):
 
     @contextlib.contextmanager
     def get_save_stream(self):
-        """Open the underlying file for writing, and delete it if there was a problem."""
+        """Return the underlying file for writing.
+
+        This implementation deletes the file if an exception is thrown by code
+        executing in this context.
+        """
         fp = self.open(mode='wb')
         try:
             yield fp

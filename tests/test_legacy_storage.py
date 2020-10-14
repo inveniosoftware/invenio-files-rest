@@ -25,6 +25,7 @@ from invenio_files_rest.errors import FileSizeError, StorageError, \
 from invenio_files_rest.limiters import FileSizeLimit
 from invenio_files_rest.storage import FileStorage, PyFSFileStorage
 
+
 def test_storage_interface():
     """Test storage interface."""
     s = FileStorage('some-path')
@@ -241,7 +242,7 @@ def test_pyfs_send_file(app, legacy_pyfs):
         # Test for absence of Content-Disposition header to make sure that
         # it's not present when as_attachment=False
         res = legacy_pyfs.send_file('myfilename.txt', mimetype='text/plain',
-                             checksum=checksum, as_attachment=False)
+                                    checksum=checksum, as_attachment=False)
         assert res.status_code == 200
         assert 'attachment' not in res.headers['Content-Disposition']
 
@@ -255,7 +256,7 @@ def test_pyfs_send_file_for_download(app, legacy_pyfs):
         # Test for presence of Content-Disposition header to make sure that
         # it's present when as_attachment=True
         res = legacy_pyfs.send_file('myfilename.txt', mimetype='text/plain',
-                             checksum=checksum, as_attachment=True)
+                                    checksum=checksum, as_attachment=True)
         assert res.status_code == 200
         assert (res.headers['Content-Disposition'] ==
                 'attachment; filename=myfilename.txt')

@@ -60,7 +60,6 @@ def guess_mimetype(filename):
     return m or 'application/octet-stream'
 
 
-
 def check_sizelimit(size_limit, bytes_written, total_size):
     """Check if size limit was exceeded.
 
