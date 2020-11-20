@@ -1044,15 +1044,9 @@ class ObjectVersion(db.Model, Timestamp):
         return u"{0}:{1}:{2}".format(
             self.bucket_id, self.version_id, self.key)
 
-    # https://docs.python.org/3.3/howto/pyporting.html#str-unicode
-    if sys.version_info[0] >= 3:  # Python 3
-        def __repr__(self):
-            """Return representation of location."""
-            return self.__unicode__()
-    else:  # Python 2
-        def __repr__(self):
-            """Return representation of location."""
-            return self.__unicode__().encode('utf8')
+    def __repr__(self):
+        """Return representation of location."""
+        return self.__unicode__()
 
     @hybrid_property
     def mimetype(self):
