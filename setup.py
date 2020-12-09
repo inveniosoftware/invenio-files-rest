@@ -9,7 +9,6 @@
 """Files download/upload REST API similar to S3 for Invenio."""
 
 import os
-
 from setuptools import find_packages, setup
 
 readme = open('README.rst').read()
@@ -19,22 +18,16 @@ tests_require = [
     'Flask-BabelEx>=0.9.4',
     'Flask-Menu>=0.5.0',
     'SQLAlchemy-Continuum>=1.2.1',
-    'check-manifest>=0.25',
-    'coverage>=4.0',
     'invenio-access>=1.2.0',
-    'invenio-accounts>=1.2.0',
+    'invenio-accounts>=1.4.0',
     'invenio-admin>=1.2.0',
-    'isort>=4.3.4',
     'mock>=1.3.0',
-    'pydocstyle>=1.0.0',
-    'pytest-cov>=1.8.0',
-    'pytest-pep8>=1.0.6',
-    'pytest>=4.0.0,<5.0.0',
+    'pytest-invenio>=1.4.0'
 ]
 
 extras_require = {
     'docs': [
-        'Sphinx>=2.4,<3',
+        'Sphinx>=3',
         'sphinxcontrib-httpdomain>=1.4.0',
     ],
     'postgresql': [

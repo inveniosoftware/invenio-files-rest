@@ -454,9 +454,7 @@ def test_post_complete_timeout(app, client, headers, bucket, multipart,
     """Test completing multipart when merge fails."""
     login_user(client, admin_user)
 
-    max_rounds = int(
-        app.config['FILES_REST_TASK_WAIT_MAX_SECONDS'] //
-        app.config['FILES_REST_TASK_WAIT_INTERVAL'])
+    max_rounds = int(app.config["FILES_REST_TASK_WAIT_MAX_SECONDS"] // app.config["FILES_REST_TASK_WAIT_INTERVAL"])
 
     # Mock celery task to emulate real usage.
     task_result = MagicMock()

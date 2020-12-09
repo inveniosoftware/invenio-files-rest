@@ -63,12 +63,6 @@ Permissions
 .. automodule:: invenio_files_rest.permissions
    :members:
 
-Serializers
------------
-
-.. automodule:: invenio_files_rest.serializer
-   :members:
-
 Views
 -----
 

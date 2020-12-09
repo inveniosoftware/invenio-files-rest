@@ -119,10 +119,10 @@ def schedule_checksum_verification(frequency=None, batch_interval=None,
         max_count = min_count if max_count == 0 else max_count
         if max_count < min_count:
             current_app.logger.warning(
-                 u'The "max_count" you specified ({0}) is smaller than the '
-                 'minimum batch file count required ({1}) in order to achieve '
-                 'the file checks over the specified period ({2}).'
-                 .format(max_count, min_count, frequency))
+                u'The "max_count" you specified ({0}) is smaller than the '
+                'minimum batch file count required ({1}) in order to achieve '
+                'the file checks over the specified period ({2}).'
+                .format(max_count, min_count, frequency))
         files = files.limit(max_count)
 
     if max_size is not None:
@@ -132,10 +132,10 @@ def schedule_checksum_verification(frequency=None, batch_interval=None,
         max_size = min_size if max_size == 0 else max_size
         if max_size < min_size:
             current_app.logger.warning(
-                 u'The "max_size" you specified ({0}) is smaller than the '
-                 'minimum batch total file size required ({1}) in order to '
-                 'achieve the file checks over the specified period ({2}).'
-                 .format(max_size, min_size, frequency))
+                u'The "max_size" you specified ({0}) is smaller than the '
+                'minimum batch total file size required ({1}) in order to '
+                'achieve the file checks over the specified period ({2}).'
+                .format(max_size, min_size, frequency))
 
     files = files.yield_per(1000)
     scheduled_file_ids = []

@@ -274,7 +274,7 @@ def populate_from_path(bucket, source, checksum=True, key_prefix='',
 
         if checksum:
             file_checksum = compute_md5_checksum(
-                    open(path, 'rb'), chunk_size=chunk_size)
+                open(path, 'rb'), chunk_size=chunk_size)
             file_instance = FileInstance.query.filter_by(
                 checksum=file_checksum, size=os.path.getsize(path)
             ).first()
