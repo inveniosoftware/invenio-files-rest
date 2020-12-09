@@ -260,8 +260,7 @@ def test_pyfs_send_file_for_download(app, pyfs):
         res = pyfs.send_file('myfilename.txt', mimetype='text/plain',
                              checksum=checksum, as_attachment=True)
         assert res.status_code == 200
-        assert (res.headers['Content-Disposition'] ==
-                'attachment; filename=myfilename.txt')
+        assert res.headers["Content-Disposition"] == "attachment; filename=myfilename.txt"
 
 
 def test_pyfs_send_file_xss_prevention(app, pyfs):

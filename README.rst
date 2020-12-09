@@ -10,8 +10,8 @@
  Invenio-Files-REST
 ====================
 
-.. image:: https://img.shields.io/travis/inveniosoftware/invenio-files-rest.svg
-        :target: https://travis-ci.org/inveniosoftware/invenio-files-rest
+.. image:: https://github.com/inveniosoftware/invenio-files-rest/workflows/CI/badge.svg
+        :target: https://github.com/inveniosoftware/invenio-files-rest/actions?query=workflow%3ACI
 
 .. image:: https://img.shields.io/coveralls/inveniosoftware/invenio-files-rest.svg
         :target: https://coveralls.io/r/inveniosoftware/invenio-files-rest

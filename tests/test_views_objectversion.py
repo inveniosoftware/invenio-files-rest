@@ -135,8 +135,7 @@ def test_get_download(client, headers, bucket, objects, permissions):
         assert resp.status_code == 200
 
         # Check if the 'Content-Disposition' is an attachment
-        assert (resp.headers['Content-Disposition'] ==
-                'attachment; filename={0}'.format(obj.key))
+        assert resp.headers["Content-Disposition"] == "attachment; filename={0}".format(obj.key)
 
 
 def test_last_modified_utc_conversion(client, headers, bucket, permissions):
@@ -622,8 +621,8 @@ def test_put_header_invalid_tags(app, client, bucket, permissions, get_md5,
     invalid = [
         # We don't test zero-length values/keys, because they are filtered out
         # from parse_qsl
-        ('a'*256, 'valid'),
-        ('valid', 'b'*256),
+        ('a' * 256, 'valid'),
+        ('valid', 'b' * 256),
     ]
 
     login_user(client, permissions['bucket'])
