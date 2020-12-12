@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2016-2019 CERN.
+# Copyright (C) 2020 Cottage Labs LLP.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -13,6 +14,8 @@ import mimetypes
 import six
 from flask import current_app
 from werkzeug.utils import import_string
+
+from invenio_files_rest.errors import FileSizeError, UnexpectedFileSizeError
 
 ENCODING_MIMETYPES = {
     'gzip': 'application/gzip',
@@ -56,3 +59,38 @@ def guess_mimetype(filename):
     if encoding:
         m = ENCODING_MIMETYPES.get(encoding, None)
     return m or 'application/octet-stream'
+
+
+def check_sizelimit(size_limit, bytes_written, total_size):
+    """Check if size limit was exceeded.
+
+    :param size_limit: The size limit.
+    :param bytes_written: The total number of bytes written.
+    :param total_size: The total file size.
+    :raises invenio_files_rest.errors.UnexpectedFileSizeError: If the bytes
+        written exceed the total size.
+    :raises invenio_files_rest.errors.FileSizeError: If the bytes
+        written are major than the limit size.
+    """
+    if size_limit is not None and bytes_written > size_limit:
+        desc = 'File size limit exceeded.' \
+            if isinstance(size_limit, int) else size_limit.reason
+        raise FileSizeError(description=desc)
+
+    # Never write more than advertised
+    if total_size is not None and bytes_written > total_size:
+        raise UnexpectedFileSizeError(
+            description='File is bigger than expected.')
+
+
+def check_size(bytes_written, total_size):
+    """Check if expected amounts of bytes have been written.
+
+    :param bytes_written: The total number of bytes written.
+    :param total_size: The total file size.
+    :raises invenio_files_rest.errors.UnexpectedFileSizeError: If the bytes
+        written exceed the total size.
+    """
+    if total_size and bytes_written < total_size:
+        raise UnexpectedFileSizeError(
+            description='File is smaller than expected.')

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015-2019 CERN.
+# Copyright (C) 2015-2020 CERN.
+# Copyright (C) 2020 Cottage Labs LLP.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -35,12 +36,12 @@ model.
 
 from __future__ import absolute_import, print_function
 
-import mimetypes
-
 import re
 import six
 import sys
+import typing
 import uuid
+import warnings
 from datetime import datetime
 from flask import current_app
 from functools import wraps
@@ -51,6 +52,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import validates
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy_utils.types import UUIDType
+from typing import Dict, Tuple, Union
 
 from .errors import BucketLockedError, FileInstanceAlreadySetError, \
     FileInstanceUnreadableError, FileSizeError, InvalidKeyError, \
@@ -58,7 +60,8 @@ from .errors import BucketLockedError, FileInstanceAlreadySetError, \
     MultipartInvalidChunkSize, MultipartInvalidPartNumber, \
     MultipartInvalidSize, MultipartMissingParts, MultipartNotCompleted
 from .proxies import current_files_rest
-from .utils import ENCODING_MIMETYPES, guess_mimetype
+from .storage import StorageBackend
+from .utils import guess_mimetype
 
 slug_pattern = re.compile('^[a-z][a-z0-9-]+$')
 
@@ -100,7 +103,7 @@ def as_bucket_id(value):
 
 
 def as_object_version(value):
-    """Get an object version object from an object version ID or an object version.
+    """Get an ObjectVersion object from an ID or an ObjectVersion.
 
     :param value: A :class:`invenio_files_rest.models.ObjectVersion` or an
         object version ID.
@@ -261,6 +264,9 @@ class Location(db.Model, Timestamp):
 
     name = db.Column(db.String(20), unique=True, nullable=False)
     """External identifier of the location."""
+
+    storage_backend = db.Column(db.String(32), nullable=True)
+    """Name of the storage backend to use for this location."""
 
     uri = db.Column(db.String(255), nullable=False)
     """URI of the location."""
@@ -665,6 +671,8 @@ class FileInstance(db.Model, Timestamp):
     storage_class = db.Column(db.String(1), nullable=True)
     """Storage class of file."""
 
+    storage_backend = db.Column(db.String(32), nullable=True)
+
     size = db.Column(db.BigInteger, default=0, nullable=True)
     """Size of file."""
 
@@ -740,7 +748,7 @@ class FileInstance(db.Model, Timestamp):
         self.query.filter_by(id=self.id).delete()
         return self
 
-    def storage(self, **kwargs):
+    def storage(self, **kwargs) -> StorageBackend:
         """Get storage interface for object.
 
         Uses the applications storage factory to create a storage interface
@@ -748,6 +756,14 @@ class FileInstance(db.Model, Timestamp):
 
         :returns: Storage interface.
         """
+        if kwargs:
+            warnings.warn(
+                "Passing **kwargs to .storage() is deprecated; override the "
+                "storage factory with a subclass of "
+                "invenio_files_rest.storage.StorageFactory and implement "
+                "get_storage_backend_kwargs() instead.",
+                DeprecationWarning
+            )
         return current_files_rest.storage_factory(fileinstance=self, **kwargs)
 
     @ensure_readable()
@@ -791,13 +807,45 @@ class FileInstance(db.Model, Timestamp):
                                else (self.checksum == real_checksum))
             self.last_check_at = datetime.utcnow()
         return self.last_check
+        return current_files_rest.storage_factory(fileinstance=self, **kwargs)
 
     @ensure_writable()
-    def init_contents(self, size=0, **kwargs):
+    def initialize(self, preferred_location: Location, size=0, **kwargs):
         """Initialize file."""
-        self.set_uri(
-            *self.storage(**kwargs).initialize(size=size),
-            readable=False, writable=True)
+        if hasattr(current_files_rest.storage_factory, 'initialize'):
+            # New behaviour, with a new-style storage factory
+            result = current_files_rest.storage_factory.initialize(
+                fileinstance=self,
+                preferred_location=preferred_location,
+                size=size,
+            )
+        else:
+            # Old behaviour, with an old-style storage factory
+            storage = self.storage(
+                default_location=preferred_location.uri, **kwargs
+            )
+            result = storage.initialize(size=size)
+        self.update_file_metadata(
+            result,
+            readable=False,
+            writable=True,
+            storage_backend=(
+                storage.get_backend_name()
+                if isinstance(storage, StorageBackend) else None
+            ),
+        )
+
+    @ensure_writable()
+    def init_contents(self, size=0, default_location: str = None, **kwargs):
+        """Initialize storage for this FileInstance."""
+        preferred_location = (  # type: typing.Optional[Location]
+            Location(uri=default_location) if default_location else None
+        )
+        return self.initialize(
+            preferred_location=preferred_location,
+            size=size,
+            **kwargs
+        )
 
     @ensure_writable()
     def update_contents(self, stream, seek=0, size=None, chunk_size=None,
@@ -823,10 +871,21 @@ class FileInstance(db.Model, Timestamp):
             from.
         :param stream: File-like stream.
         """
-        self.set_uri(
-            *self.storage(**kwargs).save(
-                stream, chunk_size=chunk_size, size=size,
-                size_limit=size_limit, progress_callback=progress_callback))
+        storage = self.storage(**kwargs)
+        self.update_file_metadata(
+            storage.save(
+                stream,
+                chunk_size=chunk_size,
+                size=size,
+                size_limit=size_limit,
+                progress_callback=progress_callback,
+            )
+        )
+
+        self.storage_backend = (
+            storage.get_backend_name()
+            if isinstance(storage, StorageBackend) else None
+        )
 
     @ensure_writable()
     def copy_contents(self, fileinstance, progress_callback=None,
@@ -837,11 +896,13 @@ class FileInstance(db.Model, Timestamp):
         if not self.size == 0:
             raise ValueError('File instance has data.')
 
-        self.set_uri(
-            *self.storage(**kwargs).copy(
-                fileinstance.storage(**kwargs),
+        with fileinstance.storage(**kwargs).open() as f:
+            self.set_contents(
+                f,
+                progress_callback=progress_callback,
                 chunk_size=chunk_size,
-                progress_callback=progress_callback))
+                **kwargs
+            )
 
     @ensure_readable()
     def send_file(self, filename, restricted=True, mimetype=None,
@@ -871,6 +932,35 @@ class FileInstance(db.Model, Timestamp):
             if storage_class is None else \
             storage_class
         return self
+
+    _FILE_METADATA_FIELDS = {
+        'uri', 'size', 'checksum', 'writable', 'readable', 'storage_class'
+    }
+
+    def update_file_metadata(
+        self,
+        file_metadata=None,  # type: Union[Tuple, Dict]
+        **kwargs
+    ):
+        """Update the file metadata as a result of a storage operation."""
+        if file_metadata is None:
+            file_metadata = {}
+
+        if isinstance(file_metadata, tuple):
+            assert len(file_metadata) >= 3
+            # Carry across defaults from **kwargs
+            if len(file_metadata) < 4:
+                file_metadata += (kwargs.get('readable', True),)
+            if len(file_metadata) < 5:
+                file_metadata += (kwargs.get('writable', False),)
+            if len(file_metadata) < 6:
+                file_metadata += (kwargs.get('storage_class', None),)
+            self.set_uri(*file_metadata)
+        elif isinstance(file_metadata, dict):
+            file_metadata.update(kwargs)
+            for key in file_metadata:
+                if key in self._FILE_METADATA_FIELDS:
+                    setattr(self, key, file_metadata[key])
 
 
 class ObjectVersion(db.Model, Timestamp):
@@ -954,22 +1044,16 @@ class ObjectVersion(db.Model, Timestamp):
         return u"{0}:{1}:{2}".format(
             self.bucket_id, self.version_id, self.key)
 
-    # https://docs.python.org/3.3/howto/pyporting.html#str-unicode
-    if sys.version_info[0] >= 3:  # Python 3
-        def __repr__(self):
-            """Return representation of location."""
-            return self.__unicode__()
-    else:  # Python 2
-        def __repr__(self):
-            """Return representation of location."""
-            return self.__unicode__().encode('utf8')
+    def __repr__(self):
+        """Return representation of location."""
+        return self.__unicode__()
 
     @hybrid_property
     def mimetype(self):
         """Get MIME type of object."""
         return self._mimetype if self._mimetype else guess_mimetype(self.key)
 
-    @mimetype.setter
+    @mimetype.setter  # type: ignore
     def mimetype(self, value):
         """Setter for MIME type."""
         self._mimetype = value
@@ -1013,7 +1097,9 @@ class ObjectVersion(db.Model, Timestamp):
 
     @ensure_no_file()
     @update_bucket_size
-    def set_location(self, uri, size, checksum, storage_class=None):
+    def set_location(
+        self, uri, size, checksum, storage_class=None, storage_backend=None
+    ):
         """Set only URI location of for object.
 
         Useful to link files on externally controlled storage. If a file
@@ -1027,8 +1113,12 @@ class ObjectVersion(db.Model, Timestamp):
         :param storage_class: Storage class where file is stored ()
         """
         self.file = FileInstance()
-        self.file.set_uri(
-            uri, size, checksum, storage_class=storage_class
+        self.file.update_file_metadata(
+            storage_backend=storage_backend,
+            uri=uri,
+            size=size,
+            checksum=checksum,
+            storage_class=storage_class
         )
         db.session.add(self.file)
         return self

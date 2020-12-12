@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2019 CERN.
+# Copyright (C) 2020 Cottage Labs LLP.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -146,6 +147,9 @@ setup(
         'invenio_db.models': [
             'invenio_files_rest = invenio_files_rest.models',
         ],
+        'invenio_files_rest.storage': [
+            'pyfs = invenio_files_rest.storage:PyFSStorageBackend',
+        ]
     },
     extras_require=extras_require,
     install_requires=install_requires,
@@ -162,6 +166,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: Implementation :: CPython',
         'Development Status :: 5 - Production/Stable',
     ],

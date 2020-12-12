@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2019 CERN.
+# Copyright (C) 2020 Cottage Labs LLP.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -41,7 +42,7 @@ from invenio_files_rest.permissions import bucket_listmultiparts_all, \
     location_update_all, multipart_delete_all, multipart_read_all, \
     object_delete_all, object_delete_version_all, object_read_all, \
     object_read_version_all
-from invenio_files_rest.storage import PyFSFileStorage
+from invenio_files_rest.storage import PyFSFileStorage, PyFSStorageBackend
 from invenio_files_rest.views import blueprint
 
 
@@ -135,7 +136,8 @@ def dummy_location(db):
     loc = Location(
         name='testloc',
         uri=tmppath,
-        default=True
+        storage_backend='pyfs',
+        default=True,
     )
     db.session.add(loc)
     db.session.commit()
@@ -153,6 +155,12 @@ def pyfs_testpath(dummy_location):
 
 @pytest.fixture()
 def pyfs(dummy_location, pyfs_testpath):
+    """Instance of PyFSFileStorage."""
+    return PyFSStorageBackend(pyfs_testpath)
+
+
+@pytest.fixture()
+def legacy_pyfs(dummy_location, pyfs_testpath):
     """Instance of PyFSFileStorage."""
     return PyFSFileStorage(pyfs_testpath)
 

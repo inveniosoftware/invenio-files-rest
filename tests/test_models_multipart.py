@@ -55,7 +55,6 @@ def test_part_creation(app, db, bucket, get_md5):
     mp = MultipartObject.create(bucket, 'test.txt', 5, 2)
     db.session.commit()
     assert bucket.size == 5
-
     Part.create(mp, 2, stream=BytesIO(b'p'))
     Part.create(mp, 0, stream=BytesIO(b'p1'))
     Part.create(mp, 1, stream=BytesIO(b'p2'))

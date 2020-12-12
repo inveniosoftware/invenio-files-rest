@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015-2019 CERN.
+# Copyright (C) 2015-2020 CERN.
+# Copyright (C) 2020 Cottage Labs LLP
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
 
 """Invenio Files Rest module configuration file."""
 
+import pkg_resources
 from datetime import timedelta
 
 from invenio_files_rest.helpers import create_file_streaming_redirect_response
@@ -56,6 +58,15 @@ FILES_REST_SIZE_LIMITERS = 'invenio_files_rest.limiters.file_size_limiters'
 
 FILES_REST_STORAGE_FACTORY = 'invenio_files_rest.storage.pyfs_storage_factory'
 """Import path of factory used to create a storage instance."""
+
+FILES_REST_DEFAULT_STORAGE_BACKEND = 'pyfs'
+"""The default storage backend name."""
+
+FILES_REST_STORAGE_BACKENDS = {
+    ep.name: ep.load()
+    for ep in pkg_resources.iter_entry_points('invenio_files_rest.storage')
+}
+"""A mapping from storage backend names to classes."""
 
 FILES_REST_PERMISSION_FACTORY = \
     'invenio_files_rest.permissions.permission_factory'

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015-2019 CERN.
+# Copyright (C) 2015-2020 CERN.
+# Copyright (C) 2020 Cottage Labs LLP.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -10,6 +11,7 @@
 
 from __future__ import absolute_import, print_function
 
+import warnings
 from flask import abort
 from werkzeug.exceptions import UnprocessableEntity
 from werkzeug.utils import cached_property
@@ -30,9 +32,20 @@ class _FilesRESTState(object):
     @cached_property
     def storage_factory(self):
         """Load default storage factory."""
-        return load_or_import_from_config(
+        if self.app.config['FILES_REST_STORAGE_FACTORY'] in [
+            'invenio_files_rest.storage.pyfs_storage_factory',
+        ]:
+            warnings.warn(DeprecationWarning(
+                "The " + self.app.config['FILES_REST_STORAGE_FACTORY'] +
+                " storage factory has been deprecated in favour of"
+                " 'invenio_files_rest.storage:StorageFactory"
+            ))
+        storage_factory = load_or_import_from_config(
             'FILES_REST_STORAGE_FACTORY', app=self.app
         )
+        if isinstance(storage_factory, type):
+            storage_factory = storage_factory(self.app)
+        return storage_factory
 
     @cached_property
     def permission_factory(self):

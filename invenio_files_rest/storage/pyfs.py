@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2016-2019 CERN.
+# Copyright (C) 2016-2020 CERN.
+# Copyright (C) 2020 Cottage Labs LLP.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -10,15 +11,17 @@
 
 from __future__ import absolute_import, print_function
 
-from flask import current_app
+import contextlib
 from fs.opener import opener
 from fs.path import basename, dirname
 
-from ..helpers import make_path
-from .base import FileStorage
+from .base import StorageBackend
+from .legacy import PyFSFileStorage, pyfs_storage_factory
+
+__all__ = ('PyFSFileStorage', 'pyfs_storage_factory', 'PyFSStorageBackend')
 
 
-class PyFSFileStorage(FileStorage):
+class PyFSStorageBackend(StorageBackend):
     """File system storage using PyFilesystem for access the file.
 
     This storage class will store files according to the following pattern:
@@ -30,19 +33,19 @@ class PyFSFileStorage(FileStorage):
        updating part of a file it will leave the file in an inconsistent
        state. The storage class tries as best as possible to handle errors
        and leave the system in a consistent state.
-
     """
 
-    def __init__(self, fileurl, size=None, modified=None, clean_dir=True):
+    def __init__(self, *args, clean_dir=True, **kwargs):
         """Storage initialization."""
-        self.fileurl = fileurl
+        # if isinstance(args[0], str):
+        #     raise NotImplementedError
         self.clean_dir = clean_dir
-        super(PyFSFileStorage, self).__init__(size=size, modified=modified)
+        super().__init__(*args, **kwargs)
 
     def _get_fs(self, create_dir=True):
         """Return tuple with filesystem and filename."""
-        filedir = dirname(self.fileurl)
-        filename = basename(self.fileurl)
+        filedir = dirname(self.uri)
+        filename = basename(self.uri)
 
         return (
             opener.opendir(filedir, writeable=True, create_dir=create_dir),
@@ -70,7 +73,7 @@ class PyFSFileStorage(FileStorage):
             fs.removedir('.')
         return True
 
-    def initialize(self, size=0):
+    def _initialize(self, size=0):
         """Initialize file on storage and truncate to given size."""
         fs, path = self._get_fs()
 
@@ -91,72 +94,26 @@ class PyFSFileStorage(FileStorage):
 
         self._size = size
 
-        return self.fileurl, size, None
+        return {}
 
-    def save(self, incoming_stream, size_limit=None, size=None,
-             chunk_size=None, progress_callback=None):
-        """Save file in the file system."""
+    @contextlib.contextmanager
+    def get_save_stream(self):
+        """Return the underlying file for writing.
+
+        This implementation deletes the file if an exception is thrown by code
+        executing in this context.
+        """
         fp = self.open(mode='wb')
         try:
-            bytes_written, checksum = self._write_stream(
-                incoming_stream, fp, chunk_size=chunk_size,
-                progress_callback=progress_callback,
-                size_limit=size_limit, size=size)
+            yield fp
         except Exception:
-            fp.close()
             self.delete()
             raise
         finally:
             fp.close()
 
-        self._size = bytes_written
-
-        return self.fileurl, bytes_written, checksum
-
-    def update(self, incoming_stream, seek=0, size=None, chunk_size=None,
-               progress_callback=None):
-        """Update a file in the file system."""
+    def get_update_stream(self, seek):
+        """Open the underlying file for updates, seeking as requested."""
         fp = self.open(mode='r+b')
-        try:
-            fp.seek(seek)
-            bytes_written, checksum = self._write_stream(
-                incoming_stream, fp, chunk_size=chunk_size,
-                size=size, progress_callback=progress_callback)
-        finally:
-            fp.close()
-
-        return bytes_written, checksum
-
-
-def pyfs_storage_factory(fileinstance=None, default_location=None,
-                         default_storage_class=None,
-                         filestorage_class=PyFSFileStorage, fileurl=None,
-                         size=None, modified=None, clean_dir=True):
-    """Get factory function for creating a PyFS file storage instance."""
-    # Either the FileInstance needs to be specified or all filestorage
-    # class parameters need to be specified
-    assert fileinstance or (fileurl and size)
-
-    if fileinstance:
-        # FIXME: Code here should be refactored since it assumes a lot on the
-        # directory structure where the file instances are written
-        fileurl = None
-        size = fileinstance.size
-        modified = fileinstance.updated
-
-        if fileinstance.uri:
-            # Use already existing URL.
-            fileurl = fileinstance.uri
-        else:
-            assert default_location
-            # Generate a new URL.
-            fileurl = make_path(
-                default_location,
-                str(fileinstance.id),
-                'data',
-                current_app.config['FILES_REST_STORAGE_PATH_DIMENSIONS'],
-                current_app.config['FILES_REST_STORAGE_PATH_SPLIT_LENGTH'],
-            )
-
-    return filestorage_class(
-        fileurl, size=size, modified=modified, clean_dir=clean_dir)
+        fp.seek(seek)
+        return contextlib.closing(fp)
