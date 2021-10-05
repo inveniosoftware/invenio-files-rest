@@ -27,3 +27,4 @@ recursive-include invenio_files_rest *.po *.pot *.mo
 recursive-include invenio_files_rest *.py
 recursive-include tests *.py
 recursive-include .github/workflows *.yml
+recursive-exclude docs/_build *
