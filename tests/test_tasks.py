@@ -12,7 +12,7 @@ from __future__ import absolute_import, print_function
 
 import errno
 import pytest
-from fs.errors import FSError, ResourceNotFoundError
+from fs.errors import FSError, ResourceNotFound
 from mock import MagicMock, patch
 from os.path import exists, join
 from six import BytesIO
@@ -39,7 +39,7 @@ def test_verify_checksum(app, db, dummy_location):
     f.uri = 'invalid'
     db.session.add(f)
     db.session.commit()
-    pytest.raises(ResourceNotFoundError, verify_checksum, str(file_id),
+    pytest.raises(ResourceNotFound, verify_checksum, str(file_id),
                   throws=True)
 
     f = FileInstance.query.get(file_id)
@@ -52,7 +52,7 @@ def test_verify_checksum(app, db, dummy_location):
     f.last_check = True
     db.session.add(f)
     db.session.commit()
-    with pytest.raises(ResourceNotFoundError):
+    with pytest.raises(ResourceNotFound):
         verify_checksum(str(file_id), pessimistic=True)
     f = FileInstance.query.get(file_id)
     assert f.last_check is None

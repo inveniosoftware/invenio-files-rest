@@ -14,7 +14,7 @@ from __future__ import absolute_import, print_function
 import errno
 import os
 import pytest
-from fs.errors import DirectoryNotEmptyError, ResourceNotFoundError
+from fs.errors import DirectoryNotEmpty, ResourceNotFound
 from mock import patch
 from os.path import dirname, exists, getsize, join
 from six import BytesIO
@@ -62,14 +62,14 @@ def test_pyfs_delete(app, db, dummy_location):
     assert not exists(testurl)
 
     s = PyFSFileStorage(join(dummy_location.uri, 'anotherpath/data'))
-    pytest.raises(ResourceNotFoundError, s.delete)
+    pytest.raises(ResourceNotFound, s.delete)
 
 
 def test_pyfs_delete_fail(pyfs, pyfs_testpath):
     """Test init of files."""
     pyfs.save(BytesIO(b'somedata'))
     os.rename(pyfs_testpath, join(dirname(pyfs_testpath), 'newname'))
-    pytest.raises(DirectoryNotEmptyError, pyfs.delete)
+    pytest.raises(DirectoryNotEmpty, pyfs.delete)
 
 
 def test_pyfs_save(pyfs, pyfs_testpath, get_md5):

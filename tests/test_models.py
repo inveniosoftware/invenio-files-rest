@@ -13,7 +13,7 @@ from __future__ import absolute_import, print_function
 import pytest
 import sys
 import uuid
-from fs.errors import ResourceNotFoundError
+from fs.errors import ResourceNotFound
 from os.path import getsize
 from six import BytesIO, b
 from sqlalchemy.exc import IntegrityError
@@ -410,7 +410,7 @@ def test_object_set_contents(app, db, dummy_location):
     with db.session.begin_nested():
         obj2.file.checksum = old_checksum
         obj2.file.uri = 'invalid'
-    pytest.raises(ResourceNotFoundError, obj2.file.verify_checksum)
+    pytest.raises(ResourceNotFound, obj2.file.verify_checksum)
     assert obj2.file.last_check == previous_last_check
     assert obj2.file.last_check_at == previous_last_check_date
 

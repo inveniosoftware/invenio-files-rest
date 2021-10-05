@@ -11,8 +11,8 @@
 from __future__ import absolute_import, print_function
 
 from flask import current_app
-from fs.opener import opener
-from fs.path import basename, dirname
+from fs.opener import open_fs as opendir
+from fs.path import basename, dirname, split
 
 from ..helpers import make_path
 from .base import FileStorage
@@ -45,8 +45,8 @@ class PyFSFileStorage(FileStorage):
         filename = basename(self.fileurl)
 
         return (
-            opener.opendir(filedir, writeable=True, create_dir=create_dir),
-            filename
+            opendir(filedir, writeable=True, create=create_dir),
+            filename,
         )
 
     def open(self, mode='rb'):
@@ -64,10 +64,18 @@ class PyFSFileStorage(FileStorage):
         exists in the directory.
         """
         fs, path = self._get_fs(create_dir=False)
+
         if fs.exists(path):
             fs.remove(path)
-        if self.clean_dir and fs.exists('.'):
-            fs.removedir('.')
+
+        # PyFilesystem2 really doesn't want to remove the root directory,
+        # so we need to be a bit creative
+        root_path, dir_name = split(fs.root_path)
+        if self.clean_dir and dir_name:
+            parent_fs = opendir(root_path, writeable=True, create=False)
+            if parent_fs.exists(dir_name):
+                parent_fs.removedir(dir_name)
+
         return True
 
     def initialize(self, size=0):
