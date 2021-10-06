@@ -14,7 +14,7 @@ from __future__ import absolute_import, print_function
 import errno
 import os
 import pytest
-from fs.errors import DirectoryNotEmpty, ResourceNotFound
+from fs.errors import DirectoryNotEmpty, FSError
 from mock import patch
 from os.path import dirname, exists, getsize, join
 from six import BytesIO
@@ -62,7 +62,10 @@ def test_pyfs_delete(app, db, dummy_location):
     assert not exists(testurl)
 
     s = PyFSFileStorage(join(dummy_location.uri, 'anotherpath/data'))
-    pytest.raises(ResourceNotFound, s.delete)
+
+    # this used to raise a ResourceNotFound, but fs>=2.0 raises CreateFailed
+    # FSError is their last common ancestor
+    pytest.raises(FSError, s.delete)
 
 
 def test_pyfs_delete_fail(pyfs, pyfs_testpath):
