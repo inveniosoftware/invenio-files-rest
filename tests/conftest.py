@@ -85,6 +85,12 @@ def base_app():
         FILES_REST_MULTIPART_MAX_PARTS=100,
         FILES_REST_TASK_WAIT_INTERVAL=0.1,
         FILES_REST_TASK_WAIT_MAX_SECONDS=1,
+        APP_THEME=['semantic-ui'],
+        THEME_ICONS={
+            'semantic-ui': dict(
+                link='linkify icon'
+            )
+        }
     )
 
     FlaskCeleryExt(app_)

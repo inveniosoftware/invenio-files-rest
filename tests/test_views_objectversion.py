@@ -13,7 +13,7 @@ from __future__ import absolute_import, print_function
 import pytest
 from datetime import timedelta
 from flask import url_for
-from fs.opener import open_fs
+from fs.opener import open_fs as opendir
 from mock import patch
 from six import BytesIO
 from testutils import BadBytesIO, login_user
@@ -419,7 +419,8 @@ def test_put_error(client, bucket, admin_user):
     assert FileInstance.query.count() == 0
     assert ObjectVersion.query.count() == 0
     # Ensure that the file was removed.
-    assert len(list(open_fs(bucket.location.uri).walk('.'))) == 3
+    fs = opendir(bucket.location.uri)
+    assert len(list(fs.walk('.'))) == 3
 
 
 def test_put_multipartform(client, bucket, admin_user):
