@@ -91,7 +91,7 @@ def create(name, uri, default):
         location = Location(name=name, uri=uri, default=default)
         db.session.add(location)
         db.session.commit()
-        click.secho('Location {} {} as default {} created'.format(
+        click.secho('Location {} {} as default {} stored in database'.format(
             location.name, location.uri, str(location.default)), fg='green')
 
 
