@@ -14,8 +14,8 @@ import pytest
 from datetime import timedelta, timezone
 from flask import url_for
 from fs.opener import open_fs as opendir
+from io import BytesIO
 from mock import patch
-from six import BytesIO
 from testutils import BadBytesIO, login_user
 
 from invenio_files_rest.models import FileInstance, ObjectVersion

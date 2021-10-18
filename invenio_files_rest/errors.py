@@ -10,7 +10,6 @@
 
 from __future__ import absolute_import, print_function
 
-import six
 from invenio_rest.errors import RESTException
 
 
@@ -28,7 +27,7 @@ class StorageError(FilesException):
 
         :returns: A string with the error message.
         """
-        if isinstance(self.errors, six.string_types):
+        if isinstance(self.errors, str):
             return self.errors
         return super(StorageError, self).get_errors()
 
