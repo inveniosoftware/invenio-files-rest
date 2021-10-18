@@ -11,7 +11,7 @@
 from __future__ import absolute_import, print_function
 
 from flask import request
-from six import BytesIO
+from io import BytesIO
 
 from invenio_files_rest.app import Flask
 

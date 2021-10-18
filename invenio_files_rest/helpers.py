@@ -17,8 +17,8 @@ import os
 import unicodedata
 import warnings
 from flask import current_app, make_response, request
-from six.moves.urllib.parse import urlsplit
 from time import time
+from urllib.parse import urlsplit
 from werkzeug.datastructures import Headers
 from werkzeug.urls import url_quote
 from werkzeug.wsgi import FileWrapper

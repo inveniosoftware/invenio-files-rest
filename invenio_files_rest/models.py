@@ -38,7 +38,6 @@ from __future__ import absolute_import, print_function
 import mimetypes
 
 import re
-import six
 import sys
 import uuid
 from datetime import datetime
@@ -498,7 +497,7 @@ class Bucket(db.Model, Timestamp):
         with db.session.begin_nested():
             if location is None:
                 location = Location.get_default()
-            elif isinstance(location, six.string_types):
+            elif isinstance(location, str):
                 location = Location.get_by_name(location)
 
             obj = cls(

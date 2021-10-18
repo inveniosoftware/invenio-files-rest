@@ -121,7 +121,7 @@ Create objects
 Files are represented by ObjectVersions. After creating a bucket, you can now
 add files to it, for example:
 
->>> from six import BytesIO
+>>> from io import BytesIO
 >>> from invenio_files_rest.models import ObjectVersion
 >>> a_file = BytesIO(b"my file contents")
 >>> f = ObjectVersion.create(b1, "thesis.pdf", stream=a_file)
