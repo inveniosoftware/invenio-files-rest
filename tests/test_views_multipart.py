@@ -13,8 +13,8 @@ from __future__ import absolute_import, print_function
 import json
 import pytest
 from flask import url_for
+from io import BytesIO
 from mock import MagicMock, patch
-from six import BytesIO
 from testutils import BadBytesIO, login_user
 
 from invenio_files_rest.models import Bucket, MultipartObject, Part

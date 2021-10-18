@@ -14,8 +14,8 @@ import pytest
 import sys
 import uuid
 from fs.errors import ResourceNotFound
+from io import BytesIO
 from os.path import getsize
-from six import BytesIO, b
 from sqlalchemy.exc import IntegrityError
 
 from invenio_files_rest.errors import BucketLockedError, \
@@ -23,6 +23,10 @@ from invenio_files_rest.errors import BucketLockedError, \
     InvalidKeyError, InvalidOperationError
 from invenio_files_rest.models import Bucket, BucketTag, FileInstance, \
     Location, ObjectVersion, ObjectVersionTag
+
+
+def b(s):
+    return s.encode("latin-1")
 
 
 def test_location(app, db):

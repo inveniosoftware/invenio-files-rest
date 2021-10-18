@@ -17,7 +17,7 @@ from functools import partial, wraps
 from invenio_db import db
 from invenio_rest import ContentNegotiatedMethodView
 from marshmallow import missing
-from six.moves.urllib.parse import parse_qsl
+from urllib.parse import parse_qsl
 from webargs import fields
 from webargs.flaskparser import use_kwargs
 

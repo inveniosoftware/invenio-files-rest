@@ -29,7 +29,7 @@ jobs:
     timeout-minutes: 20
     strategy:
       matrix:
-          python-version: [3.6, 3.7, 3.8, 3.9]
+          python-version: [3.7, 3.8, 3.9]
           requirements-level: [min, pypi]
           cache-service: [redis]
           db-service: [postgresql9, postgresql11, mysql5, mysql8]
@@ -39,12 +39,6 @@ jobs:
 
           - python-version: 3.9
             requirements-level: min
-
-          - db-service: postgresql11
-            python-version: 3.6
-
-          - db-service: mysql8
-            python-version: 3.6
           include:
           - db-service: postgresql9
             DB_EXTRAS: "postgresql"

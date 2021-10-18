@@ -9,7 +9,7 @@
 """Test file signals."""
 
 from flask import url_for
-from six import BytesIO
+from io import BytesIO
 from testutils import login_user
 
 from invenio_files_rest.signals import file_deleted, file_uploaded
