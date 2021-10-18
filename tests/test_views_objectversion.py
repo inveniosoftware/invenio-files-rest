@@ -11,7 +11,7 @@
 from __future__ import absolute_import, print_function
 
 import pytest
-from datetime import timedelta
+from datetime import timedelta, timezone
 from flask import url_for
 from fs.opener import open_fs as opendir
 from mock import patch
@@ -157,8 +157,11 @@ def test_last_modified_utc_conversion(client, headers, bucket, permissions):
     # GET the object and make sure the Last-Modified parameter in the header
     # is the same (sans the microseconds resolution) timestamp
     get_resp = client.get(object_url)
+    last_modified = get_resp.last_modified
+    if last_modified.tzinfo and not updated.tzinfo:
+        updated = updated.replace(tzinfo=timezone.utc)
     assert get_resp.status_code == 200
-    assert abs(get_resp.last_modified - updated) < timedelta(seconds=1)
+    assert abs(last_modified - updated) < timedelta(seconds=1)
 
 
 def test_get_unreadable_file(client, headers, bucket, objects, db,
@@ -598,7 +601,7 @@ def test_put_header_tags(app, client, bucket, permissions, get_md5, get_json):
     key = 'test.txt'
     headers = {
         app.config['FILES_REST_FILE_TAGS_HEADER']: (
-            'key1=val1;key2=val2;key3=val3')
+            'key1=val1&key2=val2&key3=val3')
     }
 
     login_user(client, permissions['bucket'])
