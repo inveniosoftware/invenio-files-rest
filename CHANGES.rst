@@ -10,6 +10,12 @@
 Changes
 =======
 
+Version 1.3.0 (released 2021-10-18)
+
+- Bumped minimum PyFilesystem dependency to v2. Note that, setuptools v58+ have
+  dropped support for use2to3, thus PyFilesystem v0.5.5 no longer installs on
+  Python 3 when using setuptools v58 or greater.
+
 Version 1.2.0 (released 2020-05-14)
 
 - Adds optional file streaming using a reverse proxy (e.g. NGINX).
