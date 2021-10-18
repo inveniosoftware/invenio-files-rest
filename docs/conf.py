@@ -314,7 +314,8 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
-    'flask': ('https://flask.palletsprojects.com', None),
+    'flask': ('https://flask.palletsprojects.com/', None),
+    'werkzeug': ('https://werkzeug.palletsprojects.com/', None),
     'invenio-access': ('https://invenio-access.readthedocs.io/en/latest/',
                        None),
     'invenio-pidstore': ('https://invenio-pidstore.readthedocs.io/en/latest/',
@@ -326,3 +327,6 @@ intersphinx_mapping = {
 
 # Autodoc configuraton.
 autoclass_content = 'both'
+
+# Describe the type hints in bullet points rather than in-line in the function signatures
+autodoc_typehints = 'description'
