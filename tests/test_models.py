@@ -555,6 +555,42 @@ def test_bucket_sync_deleted_object(app, db, dummy_location):
     assert ObjectVersion.get_by_bucket(b2).count() == 0
 
 
+def test_bucket_sync_add_deleted_object(app, db, dummy_location):
+    """Test that adding back a deleted object in src is added in dest."""
+    b1 = Bucket.create()
+    b2 = Bucket.create()
+    obj1 = ObjectVersion.create(b1, "filename")\
+        .set_location("b1v1", 1, "achecksum")
+    ObjectVersion.create(b1, "filename2")\
+        .set_location("b1v2", 1, "achecksum2")
+
+    db.session.commit()
+
+    b1.sync(b2)
+
+    assert ObjectVersion.get_by_bucket(b1).count() == 2
+    assert ObjectVersion.get_by_bucket(b2).count() == 2
+
+    ObjectVersion.delete(b1, "filename")
+
+    db.session.commit()
+
+    b1.sync(b2)
+
+    assert ObjectVersion.get_by_bucket(b1).count() == 1
+    assert ObjectVersion.get_by_bucket(b2).count() == 1
+
+    # Add back obj1
+    ObjectVersion.create(b1, "filename", _file_id=obj1.file_id)
+
+    db.session.commit()
+
+    b1.sync(b2)
+
+    assert ObjectVersion.get_by_bucket(b1).count() == 2
+    assert ObjectVersion.get_by_bucket(b2).count() == 2
+
+
 def test_bucket_sync_delete_extras(app, db, dummy_location):
     """Test that an extra object in dest is deleted when syncing."""
     b1 = Bucket.create()

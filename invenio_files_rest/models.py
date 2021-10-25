@@ -460,20 +460,38 @@ class Bucket(db.Model, Timestamp):
         dest_ovs = ObjectVersion.get_by_bucket(bucket=bucket,
                                                with_deleted=True)
         # transform into a dict { key: object version }
-        src_keys = {ov.key: ov for ov in src_ovs}
-        dest_keys = {ov.key: ov for ov in dest_ovs}
+        src_dict_ovs = {}
+        for ov in src_ovs:
+            # keep only the latest version of an ObjectVersion and don't
+            # override with previous
+            if ov.key not in src_dict_ovs:
+                src_dict_ovs[ov.key] = ov
 
-        for key, ov in src_keys.items():
-            if not ov.deleted:
-                if key not in dest_keys or \
-                        ov.file_id != dest_keys[key].file_id:
+        dest_dict_ovs = {}
+        for ov in dest_ovs:
+            # keep only the latest version of an ObjectVersion and don't
+            # override with previous
+            if ov.key not in dest_dict_ovs:
+                dest_dict_ovs[ov.key] = ov
+
+        for key, ov in src_dict_ovs.items():
+            key_in_dest = key in dest_dict_ovs
+            if ov.deleted:
+                if key_in_dest and not dest_dict_ovs[key].deleted:
+                    ObjectVersion.delete(bucket, key)
+            else:
+                if not key_in_dest:
                     ov.copy(bucket=bucket)
-            elif key in dest_keys and not dest_keys[key].deleted:
-                ObjectVersion.delete(bucket, key)
+                else:
+                    dest_ov = dest_dict_ovs[key]
+                    file_in_dest_differs = ov.file_id != dest_ov.file_id
+                    ov_deleted_in_dest = dest_ov.deleted
+                    if file_in_dest_differs or ov_deleted_in_dest:
+                        ov.copy(bucket=bucket)
 
         if delete_extras:
-            for key, ov in dest_keys.items():
-                if key not in src_keys:
+            for key, ov in dest_dict_ovs.items():
+                if key not in src_dict_ovs:
                     ObjectVersion.delete(bucket, key)
 
         return bucket
