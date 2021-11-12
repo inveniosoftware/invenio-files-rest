@@ -758,7 +758,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             if current_app.config['FILES_REST_XSENDFILE_ENABLED']:
                 response_constructor = current_app.config[
                     'FILES_REST_XSENDFILE_RESPONSE_FUNC']
-                return response_constructor(obj)
+                return response_constructor(bucket, obj, download=download)
             # If 'download' is missing from query string it will have
             # the value None.
             return self.send_object(bucket, obj,

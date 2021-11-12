@@ -309,7 +309,7 @@ def populate_from_path(bucket, source, checksum=True, key_prefix='',
                 yield create_file('/'.join(parts), os.path.join(root, name))
 
 
-def create_file_streaming_redirect_response(obj):
+def create_file_streaming_redirect_response(bucket, obj, download=None):
     """Redirect response generating function."""
     warnings.warn('This streaming does not support multiple storage backends.')
     response = make_response()
