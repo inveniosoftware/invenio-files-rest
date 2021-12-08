@@ -580,7 +580,7 @@ class ObjectResource(ContentNegotiatedMethodView):
                     ObjectVersionTag.create(obj, key, value)
 
         db.session.commit()
-        file_uploaded.send(obj)
+        file_uploaded.send(obj=obj)
         return self.make_response(
             data=obj,
             context={
@@ -626,7 +626,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             if obj.file_id:
                 remove_file_data.delay(str(obj.file_id))
         db.session.commit()
-        file_deleted.send(obj)
+        file_deleted.send(obj=obj)
         return self.make_response('', 204)
 
     @staticmethod
@@ -652,7 +652,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             current_app.logger.warning(
                 'File checksum mismatch detected.', extra=logger_data)
 
-        file_downloaded.send(obj)
+        file_downloaded.send(obj=obj)
         return obj.send_file(restricted=restricted,
                              as_attachment=as_attachment)
 

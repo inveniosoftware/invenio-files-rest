@@ -25,10 +25,10 @@ def test_signals(app, client, headers, bucket, permissions):
 
     calls = []
 
-    def upload_listener(obj):
+    def upload_listener(sender, obj=None):
         calls.append("file-uploaded")
 
-    def delete_listener(obj):
+    def delete_listener(sender, obj=None):
         calls.append("file-deleted")
 
     file_uploaded.connect(upload_listener, weak=False)
