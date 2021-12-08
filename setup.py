@@ -70,6 +70,7 @@ install_requires = [
 ]
 
 setup_requires = [
+    'Babel>=2.8',
     'pytest-runner>=2.7',
 ]
 

@@ -10,6 +10,11 @@
 Changes
 =======
 
+Version 1.0.7 (released 2021-12-08)
+
+- Backport fix in `models.Bucket.sync` method
+- Backport fix in signals send
+
 Version 1.0.6 (released 2019-11-22)
 
 - Bump version and add to installation requirements invenio-celery
