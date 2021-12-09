@@ -10,6 +10,10 @@
 Changes
 =======
 
+Version 1.0.8 (released 2021-12-09)
+
+- Adds current_app as the sender when emitting signals
+
 Version 1.0.7 (released 2021-12-08)
 
 - Backport fix in `models.Bucket.sync` method
