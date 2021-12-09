@@ -246,7 +246,7 @@ def merge_multipartobject(upload_id, version_id=None):
             progress_callback=progress_updater
         )
         db.session.commit()
-        file_uploaded.send(obj=obj)
+        file_uploaded.send(current_app._get_current_object(), obj=obj)
         return str(obj.version_id)
     except Exception:
         db.session.rollback()
