@@ -413,7 +413,7 @@ class Bucket(db.Model, Timestamp):
     def validate_storage_class(self, key, default_storage_class):
         """Validate storage class."""
         if default_storage_class not in \
-            current_app.config['FILES_REST_STORAGE_CLASS_LIST']:
+                current_app.config['FILES_REST_STORAGE_CLASS_LIST']:
             raise ValueError('Invalid storage class.')
         return default_storage_class
 
@@ -889,8 +889,7 @@ class FileInstance(db.Model, Timestamp):
         self.readable = readable
         self.storage_class = \
             current_app.config['FILES_REST_DEFAULT_STORAGE_CLASS'] \
-                if storage_class is None else \
-                storage_class
+            if storage_class is None else storage_class
         return self
 
 
@@ -1298,7 +1297,7 @@ class ObjectVersion(db.Model, Timestamp):
     def __eq__(self, other):
         """Check if the two object are equals."""
         return other and isinstance(other, self.__class__) and \
-               self.key == other.key and self.file_id == other.file_id
+            self.key == other.key and self.file_id == other.file_id
 
     def __ne__(self, other):
         """Check if are not equal."""
