@@ -962,9 +962,6 @@ class ObjectVersion(db.Model, Timestamp):
 
     __table_args__ = (
         db.UniqueConstraint('bucket_id', 'version_id', 'key'),
-        db.Index('ix_uq_partial_files_object_is_head', bucket_id, key,
-                 unique=True,
-                 postgresql_where=is_head),
     )
 
     @validates('key')
@@ -1302,6 +1299,23 @@ class ObjectVersion(db.Model, Timestamp):
     def __ne__(self, other):
         """Check if are not equal."""
         return not self.__eq__(other=other)
+
+    # DDL string used to avoid automap in mysql until sqlalchemy 2.0
+    # https://github.com/sqlalchemy/sqlalchemy/discussions/7597
+    @classmethod
+    def ix_uq_partial_files_object_is_head_dll(cls):
+        """Return DDL instruction for ix_uq_partial_files_object_is_head."""
+        return db.DDL(
+            "CREATE UNIQUE INDEX ix_uq_partial_files_object_is_head "
+            "ON %(table)s (bucket_id, key) WHERE is_head")
+
+
+db.event.listen(
+    ObjectVersion.__table__,
+    'after_create',
+    ObjectVersion.ix_uq_partial_files_object_is_head_dll().execute_if(dialect='postgresql')
+)
+"""Create ix_uq_partial_files_object_is_head only on postgresql backend."""
 
 
 class ObjectVersionTag(db.Model):

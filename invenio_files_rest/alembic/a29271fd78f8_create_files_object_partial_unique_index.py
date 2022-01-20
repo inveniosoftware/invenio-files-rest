@@ -20,10 +20,12 @@ depends_on = None
 def upgrade():
     """Upgrade database."""
     if op.get_context().dialect.name == 'postgresql':
-        op.create_index('ix_uq_partial_files_object_is_head', 'files_object', ['bucket_id', 'key'], unique=True, postgresql_where=sa.text('is_head'))
+        op.create_index('ix_uq_partial_files_object_is_head', 'files_object',
+                        ['bucket_id', 'key'], unique=True,
+                        postgresql_where=sa.text('is_head'))
 
 
 def downgrade():
     """Downgrade database."""
     if op.get_context().dialect.name == 'postgresql':
-        op.drop_index('ix_uq_partial_files_object_is_head', table_name='files_object', postgresql_where=sa.text('is_head'))
+        op.drop_index('ix_uq_partial_files_object_is_head', table_name='files_object')
