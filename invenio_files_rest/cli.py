@@ -9,8 +9,6 @@
 
 """Click command-line interface for file management."""
 
-from __future__ import absolute_import, print_function
-
 import click
 from click_default_group import DefaultGroup
 from flask.cli import with_appcontext

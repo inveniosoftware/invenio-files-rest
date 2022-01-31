@@ -8,8 +8,6 @@
 
 """Files download/upload REST API similar to S3 for Invenio."""
 
-from __future__ import absolute_import, print_function
-
 import uuid
 from flask import Blueprint, abort, current_app, json, request
 from flask_login import current_user

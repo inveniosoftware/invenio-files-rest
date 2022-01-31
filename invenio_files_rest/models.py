@@ -33,8 +33,6 @@ have their own model, but are represented via the :py:data:`ObjectVersion`
 model.
 """
 
-from __future__ import absolute_import, print_function
-
 import re
 import sys
 import uuid

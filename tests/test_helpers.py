@@ -8,8 +8,6 @@
 
 """Storage module tests."""
 
-from __future__ import absolute_import, print_function
-
 import pytest
 
 from invenio_files_rest.helpers import make_path

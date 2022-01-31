@@ -8,8 +8,6 @@
 
 """Module tests."""
 
-from __future__ import absolute_import, print_function
-
 import pytest
 from flask import Flask, current_app
 

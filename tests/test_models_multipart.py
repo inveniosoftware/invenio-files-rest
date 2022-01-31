@@ -8,8 +8,6 @@
 
 """Test of multipart objects."""
 
-from __future__ import absolute_import, print_function
-
 import hashlib
 from io import BytesIO
 from os.path import exists

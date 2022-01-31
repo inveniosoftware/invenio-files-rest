@@ -8,8 +8,6 @@
 
 """Test serializer."""
 
-from __future__ import absolute_import, print_function
-
 from marshmallow import fields
 
 from invenio_files_rest.serializer import BaseSchema, json_serializer, \

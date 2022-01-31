@@ -8,8 +8,6 @@
 
 """Module test views."""
 
-from __future__ import absolute_import, print_function
-
 import errno
 import pytest
 from fs.errors import FSError, ResourceNotFound

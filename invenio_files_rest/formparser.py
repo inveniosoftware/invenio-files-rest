@@ -8,8 +8,6 @@
 
 """Werkzeug form data parser customization."""
 
-from __future__ import absolute_import, print_function
-
 from werkzeug import exceptions
 from werkzeug.formparser import FormDataParser as WerkzeugFormDataParser
 
