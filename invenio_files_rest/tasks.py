@@ -8,8 +8,6 @@
 
 """Celery tasks for Invenio-Files-REST."""
 
-from __future__ import absolute_import, print_function
-
 import math
 import sqlalchemy as sa
 import uuid

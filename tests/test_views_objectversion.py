@@ -8,8 +8,6 @@
 
 """Test object related views."""
 
-from __future__ import absolute_import, print_function
-
 import pytest
 from datetime import timedelta, timezone
 from flask import url_for

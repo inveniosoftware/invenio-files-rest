@@ -8,8 +8,6 @@
 
 """File size limiting functionality for Invenio-Files-REST."""
 
-from __future__ import absolute_import, print_function
-
 
 def file_size_limiters(bucket):
     """Get default file size limiters.

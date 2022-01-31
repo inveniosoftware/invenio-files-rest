@@ -8,8 +8,6 @@
 
 """File storage base module."""
 
-from __future__ import absolute_import, print_function
-
 import hashlib
 from calendar import timegm
 from functools import partial

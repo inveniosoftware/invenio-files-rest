@@ -969,8 +969,6 @@ a reference to the old :code:`FileInstance` to reference the new
 :code:`FileInstance` and eventually run an integrity check.
 """
 
-from __future__ import absolute_import, print_function
-
 from .ext import InvenioFilesREST
 from .proxies import current_files_rest
 from .version import __version__

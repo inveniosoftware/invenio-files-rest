@@ -8,8 +8,6 @@
 
 """Admin tests."""
 
-from __future__ import absolute_import, print_function
-
 import pytest
 from invenio_admin import InvenioAdmin
 from wtforms.validators import ValidationError

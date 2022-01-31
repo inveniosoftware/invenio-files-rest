@@ -9,7 +9,6 @@
 """REST API serializers."""
 
 import json
-import warnings
 from flask import current_app, request, url_for
 from invenio_rest.serializer import BaseSchema as InvenioRestBaseSchema
 from marshmallow import fields, missing, post_dump

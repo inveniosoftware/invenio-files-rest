@@ -8,8 +8,6 @@
 
 """Files download/upload REST API similar to S3 for Invenio."""
 
-from __future__ import absolute_import, print_function
-
 import sys
 from io import BytesIO
 

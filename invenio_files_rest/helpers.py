@@ -8,8 +8,6 @@
 
 """File serving helpers for Files REST API."""
 
-from __future__ import absolute_import, print_function
-
 import mimetypes
 
 import hashlib

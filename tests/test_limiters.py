@@ -8,8 +8,6 @@
 
 """Test limiters."""
 
-from __future__ import absolute_import, print_function
-
 import pytest
 
 from invenio_files_rest.limiters import FileSizeLimit
