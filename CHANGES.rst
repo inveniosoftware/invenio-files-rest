@@ -10,6 +10,16 @@
 Changes
 =======
 
+Version 1.3.1 (release 2022-01-31)
+
+- Fix a race-condition by enforcing integrity constraint on is head. An issue
+  was detected that could produce two head versions of the same object. This
+  fix adds a partial index in PostgreSQL to ensure that the race condition
+  throws an integrity error when trying to commit. Partial indexes is only
+  available on PostgreSQL.
+
+- Fix for the sync method and signals signature.
+
 Version 1.3.0 (released 2021-10-18)
 
 - Bumped minimum PyFilesystem dependency to v2. Note that, setuptools v58+ have
