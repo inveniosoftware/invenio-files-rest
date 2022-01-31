@@ -111,7 +111,7 @@ def test_bucket_create_object(app, db):
         assert b.default_location == Location.get_default().id
         assert b.location == Location.get_default()
         assert b.default_storage_class == \
-            app.config['FILES_REST_DEFAULT_STORAGE_CLASS']
+               app.config['FILES_REST_DEFAULT_STORAGE_CLASS']
         assert b.size == 0
         assert b.quota_size is None
         assert b.max_file_size is None
@@ -193,17 +193,17 @@ def test_object_create(app, db, dummy_location):
 
     # Object __repr__
     assert repr(obj1) == \
-        u"{0}:{1}:{2}".format(
-            obj1.bucket_id, obj1.version_id, obj1.key)
+           u"{0}:{1}:{2}".format(
+               obj1.bucket_id, obj1.version_id, obj1.key)
 
     if sys.version_info[0] >= 3:  # python3
         assert repr(obj4) == \
-            u"{0}:{1}:{2}".format(
-                obj4.bucket_id, obj4.version_id, obj4.key)
+               u"{0}:{1}:{2}".format(
+                   obj4.bucket_id, obj4.version_id, obj4.key)
     else:  # python2
         assert repr(obj4) == \
-            u"{0}:{1}:{2}".format(
-                obj4.bucket_id, obj4.version_id, obj4.key).encode('utf-8')
+               u"{0}:{1}:{2}".format(
+                   obj4.bucket_id, obj4.version_id, obj4.key).encode('utf-8')
 
     # Sanity check
     assert ObjectVersion.query.count() == 4
@@ -226,6 +226,27 @@ def test_object_create(app, db, dummy_location):
     assert \
         ObjectVersion.get(b.id, "deleted_obj", version_id=obj3.version_id) == \
         obj3
+
+
+def test_object_create_uq_constraint(app, db, dummy_location):
+    """Test object creation unique constraint on is_head."""
+    # constraint is only enforced on postgresql
+    if db.engine.dialect.name != 'postgresql':
+        return
+
+    b = Bucket.create()
+
+    # Create 2 object version
+    obj1 = ObjectVersion(bucket=b, key="test", version_id=uuid.uuid4(), is_head=False, mimetype=None)
+    obj2 = ObjectVersion(bucket=b, key="test", version_id=uuid.uuid4(), is_head=True, mimetype=None)
+    db.session.add(obj1)
+    db.session.add(obj2)
+    db.session.commit()
+
+    # Create one invalid object version for same object key (is_head = True)
+    obj3 = ObjectVersion(bucket=b, key="test", version_id=uuid.uuid4(), is_head=True, mimetype=None)
+    db.session.add(obj3)
+    pytest.raises(IntegrityError, db.session.commit)
 
 
 def test_object_create_with_fileid(app, db, dummy_location):
@@ -562,9 +583,9 @@ def test_bucket_sync_add_deleted_object(app, db, dummy_location):
     """Test that adding back a deleted object in src is added in dest."""
     b1 = Bucket.create()
     b2 = Bucket.create()
-    obj1 = ObjectVersion.create(b1, "filename")\
+    obj1 = ObjectVersion.create(b1, "filename") \
         .set_location("b1v1", 1, "achecksum")
-    ObjectVersion.create(b1, "filename2")\
+    ObjectVersion.create(b1, "filename2") \
         .set_location("b1v2", 1, "achecksum2")
 
     db.session.commit()
@@ -993,7 +1014,7 @@ def test_object_version_tags(app, db, dummy_location):
     assert ObjectVersionTag.query.count() == 2
     assert ObjectVersionTag.get(obj1, "mykey").value == "testvalue"
     assert ObjectVersionTag.get_value(obj1.version_id, "another_key") \
-        == "another value"
+           == "another value"
     assert ObjectVersionTag.get_value(obj1, "invalid") is None
 
     # Test delete

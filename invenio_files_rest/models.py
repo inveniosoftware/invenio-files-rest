@@ -35,8 +35,6 @@ model.
 
 from __future__ import absolute_import, print_function
 
-import mimetypes
-
 import re
 import sys
 import uuid
@@ -57,7 +55,7 @@ from .errors import BucketLockedError, FileInstanceAlreadySetError, \
     MultipartInvalidChunkSize, MultipartInvalidPartNumber, \
     MultipartInvalidSize, MultipartMissingParts, MultipartNotCompleted
 from .proxies import current_files_rest
-from .utils import ENCODING_MIMETYPES, guess_mimetype
+from .utils import guess_mimetype
 
 slug_pattern = re.compile('^[a-z][a-z0-9-]+$')
 
@@ -124,16 +122,19 @@ def as_object_version_id(value):
 #
 def update_bucket_size(f):
     """Decorate to update bucket size after operation."""
+
     @wraps(f)
     def inner(self, *args, **kwargs):
         res = f(self, *args, **kwargs)
         self.bucket.size += self.file.size
         return res
+
     return inner
 
 
 def ensure_state(default_getter, exc_class, default_msg=None):
     """Create a decorator factory function."""
+
     def decorator(getter=default_getter, msg=default_msg):
         def ensure_decorator(f):
             @wraps(f)
@@ -141,8 +142,11 @@ def ensure_state(default_getter, exc_class, default_msg=None):
                 if not getter(self):
                     raise exc_class(msg) if msg else exc_class()
                 return f(self, *args, **kwargs)
+
             return inner
+
         return ensure_decorator
+
     return decorator
 
 
@@ -409,7 +413,7 @@ class Bucket(db.Model, Timestamp):
     def validate_storage_class(self, key, default_storage_class):
         """Validate storage class."""
         if default_storage_class not in \
-           current_app.config['FILES_REST_STORAGE_CLASS_LIST']:
+                current_app.config['FILES_REST_STORAGE_CLASS_LIST']:
             raise ValueError('Invalid storage class.')
         return default_storage_class
 
@@ -885,8 +889,7 @@ class FileInstance(db.Model, Timestamp):
         self.readable = readable
         self.storage_class = \
             current_app.config['FILES_REST_DEFAULT_STORAGE_CLASS'] \
-            if storage_class is None else \
-            storage_class
+            if storage_class is None else storage_class
         return self
 
 
@@ -1296,6 +1299,23 @@ class ObjectVersion(db.Model, Timestamp):
     def __ne__(self, other):
         """Check if are not equal."""
         return not self.__eq__(other=other)
+
+    # DDL string used to avoid automap in mysql until sqlalchemy 2.0
+    # https://github.com/sqlalchemy/sqlalchemy/discussions/7597
+    @classmethod
+    def ix_uq_partial_files_object_is_head_dll(cls):
+        """Return DDL instruction for ix_uq_partial_files_object_is_head."""
+        return db.DDL(
+            "CREATE UNIQUE INDEX ix_uq_partial_files_object_is_head "
+            "ON %(table)s (bucket_id, key) WHERE is_head")
+
+
+db.event.listen(
+    ObjectVersion.__table__,
+    'after_create',
+    ObjectVersion.ix_uq_partial_files_object_is_head_dll().execute_if(dialect='postgresql')
+)
+"""Create ix_uq_partial_files_object_is_head only on postgresql backend."""
 
 
 class ObjectVersionTag(db.Model):
