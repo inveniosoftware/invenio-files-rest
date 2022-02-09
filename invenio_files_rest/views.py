@@ -99,28 +99,35 @@ def parse_header_tags():
 #
 @use_kwargs({
     'part_number': fields.Int(
-        load_from='partNumber',
-        location='query',
+        metadata={
+            'load_from': 'partNumber',
+            'location': 'query',
+        },
         required=True,
         data_key='partNumber',
     ),
     'content_length': fields.Int(
-        load_from='Content-Length',
-        location='headers',
+        metadata={
+            'load_from': 'Content-Length',
+            'location': 'headers',
+        },
         required=True,
         validate=minsize_validator,
         data_key='Content-Length',
     ),
     'content_type': fields.Str(
-        load_from='Content-Type',
-        location='headers',
+        metadata={
+            'load_from': 'Content-Type',
+            'location': 'headers',
+        },
         data_key='Content-Type',
-
     ),
     'content_md5': fields.Str(
+        metadata={
+            'load_from': 'Content-MD5',
+            'location': 'headers',
+        },
         data_key='Content-MD5',
-        load_from='Content-MD5',
-        location='headers',
     ),
 })
 def default_partfactory(part_number=None, content_length=None,
@@ -140,23 +147,29 @@ def default_partfactory(part_number=None, content_length=None,
 
 @use_kwargs({
     'content_md5': fields.Str(
-        load_from='Content-MD5',
+        metadata={
+            'load_from': 'Content-MD5',
+            'location': 'headers',
+        },
         data_key='Content-MD5',
-        location='headers',
-        missing=None,
+        load_default=None,
     ),
     'content_length': fields.Int(
-        load_from='Content-Length',
+        metadata={
+            'load_from': 'Content-Length',
+            'location': 'headers',
+        },
         data_key='Content-Length',
-        location='headers',
         required=True,
         validate=minsize_validator,
     ),
     'content_type': fields.Str(
-        load_from='Content-Type',
+        metadata={
+            'load_from': 'Content-Type',
+            'location': 'headers',
+        },
         data_key='Content-Type',
-        location='headers',
-        missing='',
+        load_default='',
     ),
 })
 def stream_uploadfactory(content_md5=None, content_length=None,
@@ -178,22 +191,28 @@ def stream_uploadfactory(content_md5=None, content_length=None,
 
 @use_kwargs({
     'part_number': fields.Int(
-        load_from='_chunkNumber',
+        metadata={
+            'load_from': '_chunkNumber',
+            'location': 'form',
+        },
         data_key='_chunkNumber',
-        location='form',
         required=True,
     ),
     'content_length': fields.Int(
-        load_from='_currentChunkSize',
+        metadata={
+            'load_from': '_currentChunkSize',
+            'location': 'form',
+        },
         data_key='_currentChunkSize',
-        location='form',
         required=True,
         validate=minsize_validator,
     ),
     'uploaded_file': fields.Raw(
-        load_from='file',
+        metadata={
+            'load_from': 'file',
+            'location': 'files',
+        },
         data_key='file',
-        location='files',
         required=True,
     ),
 })
@@ -213,21 +232,27 @@ def ngfileupload_partfactory(part_number=None, content_length=None,
 
 @use_kwargs({
     'content_length': fields.Int(
-        load_from='_totalSize',
+        metadata={
+            'load_from': '_totalSize',
+            'location': 'form',
+        },
         data_key='_totalSize',
-        location='form',
         required=True,
     ),
     'content_type': fields.Str(
-        load_from='Content-Type',
+        metadata={
+            'load_from': 'Content-Type',
+            'location': 'headers',
+        },
         data_key='Content-Type',
-        location='headers',
         required=True,
     ),
     'uploaded_file': fields.Raw(
-        load_from='file',
+        metadata={
+            'load_from': 'file',
+            'location': 'files',
+        },
         data_key='file',
-        location='files',
         required=True,
     ),
 })
@@ -373,11 +398,11 @@ class BucketResource(ContentNegotiatedMethodView):
 
     get_args = {
         'versions': fields.Raw(
-            location='query',
+            metadata={'location': 'query'},
         ),
         'uploads': fields.Raw(
-            location='query',
-        )
+            metadata={'location': 'query'},
+        ),
     }
 
     def __init__(self, *args, **kwargs):
@@ -449,19 +474,25 @@ class ObjectResource(ContentNegotiatedMethodView):
 
     delete_args = {
         'version_id': fields.UUID(
-            location='query',
-            load_from='versionId',
+            metadata={
+                'load_from': 'versionId',
+                'location': 'query',
+            },
             data_key='versionId',
-            missing=None,
+            load_default=None,
         ),
         'upload_id': fields.UUID(
-            location='query',
-            load_from='uploadId',
+            metadata={
+                'load_from': 'uploadId',
+                'location': 'query',
+            },
             data_key='uploadId',
-            missing=None,
+            load_default=None,
         ),
         'uploads': fields.Raw(
-            location='query',
+            metadata={
+                'location': 'query',
+            },
             validate=invalid_subresource_validator,
         ),
     }
@@ -469,41 +500,53 @@ class ObjectResource(ContentNegotiatedMethodView):
     get_args = dict(
         delete_args,
         download=fields.Raw(
-            location='query',
-            missing=None,
-        )
+            metadata={
+                'location': 'query',
+            },
+            load_default=None,
+        ),
     )
 
     post_args = {
         'uploads': fields.Raw(
-            location='query',
+            metadata={
+                'location': 'query',
+            }
         ),
         'upload_id': fields.UUID(
-            location='query',
-            load_from='uploadId',
+            metadata={
+                'location': 'query',
+                'load_from': 'uploadId',
+            },
             data_key='uploadId',
-            missing=None,
-        )
+            load_default=None,
+        ),
     }
 
     put_args = {
         'upload_id': fields.UUID(
-            location='query',
-            load_from='uploadId',
+            metadata={
+                'location': 'query',
+                'load_from': 'uploadId',
+            },
             data_key='uploadId',
-            missing=None,
+            load_default=None,
         ),
     }
 
     multipart_init_args = {
         'size': fields.Int(
-            locations=('query', 'json'),
-            missing=None,
+            metadata={
+                'locations': ('query', 'json'),
+            },
+            load_default=None,
         ),
         'part_size': fields.Int(
-            locations=('query', 'json'),
-            missing=None,
-            load_from='partSize',
+            metadata={
+                'locations': ('query', 'json'),
+                'load_from': 'partSize',
+            },
+            load_default=None,
             data_key='partSize',
         ),
     }
