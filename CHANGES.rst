@@ -10,6 +10,10 @@
 Changes
 =======
 
+Version 1.3.2 (release 2022-02-14)
+
+- Fix deprecation warnings from marshmallow.
+
 Version 1.3.1 (release 2022-01-31)
 
 - Fix a race-condition by enforcing integrity constraint on is head. An issue
