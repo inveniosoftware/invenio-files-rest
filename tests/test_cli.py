@@ -10,16 +10,13 @@
 """Test CLI."""
 
 import os
-from click.testing import CliRunner
-from flask.cli import ScriptInfo
 
 from invenio_files_rest.cli import files as cmd
 
 
 def test_simple_workflow(app, db, tmpdir):
     """Run simple workflow."""
-    runner = CliRunner()
-    script_info = ScriptInfo(create_app=lambda info: app)
+    runner = app.test_cli_runner()
 
     source = os.path.join(os.path.dirname(__file__), 'fixtures', 'source')
 
@@ -27,21 +24,21 @@ def test_simple_workflow(app, db, tmpdir):
     result = runner.invoke(cmd, [
         'location', 'create',
         'tmp', 'file://' + tmpdir.strpath, '--default'
-    ], obj=script_info)
+    ])
     assert 0 == result.exit_code
 
     # Create the same location (check idempotent)
     result = runner.invoke(cmd, [
         'location', 'create',
         'tmp', 'file://' + tmpdir.strpath, '--default'
-    ], obj=script_info)
+    ])
     assert 0 == result.exit_code
     assert "already exists" in result.output
 
     # Passing no subcommand should use default command 'create' (idempotent)
     result = runner.invoke(cmd, [
         'location', 'tmp', 'file://' + tmpdir.strpath, '--default'
-    ], obj=script_info)
+    ])
     assert 0 == result.exit_code
     assert "already exists" in result.output
 
@@ -49,13 +46,13 @@ def test_simple_workflow(app, db, tmpdir):
     result = runner.invoke(cmd, [
         'location', 'create',
         'aux', 'file://' + tmpdir.strpath, '--default'
-    ], obj=script_info)
+    ])
     assert 0 == result.exit_code
 
     # List locations and check the default is correct
     result = runner.invoke(cmd, [
         'location', 'list'
-    ], obj=script_info)
+    ])
     assert 0 == result.exit_code
 
     created_locations = result.output.split('\n')
@@ -70,13 +67,13 @@ def test_simple_workflow(app, db, tmpdir):
     # Set tmp back as default
     result = runner.invoke(cmd, [
         'location', 'set-default', 'tmp'
-    ], obj=script_info)
+    ])
     assert 0 == result.exit_code
 
     # List locations and check the default is correct
     result = runner.invoke(cmd, [
         'location', 'list'
-    ], obj=script_info)
+    ])
     assert 0 == result.exit_code
 
     created_locations = result.output.split('\n')
@@ -91,25 +88,24 @@ def test_simple_workflow(app, db, tmpdir):
     # Buckets
     ##
 
-    result = runner.invoke(cmd, ['bucket', 'touch'], obj=script_info)
+    result = runner.invoke(cmd, ['bucket', 'touch'])
     assert 0 == result.exit_code
     bucket_id = result.output.split('\n')[0]
 
     # Specify a directory where 2 files have same content.
     result = runner.invoke(cmd, [
         'bucket', 'cp', source, bucket_id, '--checksum'
-    ], obj=script_info)
+    ])
     assert 0 == result.exit_code
 
     # Specify a file.
-    result = runner.invoke(cmd, ['bucket', 'cp', __file__, bucket_id],
-                           obj=script_info)
+    result = runner.invoke(cmd, ['bucket', 'cp', __file__, bucket_id])
     assert 0 == result.exit_code
     prev_num_files = len(tmpdir.listdir())
 
     # No new file should be created.
     result = runner.invoke(cmd, [
         'bucket', 'cp', __file__, bucket_id, '--checksum'
-    ], obj=script_info)
+    ])
     assert 0 == result.exit_code
     assert len(tmpdir.listdir()) == prev_num_files
