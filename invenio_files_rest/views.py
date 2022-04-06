@@ -10,7 +10,7 @@
 """Files download/upload REST API similar to S3 for Invenio."""
 
 import uuid
-from flask import Blueprint, abort, current_app, json, request
+from flask import Blueprint, abort, current_app, request
 from flask_login import current_user
 from functools import partial, wraps
 from invenio_db import db
