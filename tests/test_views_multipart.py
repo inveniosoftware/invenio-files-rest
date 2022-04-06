@@ -12,8 +12,8 @@ import json
 import pytest
 from flask import url_for
 from io import BytesIO
-from mock import MagicMock, patch
 from testutils import BadBytesIO, login_user
+from unittest.mock import MagicMock, patch
 
 from invenio_files_rest.models import Bucket, MultipartObject, Part
 from invenio_files_rest.tasks import merge_multipartobject

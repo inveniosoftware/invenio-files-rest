@@ -14,8 +14,8 @@ import os
 import pytest
 from fs.errors import DirectoryNotEmpty, FSError
 from io import BytesIO
-from mock import patch
 from os.path import dirname, exists, getsize, join
+from unittest.mock import patch
 
 from invenio_files_rest.errors import FileSizeError, StorageError, \
     UnexpectedFileSizeError
