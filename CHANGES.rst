@@ -10,6 +10,12 @@
 Changes
 =======
 
+Version 1.3.3 (release 2022-04-06)
+
+- Fix Flask v2.1 issues.
+- Refactor dependencies to respect Invenio dependency strategy and remove
+  pin on Flask-Login.
+
 Version 1.3.2 (release 2022-02-14)
 
 - Fix deprecation warnings from marshmallow.
