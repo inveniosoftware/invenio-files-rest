@@ -12,8 +12,8 @@ import errno
 import pytest
 from fs.errors import FSError, ResourceNotFound
 from io import BytesIO
-from mock import MagicMock, patch
 from os.path import exists, join
+from unittest.mock import MagicMock, patch
 
 from invenio_files_rest.models import Bucket, FileInstance, ObjectVersion
 from invenio_files_rest.tasks import migrate_file, remove_file_data, \

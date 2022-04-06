@@ -13,8 +13,8 @@ from datetime import timedelta, timezone
 from flask import url_for
 from fs.opener import open_fs as opendir
 from io import BytesIO
-from mock import patch
 from testutils import BadBytesIO, login_user
+from unittest.mock import patch
 
 from invenio_files_rest.models import FileInstance, ObjectVersion
 from invenio_files_rest.tasks import remove_file_data
