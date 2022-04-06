@@ -32,18 +32,46 @@ jobs:
           python-version: [3.7, 3.8, 3.9]
           requirements-level: [min, pypi]
           cache-service: [redis]
-          db-service: [postgresql9, postgresql11, mysql5, mysql8]
+          db-service: [postgresql10, postgresql14, mysql5, mysql8]
           exclude:
+          - python-version: 3.7
+            requirements-level: pypi
+
           - python-version: 3.8
             requirements-level: min
 
           - python-version: 3.9
             requirements-level: min
+
+          - python-version: 3.7
+            requirements-level: min
+            db-service: postgresql14
+
+          - python-version: 3.7
+            requirements-level: min
+            db-service: mysql8
+
+          - python-version: 3.8
+            requirements-level: pypi
+            db-service: postgresql10
+
+          - python-version: 3.9
+            requirements-level: pypi
+            db-service: postgresql10
+
+          - python-version: 3.8
+            requirements-level: pypi
+            db-service: mysql5
+
+          - python-version: 3.9
+            requirements-level: pypi
+            db-service: mysql5
+
           include:
-          - db-service: postgresql9
+          - db-service: postgresql10
             DB_EXTRAS: "postgresql"
 
-          - db-service: postgresql11
+          - db-service: postgresql14
             DB_EXTRAS: "postgresql"
 
           - db-service: mysql5
@@ -55,7 +83,7 @@ jobs:
     env:
       CACHE: ${{ matrix.cache-service }}
       DB: ${{ matrix.db-service }}
-      EXTRAS: all,${{ matrix.DB_EXTRAS }}
+      EXTRAS: tests,${{ matrix.DB_EXTRAS }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
