@@ -18,6 +18,7 @@ from fs.errors import FSError, ResourceNotFound
 
 from invenio_files_rest.models import Bucket, FileInstance, ObjectVersion
 from invenio_files_rest.tasks import (
+    clear_orphaned_files,
     migrate_file,
     remove_file_data,
     schedule_checksum_verification,
@@ -185,3 +186,32 @@ def test_remove_file_data(app, db, dummy_location, versions):
     assert FileInstance.query.count() == 3
     remove_file_data(str(obj.file.id))
     assert exists(obj.file.uri)
+
+
+def test_clear_orphaned_files(app, db, dummy_location, versions):
+    """Test clearing orphan files."""
+    # create an orphaned file
+    obj = versions[1]
+    file_ = obj.file
+    for obj in file_.objects:
+        obj.remove()
+
+    file_.writable = False
+    db.session.commit()
+
+    # make sure that the file is orphaned
+    assert not file_.objects
+
+    # try to delete the orphan which is marked as not writable
+    assert exists(file_.uri)
+    assert FileInstance.query.count() == 4
+    clear_orphaned_files()
+    assert exists(file_.uri)
+    assert FileInstance.query.count() == 4
+
+    # try to force the deletion
+    assert exists(file_.uri)
+    assert FileInstance.query.count() == 4
+    clear_orphaned_files(force_delete_check=lambda fi: True)
+    assert not exists(file_.uri)
+    assert FileInstance.query.count() == 3
