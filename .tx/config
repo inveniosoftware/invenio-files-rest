@@ -26,7 +26,7 @@
 [main]
 host = https://www.transifex.com
 
-[invenio-1.invenio-files-rest-messages]
+[invenio.invenio-files-rest-messages]
 file_filter = invenio_files_rest/translations/<lang>/LC_MESSAGES/messages.po
 source_file = invenio_files_rest/translations/messages.pot
 source_lang = en
