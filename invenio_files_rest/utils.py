@@ -14,10 +14,10 @@ from flask import current_app
 from werkzeug.utils import import_string
 
 ENCODING_MIMETYPES = {
-    'gzip': 'application/gzip',
-    'compress': 'application/gzip',
-    'bzip2': 'application/x-bzip2',
-    'xz': 'application/x-xz',
+    "gzip": "application/gzip",
+    "compress": "application/gzip",
+    "bzip2": "application/x-bzip2",
+    "xz": "application/x-xz",
 }
 """Mapping encoding to MIME types which are not in mimetypes.types_map."""
 
@@ -54,4 +54,4 @@ def guess_mimetype(filename):
     m, encoding = mimetypes.guess_type(filename)
     if encoding:
         m = ENCODING_MIMETYPES.get(encoding, None)
-    return m or 'application/octet-stream'
+    return m or "application/octet-stream"

@@ -29,8 +29,8 @@ your nodes.
 """
 
 FILES_REST_STORAGE_CLASS_LIST = {
-    'S': 'Standard',
-    'A': 'Archive',
+    "S": "Standard",
+    "A": "Archive",
 }
 """Storage class list defines the systems storage classes.
 
@@ -39,7 +39,7 @@ is located on (e.g. offline/online), so that the system known if it can serve
 the file and/or what is the reliability.
 """
 
-FILES_REST_DEFAULT_STORAGE_CLASS = 'S'
+FILES_REST_DEFAULT_STORAGE_CLASS = "S"
 """Default storage class. Must be one of `FILES_REST_STORAGE_CLASS_LIST`."""
 
 FILES_REST_DEFAULT_QUOTA_SIZE = None
@@ -51,14 +51,13 @@ FILES_REST_DEFAULT_MAX_FILE_SIZE = None
 FILES_REST_MIN_FILE_SIZE = 1
 """Minimum file size when uploading, in bytes (do not allow empty files)."""
 
-FILES_REST_SIZE_LIMITERS = 'invenio_files_rest.limiters.file_size_limiters'
+FILES_REST_SIZE_LIMITERS = "invenio_files_rest.limiters.file_size_limiters"
 """Import path of file size limiters factory to control bucket size limits."""
 
-FILES_REST_STORAGE_FACTORY = 'invenio_files_rest.storage.pyfs_storage_factory'
+FILES_REST_STORAGE_FACTORY = "invenio_files_rest.storage.pyfs_storage_factory"
 """Import path of factory used to create a storage instance."""
 
-FILES_REST_PERMISSION_FACTORY = \
-    'invenio_files_rest.permissions.permission_factory'
+FILES_REST_PERMISSION_FACTORY = "invenio_files_rest.permissions.permission_factory"
 """Permission factory to control the files access from the REST interface."""
 
 FILES_REST_OBJECT_KEY_MAX_LEN = 255
@@ -92,14 +91,14 @@ FILES_REST_STORAGE_PATH_DIMENSIONS = 2
 """
 
 FILES_REST_MULTIPART_PART_FACTORIES = [
-    'invenio_files_rest.views:default_partfactory',
-    'invenio_files_rest.views:ngfileupload_partfactory',
+    "invenio_files_rest.views:default_partfactory",
+    "invenio_files_rest.views:ngfileupload_partfactory",
 ]
 """Import path of factories used when parsing upload params for multipart."""
 
 FILES_REST_UPLOAD_FACTORIES = [
-    'invenio_files_rest.views:stream_uploadfactory',
-    'invenio_files_rest.views:ngfileupload_uploadfactory',
+    "invenio_files_rest.views:stream_uploadfactory",
+    "invenio_files_rest.views:ngfileupload_uploadfactory",
 ]
 """Import path of factories used when parsing upload parameters.
 
@@ -127,13 +126,12 @@ FILES_REST_TASK_WAIT_INTERVAL = 2
 FILES_REST_TASK_WAIT_MAX_SECONDS = 600
 """Maximum number of seconds to wait for a task to finish."""
 
-FILES_REST_FILE_TAGS_HEADER = 'X-Invenio-File-Tags'
+FILES_REST_FILE_TAGS_HEADER = "X-Invenio-File-Tags"
 """Header for updating file tags."""
 
 FILES_REST_XSENDFILE_ENABLED = False
 """Use the X-Accel-Redirect header to stream the file through a reverse proxy(
     e.g NGINX)."""
 
-FILES_REST_XSENDFILE_RESPONSE_FUNC =  \
-    create_file_streaming_redirect_response
+FILES_REST_XSENDFILE_RESPONSE_FUNC = create_file_streaming_redirect_response
 """Function for the creation of a file streaming redirect response."""

@@ -28,16 +28,12 @@ class _FilesRESTState(object):
     @cached_property
     def storage_factory(self):
         """Load default storage factory."""
-        return load_or_import_from_config(
-            'FILES_REST_STORAGE_FACTORY', app=self.app
-        )
+        return load_or_import_from_config("FILES_REST_STORAGE_FACTORY", app=self.app)
 
     @cached_property
     def permission_factory(self):
         """Load default permission factory for Buckets collections."""
-        return load_or_import_from_config(
-            'FILES_REST_PERMISSION_FACTORY', app=self.app
-        )
+        return load_or_import_from_config("FILES_REST_PERMISSION_FACTORY", app=self.app)
 
     @cached_property
     def file_size_limiters(self):
@@ -54,24 +50,22 @@ class _FilesRESTState(object):
         An empty list should be returned if there should be no limit. The
         lowest limit will be used.
         """
-        return load_or_import_from_config(
-            'FILES_REST_SIZE_LIMITERS', app=self.app
-        )
+        return load_or_import_from_config("FILES_REST_SIZE_LIMITERS", app=self.app)
 
     @cached_property
     def part_factories(self):
         """Get factory for list of webargs schemas for parsing part number."""
         return [
-            obj_or_import_string(x) for x in
-            self.app.config.get('FILES_REST_MULTIPART_PART_FACTORIES', [])
+            obj_or_import_string(x)
+            for x in self.app.config.get("FILES_REST_MULTIPART_PART_FACTORIES", [])
         ]
 
     @cached_property
     def upload_factories(self):
         """Get factory for list of webargs schemas for parsing part number."""
         return [
-            obj_or_import_string(x) for x in
-            self.app.config.get('FILES_REST_UPLOAD_FACTORIES', [])
+            obj_or_import_string(x)
+            for x in self.app.config.get("FILES_REST_UPLOAD_FACTORIES", [])
         ]
 
     def multipart_partfactory(self):
@@ -104,12 +98,12 @@ class InvenioFilesREST(object):
     def init_app(self, app):
         """Flask application initialization."""
         self.init_config(app)
-        if hasattr(app, 'cli'):
+        if hasattr(app, "cli"):
             app.cli.add_command(files_cmd)
-        app.extensions['invenio-files-rest'] = _FilesRESTState(app)
+        app.extensions["invenio-files-rest"] = _FilesRESTState(app)
 
     def init_config(self, app):
         """Initialize configuration."""
         for k in dir(config):
-            if k.startswith('FILES_REST_'):
+            if k.startswith("FILES_REST_"):
                 app.config.setdefault(k, getattr(config, k))

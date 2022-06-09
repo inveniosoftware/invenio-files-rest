@@ -36,24 +36,26 @@ def bucket():
 def touch():
     """Create new bucket."""
     from .models import Bucket
+
     bucket = Bucket.create()
     db.session.commit()
-    click.secho(str(bucket), fg='green')
+    click.secho(str(bucket), fg="green")
 
 
 @bucket.command()
-@click.argument('source', type=click.Path(exists=True, resolve_path=True))
-@click.argument('bucket')
-@click.option('--checksum/--no-checksum', default=False)
-@click.option('--key-prefix', default='')
+@click.argument("source", type=click.Path(exists=True, resolve_path=True))
+@click.argument("bucket")
+@click.option("--checksum/--no-checksum", default=False)
+@click.option("--key-prefix", default="")
 @with_appcontext
 def cp(source, bucket, checksum, key_prefix):
     """Create new bucket from all files in directory."""
     from .helpers import populate_from_path
     from .models import Bucket
+
     for object_version in populate_from_path(
-            Bucket.get(bucket), source, checksum=checksum,
-            key_prefix=key_prefix):
+        Bucket.get(bucket), source, checksum=checksum, key_prefix=key_prefix
+    ):
         click.secho(str(object_version))
     db.session.commit()
 
@@ -65,22 +67,26 @@ def _unset_default_location():
         default_location.default = False
 
 
-@files.group(cls=DefaultGroup, default='create')
+@files.group(cls=DefaultGroup, default="create")
 def location():
     """Manage locations."""
 
 
 @location.command()
-@click.argument('name')
-@click.argument('uri')
-@click.option('--default', is_flag=True, default=False)
+@click.argument("name")
+@click.argument("uri")
+@click.option("--default", is_flag=True, default=False)
 @with_appcontext
 def create(name, uri, default):
     """Create a new location."""
     location = Location.get_by_name(name)
     if location:
-        click.secho('Location {} (uri: {} default: {}) already exists'.format(
-            location.name, location.uri, str(location.default)), fg='yellow')
+        click.secho(
+            "Location {} (uri: {} default: {}) already exists".format(
+                location.name, location.uri, str(location.default)
+            ),
+            fg="yellow",
+        )
 
     else:
         if default:
@@ -89,8 +95,12 @@ def create(name, uri, default):
         location = Location(name=name, uri=uri, default=default)
         db.session.add(location)
         db.session.commit()
-        click.secho('Location {} {} as default {} stored in database'.format(
-            location.name, location.uri, str(location.default)), fg='green')
+        click.secho(
+            "Location {} {} as default {} stored in database".format(
+                location.name, location.uri, str(location.default)
+            ),
+            fg="green",
+        )
 
 
 @location.command()
@@ -99,12 +109,16 @@ def list():
     """Return the list of locations."""
     locations = Location.all()
     for location in locations:
-        click.secho('{} {} as default {}'.format(
-            location.name, location.uri, str(location.default)), fg='green')
+        click.secho(
+            "{} {} as default {}".format(
+                location.name, location.uri, str(location.default)
+            ),
+            fg="green",
+        )
 
 
 @location.command()
-@click.argument('name')
+@click.argument("name")
 @with_appcontext
 def set_default(name):
     """Set default a location as default. The location must already exist.
@@ -116,7 +130,11 @@ def set_default(name):
         _unset_default_location()
         location.default = True
         db.session.commit()
-        click.secho('Location {} {} set as default ({})'.format(
-            location.name, location.uri, str(location.default)), fg='green')
+        click.secho(
+            "Location {} {} set as default ({})".format(
+                location.name, location.uri, str(location.default)
+            ),
+            fg="green",
+        )
 
-    click.secho("Location {} not found".format(name), fg='red')
+    click.secho("Location {} not found".format(name), fg="red")

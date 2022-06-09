@@ -9,13 +9,14 @@
 """Celery tasks for Invenio-Files-REST."""
 
 import math
-import sqlalchemy as sa
 import uuid
+from datetime import date, datetime, timedelta
+
+import sqlalchemy as sa
 from celery import current_app as current_celery
 from celery import current_task, group, shared_task
 from celery.states import state
 from celery.utils.log import get_task_logger
-from datetime import date, datetime, timedelta
 from flask import current_app
 from invenio_db import db
 from sqlalchemy.exc import IntegrityError
@@ -30,14 +31,14 @@ logger = get_task_logger(__name__)
 def progress_updater(size, total):
     """Progress reporter for checksum verification."""
     current_task.update_state(
-        state=state('PROGRESS'),
-        meta=dict(size=size, total=total)
+        state=state("PROGRESS"), meta=dict(size=size, total=total)
     )
 
 
 @shared_task(ignore_result=True)
-def verify_checksum(file_id, pessimistic=False, chunk_size=None, throws=True,
-                    checksum_kwargs=None):
+def verify_checksum(
+    file_id, pessimistic=False, chunk_size=None, throws=True, checksum_kwargs=None
+):
     """Verify checksum of a file instance.
 
     :param file_id: The file ID.
@@ -50,8 +51,11 @@ def verify_checksum(file_id, pessimistic=False, chunk_size=None, throws=True,
         f.clear_last_check()
         db.session.commit()
     f.verify_checksum(
-        progress_callback=progress_updater, chunk_size=chunk_size,
-        throws=throws, checksum_kwargs=checksum_kwargs)
+        progress_callback=progress_updater,
+        chunk_size=chunk_size,
+        throws=throws,
+        checksum_kwargs=checksum_kwargs,
+    )
     db.session.commit()
 
 
@@ -61,10 +65,14 @@ def default_checksum_verification_files_query():
 
 
 @shared_task(ignore_result=True)
-def schedule_checksum_verification(frequency=None, batch_interval=None,
-                                   max_count=None, max_size=None,
-                                   files_query=None,
-                                   checksum_kwargs=None):
+def schedule_checksum_verification(
+    frequency=None,
+    batch_interval=None,
+    max_count=None,
+    max_size=None,
+    files_query=None,
+    checksum_kwargs=None,
+):
     """Schedule a batch of files for checksum verification.
 
     The purpose of this task is to be periodically called through `celerybeat`,
@@ -96,20 +104,24 @@ def schedule_checksum_verification(frequency=None, batch_interval=None,
     if batch_interval:
         batch_interval = timedelta(**batch_interval)
     else:
-        celery_schedule = current_celery.conf.get('CELERYBEAT_SCHEDULE', {})
+        celery_schedule = current_celery.conf.get("CELERYBEAT_SCHEDULE", {})
         batch_interval = batch_interval or next(
-            (v['schedule'] for v in celery_schedule.values()
-             if v.get('task') == schedule_checksum_verification.name), None)
+            (
+                v["schedule"]
+                for v in celery_schedule.values()
+                if v.get("task") == schedule_checksum_verification.name
+            ),
+            None,
+        )
     if not batch_interval or not isinstance(batch_interval, timedelta):
-        raise Exception(u'No "batch_interval" could be decided')
+        raise Exception('No "batch_interval" could be decided')
 
-    total_batches = int(
-        frequency.total_seconds() / batch_interval.total_seconds())
+    total_batches = int(frequency.total_seconds() / batch_interval.total_seconds())
 
     files = obj_or_import_string(
-        files_query, default=default_checksum_verification_files_query)()
-    files = files.order_by(
-        sa.func.coalesce(FileInstance.last_check_at, date.min))
+        files_query, default=default_checksum_verification_files_query
+    )()
+    files = files.order_by(sa.func.coalesce(FileInstance.last_check_at, date.min))
 
     if max_count is not None:
         all_files_count = files.count()
@@ -117,23 +129,26 @@ def schedule_checksum_verification(frequency=None, batch_interval=None,
         max_count = min_count if max_count == 0 else max_count
         if max_count < min_count:
             current_app.logger.warning(
-                u'The "max_count" you specified ({0}) is smaller than the '
-                'minimum batch file count required ({1}) in order to achieve '
-                'the file checks over the specified period ({2}).'
-                .format(max_count, min_count, frequency))
+                'The "max_count" you specified ({0}) is smaller than the '
+                "minimum batch file count required ({1}) in order to achieve "
+                "the file checks over the specified period ({2}).".format(
+                    max_count, min_count, frequency
+                )
+            )
         files = files.limit(max_count)
 
     if max_size is not None:
-        all_files_size = db.session.query(
-            sa.func.sum(FileInstance.size)).scalar()
+        all_files_size = db.session.query(sa.func.sum(FileInstance.size)).scalar()
         min_size = int(math.ceil(all_files_size / total_batches))
         max_size = min_size if max_size == 0 else max_size
         if max_size < min_size:
             current_app.logger.warning(
-                u'The "max_size" you specified ({0}) is smaller than the '
-                'minimum batch total file size required ({1}) in order to '
-                'achieve the file checks over the specified period ({2}).'
-                .format(max_size, min_size, frequency))
+                'The "max_size" you specified ({0}) is smaller than the '
+                "minimum batch total file size required ({1}) in order to "
+                "achieve the file checks over the specified period ({2}).".format(
+                    max_size, min_size, frequency
+                )
+            )
 
     files = files.yield_per(1000)
     scheduled_file_ids = []
@@ -146,8 +161,11 @@ def schedule_checksum_verification(frequency=None, batch_interval=None,
             break
     group(
         verify_checksum.s(
-            file_id, pessimistic=True, throws=False,
-            checksum_kwargs=(checksum_kwargs or {}))
+            file_id,
+            pessimistic=True,
+            throws=False,
+            checksum_kwargs=(checksum_kwargs or {}),
+        )
         for file_id in scheduled_file_ids
     ).apply_async()
 
@@ -234,15 +252,12 @@ def merge_multipartobject(upload_id, version_id=None):
     """
     mp = MultipartObject.query.filter_by(upload_id=upload_id).one_or_none()
     if not mp:
-        raise RuntimeError('Upload ID does not exists.')
+        raise RuntimeError("Upload ID does not exists.")
     if not mp.completed:
-        raise RuntimeError('MultipartObject is not completed.')
+        raise RuntimeError("MultipartObject is not completed.")
 
     try:
-        obj = mp.merge_parts(
-            version_id=version_id,
-            progress_callback=progress_updater
-        )
+        obj = mp.merge_parts(version_id=version_id, progress_callback=progress_updater)
         db.session.commit()
         file_uploaded.send(current_app._get_current_object(), obj=obj)
         return str(obj.version_id)
@@ -254,7 +269,7 @@ def merge_multipartobject(upload_id, version_id=None):
 @shared_task(ignore_result=True)
 def remove_expired_multipartobjects():
     """Remove expired multipart objects."""
-    delta = current_app.config['FILES_REST_MULTIPART_EXPIRES']
+    delta = current_app.config["FILES_REST_MULTIPART_EXPIRES"]
     expired_dt = datetime.utcnow() - delta
 
     file_ids = []

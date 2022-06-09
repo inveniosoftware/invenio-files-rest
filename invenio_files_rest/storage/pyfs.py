@@ -47,7 +47,7 @@ class PyFSFileStorage(FileStorage):
             filename,
         )
 
-    def open(self, mode='rb'):
+    def open(self, mode="rb"):
         """Open file.
 
         The caller is responsible for closing the file.
@@ -82,9 +82,9 @@ class PyFSFileStorage(FileStorage):
 
         # Required for reliably opening the file on certain file systems:
         if fs.exists(path):
-            fp = fs.open(path, mode='r+b')
+            fp = fs.open(path, mode="r+b")
         else:
-            fp = fs.open(path, mode='wb')
+            fp = fs.open(path, mode="wb")
 
         try:
             fp.truncate(size)
@@ -99,15 +99,25 @@ class PyFSFileStorage(FileStorage):
 
         return self.fileurl, size, None
 
-    def save(self, incoming_stream, size_limit=None, size=None,
-             chunk_size=None, progress_callback=None):
+    def save(
+        self,
+        incoming_stream,
+        size_limit=None,
+        size=None,
+        chunk_size=None,
+        progress_callback=None,
+    ):
         """Save file in the file system."""
-        fp = self.open(mode='wb')
+        fp = self.open(mode="wb")
         try:
             bytes_written, checksum = self._write_stream(
-                incoming_stream, fp, chunk_size=chunk_size,
+                incoming_stream,
+                fp,
+                chunk_size=chunk_size,
                 progress_callback=progress_callback,
-                size_limit=size_limit, size=size)
+                size_limit=size_limit,
+                size=size,
+            )
         except Exception:
             fp.close()
             self.delete()
@@ -119,25 +129,41 @@ class PyFSFileStorage(FileStorage):
 
         return self.fileurl, bytes_written, checksum
 
-    def update(self, incoming_stream, seek=0, size=None, chunk_size=None,
-               progress_callback=None):
+    def update(
+        self,
+        incoming_stream,
+        seek=0,
+        size=None,
+        chunk_size=None,
+        progress_callback=None,
+    ):
         """Update a file in the file system."""
-        fp = self.open(mode='r+b')
+        fp = self.open(mode="r+b")
         try:
             fp.seek(seek)
             bytes_written, checksum = self._write_stream(
-                incoming_stream, fp, chunk_size=chunk_size,
-                size=size, progress_callback=progress_callback)
+                incoming_stream,
+                fp,
+                chunk_size=chunk_size,
+                size=size,
+                progress_callback=progress_callback,
+            )
         finally:
             fp.close()
 
         return bytes_written, checksum
 
 
-def pyfs_storage_factory(fileinstance=None, default_location=None,
-                         default_storage_class=None,
-                         filestorage_class=PyFSFileStorage, fileurl=None,
-                         size=None, modified=None, clean_dir=True):
+def pyfs_storage_factory(
+    fileinstance=None,
+    default_location=None,
+    default_storage_class=None,
+    filestorage_class=PyFSFileStorage,
+    fileurl=None,
+    size=None,
+    modified=None,
+    clean_dir=True,
+):
     """Get factory function for creating a PyFS file storage instance."""
     # Either the FileInstance needs to be specified or all filestorage
     # class parameters need to be specified
@@ -159,10 +185,9 @@ def pyfs_storage_factory(fileinstance=None, default_location=None,
             fileurl = make_path(
                 default_location,
                 str(fileinstance.id),
-                'data',
-                current_app.config['FILES_REST_STORAGE_PATH_DIMENSIONS'],
-                current_app.config['FILES_REST_STORAGE_PATH_SPLIT_LENGTH'],
+                "data",
+                current_app.config["FILES_REST_STORAGE_PATH_DIMENSIONS"],
+                current_app.config["FILES_REST_STORAGE_PATH_SPLIT_LENGTH"],
             )
 
-    return filestorage_class(
-        fileurl, size=size, modified=modified, clean_dir=clean_dir)
+    return filestorage_class(fileurl, size=size, modified=modified, clean_dir=clean_dir)

@@ -18,39 +18,39 @@ from invenio_files_rest import __version__
 # needs_sphinx = '1.0'
 
 # Do not warn on external images.
-suppress_warnings = ['image.nonlocal_uri']
+suppress_warnings = ["image.nonlocal_uri"]
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.coverage',
-    'sphinx.ext.doctest',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.viewcode',
-    'sphinxcontrib.httpdomain',
-    'celery.contrib.sphinx',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.coverage",
+    "sphinx.ext.doctest",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.viewcode",
+    "sphinxcontrib.httpdomain",
+    "celery.contrib.sphinx",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 # source_suffix = ['.rst', '.md']
-source_suffix = '.rst'
+source_suffix = ".rst"
 
 # The encoding of source files.
 # source_encoding = 'utf-8-sig'
 
 # The master toctree document.
-master_doc = 'index'
+master_doc = "index"
 
 # General information about the project.
-project = u'Invenio-Files-REST'
-copyright = u'2015, CERN'
-author = u'CERN'
+project = "Invenio-Files-REST"
+copyright = "2015, CERN"
+author = "CERN"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -97,7 +97,7 @@ exclude_patterns = []
 # show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+pygments_style = "sphinx"
 
 # A list of ignored prefixes for module index sorting.
 # modindex_common_prefix = []
@@ -110,19 +110,19 @@ todo_include_todos = False
 
 
 # -- Options for HTML output ----------------------------------------------
-html_theme = 'alabaster'
+html_theme = "alabaster"
 
 html_theme_options = {
-    'description': 'Files download/upload REST API similar to S3 for Invenio.',
-    'github_user': 'inveniosoftware',
-    'github_repo': 'invenio-files-rest',
-    'github_button': False,
-    'github_banner': True,
-    'show_powered_by': False,
-    'extra_nav_links': {
-        'invenio-files-rest@GitHub': 'https://github.com/inveniosoftware/invenio-files-rest',
-        'invenio-files-rest@PyPI': 'https://pypi.python.org/pypi/invenio-files-rest/',
-    }
+    "description": "Files download/upload REST API similar to S3 for Invenio.",
+    "github_user": "inveniosoftware",
+    "github_repo": "invenio-files-rest",
+    "github_button": False,
+    "github_banner": True,
+    "show_powered_by": False,
+    "extra_nav_links": {
+        "invenio-files-rest@GitHub": "https://github.com/inveniosoftware/invenio-files-rest",
+        "invenio-files-rest@PyPI": "https://pypi.python.org/pypi/invenio-files-rest/",
+    },
 }
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -155,7 +155,7 @@ html_theme_options = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ["_static"]
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
@@ -172,12 +172,12 @@ html_static_path = ['_static']
 
 # Custom sidebar templates, maps document names to template names.
 html_sidebars = {
-    '**': [
-        'about.html',
-        'navigation.html',
-        'relations.html',
-        'searchbox.html',
-        'donate.html',
+    "**": [
+        "about.html",
+        "navigation.html",
+        "relations.html",
+        "searchbox.html",
+        "donate.html",
     ]
 }
 
@@ -226,7 +226,7 @@ html_sidebars = {
 # html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'invenio-files-rest_namedoc'
+htmlhelp_basename = "invenio-files-rest_namedoc"
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -248,8 +248,13 @@ htmlhelp_basename = 'invenio-files-rest_namedoc'
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'invenio-files-rest.tex', u'invenio-files-rest Documentation',
-     u'CERN', 'manual'),
+    (
+        master_doc,
+        "invenio-files-rest.tex",
+        "invenio-files-rest Documentation",
+        "CERN",
+        "manual",
+    ),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -278,8 +283,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'invenio-files-rest', u'invenio-files-rest Documentation',
-     [author], 1)
+    (master_doc, "invenio-files-rest", "invenio-files-rest Documentation", [author], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -292,9 +296,15 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'invenio-files-rest', u'Invenio-Files-REST Documentation',
-     author, 'invenio-files-rest', 'Files download/upload REST API similar to S3 for Invenio.',
-     'Miscellaneous'),
+    (
+        master_doc,
+        "invenio-files-rest",
+        "Invenio-Files-REST Documentation",
+        author,
+        "invenio-files-rest",
+        "Files download/upload REST API similar to S3 for Invenio.",
+        "Miscellaneous",
+    ),
 ]
 
 # Documents to append as an appendix to all manuals.
@@ -311,19 +321,17 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
-    'flask': ('https://flask.palletsprojects.com/', None),
-    'werkzeug': ('https://werkzeug.palletsprojects.com/', None),
-    'invenio-access': ('https://invenio-access.readthedocs.io/en/latest/',
-                       None),
-    'invenio-pidstore': ('https://invenio-pidstore.readthedocs.io/en/latest/',
-                         None),
-    'invenio-rest': ('https://invenio-rest.readthedocs.io/en/latest/', None),
-    'python': ('https://docs.python.org/3', None),
-    'sqlalchemy': ('https://docs.sqlalchemy.org', None),
+    "flask": ("https://flask.palletsprojects.com/", None),
+    "werkzeug": ("https://werkzeug.palletsprojects.com/", None),
+    "invenio-access": ("https://invenio-access.readthedocs.io/en/latest/", None),
+    "invenio-pidstore": ("https://invenio-pidstore.readthedocs.io/en/latest/", None),
+    "invenio-rest": ("https://invenio-rest.readthedocs.io/en/latest/", None),
+    "python": ("https://docs.python.org/3", None),
+    "sqlalchemy": ("https://docs.sqlalchemy.org", None),
 }
 
 # Autodoc configuraton.
-autoclass_content = 'both'
+autoclass_content = "both"
 
 # Describe the type hints in bullet points rather than in-line in the function signatures
-autodoc_typehints = 'description'
+autodoc_typehints = "description"

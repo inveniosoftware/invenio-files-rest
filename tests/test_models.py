@@ -8,19 +8,30 @@
 
 """Module test views."""
 
-import pytest
 import sys
 import uuid
-from fs.errors import ResourceNotFound
 from io import BytesIO
 from os.path import getsize
+
+import pytest
+from fs.errors import ResourceNotFound
 from sqlalchemy.exc import IntegrityError
 
-from invenio_files_rest.errors import BucketLockedError, \
-    FileInstanceAlreadySetError, FileInstanceUnreadableError, \
-    InvalidKeyError, InvalidOperationError
-from invenio_files_rest.models import Bucket, BucketTag, FileInstance, \
-    Location, ObjectVersion, ObjectVersionTag
+from invenio_files_rest.errors import (
+    BucketLockedError,
+    FileInstanceAlreadySetError,
+    FileInstanceUnreadableError,
+    InvalidKeyError,
+    InvalidOperationError,
+)
+from invenio_files_rest.models import (
+    Bucket,
+    BucketTag,
+    FileInstance,
+    Location,
+    ObjectVersion,
+    ObjectVersionTag,
+)
 
 
 def b(s):
@@ -30,34 +41,34 @@ def b(s):
 def test_location(app, db):
     """Test location model."""
     with db.session.begin_nested():
-        l1 = Location(name='test1', uri='file:///tmp', default=False)
-        l2 = Location(name='test2', uri='file:///tmp', default=True)
-        l3 = Location(name='test3', uri='file:///tmp', default=False)
+        l1 = Location(name="test1", uri="file:///tmp", default=False)
+        l2 = Location(name="test2", uri="file:///tmp", default=True)
+        l3 = Location(name="test3", uri="file:///tmp", default=False)
         db.session.add(l1)
         db.session.add(l2)
         db.session.add(l3)
 
-    assert Location.get_by_name('test1').name == 'test1'
-    assert Location.get_by_name('test2').name == 'test2'
-    assert Location.get_by_name('test3').name == 'test3'
+    assert Location.get_by_name("test1").name == "test1"
+    assert Location.get_by_name("test2").name == "test2"
+    assert Location.get_by_name("test3").name == "test3"
 
-    assert Location.get_default().name == 'test2'
+    assert Location.get_default().name == "test2"
     assert len(Location.all()) == 3
 
-    assert str(Location.get_by_name('test1')) == 'test1'
+    assert str(Location.get_by_name("test1")) == "test1"
 
 
 def test_location_default(app, db):
     """Test location model."""
     with db.session.begin_nested():
-        l1 = Location(name='test1', uri='file:///tmp', default=False)
+        l1 = Location(name="test1", uri="file:///tmp", default=False)
         db.session.add(l1)
 
     assert Location.get_default() is None
 
     with db.session.begin_nested():
-        l2 = Location(name='test2', uri='file:///tmp', default=True)
-        l3 = Location(name='test3', uri='file:///tmp', default=True)
+        l2 = Location(name="test2", uri="file:///tmp", default=True)
+        l3 = Location(name="test3", uri="file:///tmp", default=True)
         db.session.add(l2)
         db.session.add(l3)
 
@@ -66,9 +77,24 @@ def test_location_default(app, db):
 
 def test_location_validation(app, db):
     """Test validation of location name."""
-    pytest.raises(ValueError, Location, name='UPPER', uri='file://', )
-    pytest.raises(ValueError, Location, name='1ab', uri='file://', )
-    pytest.raises(ValueError, Location, name='a' * 21, uri='file://', )
+    pytest.raises(
+        ValueError,
+        Location,
+        name="UPPER",
+        uri="file://",
+    )
+    pytest.raises(
+        ValueError,
+        Location,
+        name="1ab",
+        uri="file://",
+    )
+    pytest.raises(
+        ValueError,
+        Location,
+        name="a" * 21,
+        uri="file://",
+    )
 
 
 def test_bucket_removal(app, db, bucket, objects):
@@ -95,8 +121,8 @@ def test_bucket_kwargs_creation(app, db, dummy_location):
 def test_bucket_create_object(app, db):
     """Test bucket creation."""
     with db.session.begin_nested():
-        l1 = Location(name='test1', uri='file:///tmp/1', default=False)
-        l2 = Location(name='test2', uri='file:///tmp/2', default=True)
+        l1 = Location(name="test1", uri="file:///tmp/1", default=False)
+        l2 = Location(name="test2", uri="file:///tmp/2", default=True)
         db.session.add(l1)
         db.session.add(l2)
 
@@ -108,8 +134,7 @@ def test_bucket_create_object(app, db):
         assert b.id
         assert b.default_location == Location.get_default().id
         assert b.location == Location.get_default()
-        assert b.default_storage_class == \
-               app.config['FILES_REST_DEFAULT_STORAGE_CLASS']
+        assert b.default_storage_class == app.config["FILES_REST_DEFAULT_STORAGE_CLASS"]
         assert b.size == 0
         assert b.quota_size is None
         assert b.max_file_size is None
@@ -123,19 +148,19 @@ def test_bucket_create_object(app, db):
 
     # Create with location_name and storage class
     with db.session.begin_nested():
-        b = Bucket.create(location=l1, storage_class='A')
-        assert b.default_location == Location.get_by_name('test1').id
-        assert b.default_storage_class == 'A'
+        b = Bucket.create(location=l1, storage_class="A")
+        assert b.default_location == Location.get_by_name("test1").id
+        assert b.default_storage_class == "A"
 
         # Create using location name instead
-        b = Bucket.create(location=l2.name, storage_class='A')
-        assert b.default_location == Location.get_by_name('test2').id
+        b = Bucket.create(location=l2.name, storage_class="A")
+        assert b.default_location == Location.get_by_name("test2").id
 
     # Retrieve one
     assert Bucket.all().count() == 3
 
     # Invalid storage class.
-    pytest.raises(ValueError, Bucket.create, storage_class='X')
+    pytest.raises(ValueError, Bucket.create, storage_class="X")
 
 
 def test_bucket_retrieval(app, db, dummy_location):
@@ -161,7 +186,7 @@ def test_object_create(app, db, dummy_location):
         # Create one object version
         obj1 = ObjectVersion.create(b, "test")
         assert obj1.bucket_id == b.id
-        assert obj1.key == 'test'
+        assert obj1.key == "test"
         assert obj1.version_id
         assert obj1.file_id is None
         assert obj1.is_head is True
@@ -173,7 +198,7 @@ def test_object_create(app, db, dummy_location):
         # Create one object version for same object key
         obj2 = ObjectVersion.create(b, "test")
         assert obj2.bucket_id == b.id
-        assert obj2.key == 'test'
+        assert obj2.key == "test"
         assert obj2.version_id != obj1.version_id
         assert obj2.file_id is None
         assert obj2.is_head is True
@@ -187,21 +212,19 @@ def test_object_create(app, db, dummy_location):
         obj3 = ObjectVersion.create(b, "deleted_obj")
 
         # Create a new object containing key in unicode
-        obj4 = ObjectVersion.create(b, u"hellö")
+        obj4 = ObjectVersion.create(b, "hellö")
 
     # Object __repr__
-    assert repr(obj1) == \
-           u"{0}:{1}:{2}".format(
-               obj1.bucket_id, obj1.version_id, obj1.key)
+    assert repr(obj1) == "{0}:{1}:{2}".format(obj1.bucket_id, obj1.version_id, obj1.key)
 
     if sys.version_info[0] >= 3:  # python3
-        assert repr(obj4) == \
-               u"{0}:{1}:{2}".format(
-                   obj4.bucket_id, obj4.version_id, obj4.key)
+        assert repr(obj4) == "{0}:{1}:{2}".format(
+            obj4.bucket_id, obj4.version_id, obj4.key
+        )
     else:  # python2
-        assert repr(obj4) == \
-               u"{0}:{1}:{2}".format(
-                   obj4.bucket_id, obj4.version_id, obj4.key).encode('utf-8')
+        assert repr(obj4) == "{0}:{1}:{2}".format(
+            obj4.bucket_id, obj4.version_id, obj4.key
+        ).encode("utf-8")
 
     # Sanity check
     assert ObjectVersion.query.count() == 4
@@ -221,28 +244,32 @@ def test_object_create(app, db, dummy_location):
     # Assert that obj3 is not retrievable (without specifying version id).
     assert ObjectVersion.get(b.id, "deleted_obj") is None
     # Assert that obj3 *is* retrievable (when specifying version id).
-    assert \
-        ObjectVersion.get(b.id, "deleted_obj", version_id=obj3.version_id) == \
-        obj3
+    assert ObjectVersion.get(b.id, "deleted_obj", version_id=obj3.version_id) == obj3
 
 
 def test_object_create_uq_constraint(app, db, dummy_location):
     """Test object creation unique constraint on is_head."""
     # constraint is only enforced on postgresql
-    if db.engine.dialect.name != 'postgresql':
+    if db.engine.dialect.name != "postgresql":
         return
 
     b = Bucket.create()
 
     # Create 2 object version
-    obj1 = ObjectVersion(bucket=b, key="test", version_id=uuid.uuid4(), is_head=False, mimetype=None)
-    obj2 = ObjectVersion(bucket=b, key="test", version_id=uuid.uuid4(), is_head=True, mimetype=None)
+    obj1 = ObjectVersion(
+        bucket=b, key="test", version_id=uuid.uuid4(), is_head=False, mimetype=None
+    )
+    obj2 = ObjectVersion(
+        bucket=b, key="test", version_id=uuid.uuid4(), is_head=True, mimetype=None
+    )
     db.session.add(obj1)
     db.session.add(obj2)
     db.session.commit()
 
     # Create one invalid object version for same object key (is_head = True)
-    obj3 = ObjectVersion(bucket=b, key="test", version_id=uuid.uuid4(), is_head=True, mimetype=None)
+    obj3 = ObjectVersion(
+        bucket=b, key="test", version_id=uuid.uuid4(), is_head=True, mimetype=None
+    )
     db.session.add(obj3)
     pytest.raises(IntegrityError, db.session.commit)
 
@@ -251,11 +278,11 @@ def test_object_create_with_fileid(app, db, dummy_location):
     """Test object creation."""
     with db.session.begin_nested():
         b = Bucket.create()
-        obj = ObjectVersion.create(b, 'test', stream=BytesIO(b'test'))
+        obj = ObjectVersion.create(b, "test", stream=BytesIO(b"test"))
 
     assert b.size == 4
 
-    ObjectVersion.create(b, 'test', _file_id=obj.file)
+    ObjectVersion.create(b, "test", _file_id=obj.file)
     assert b.size == 8
 
 
@@ -297,8 +324,7 @@ def test_object_get_by_bucket(app, db, dummy_location):
     obj1_latest = ObjectVersion.create(b1, "test")
     obj1_latest.set_location("b1test3", 1, "achecksum")
     # Create objects in/not in same bucket using different key.
-    ObjectVersion.create(b1, "another").set_location(
-        "b1another1", 1, "achecksum")
+    ObjectVersion.create(b1, "another").set_location("b1another1", 1, "achecksum")
     ObjectVersion.create(b2, "test").set_location("b2test1", 1, "achecksum")
     db.session.commit()
 
@@ -335,10 +361,8 @@ def test_object_delete(app, db, dummy_location):
     # Create three versions, with latest being a delete marker.
     with db.session.begin_nested():
         b1 = Bucket.create()
-        ObjectVersion.create(b1, "test").set_location(
-            "b1test1", 1, "achecksum")
-        ObjectVersion.create(b1, "test").set_location(
-            "b1test2", 1, "achecksum")
+        ObjectVersion.create(b1, "test").set_location("b1test1", 1, "achecksum")
+        ObjectVersion.create(b1, "test").set_location("b1test2", 1, "achecksum")
         obj_deleted = ObjectVersion.delete(b1, "test")
 
     assert ObjectVersion.query.count() == 3
@@ -349,8 +373,7 @@ def test_object_delete(app, db, dummy_location):
     assert obj.deleted
     assert obj.file_id is None
 
-    ObjectVersion.create(b1, "test").set_location(
-        "b1test4", 1, "achecksum")
+    ObjectVersion.create(b1, "test").set_location("b1test4", 1, "achecksum")
 
     assert ObjectVersion.query.count() == 4
     assert ObjectVersion.get(b1.id, "test") is not None
@@ -395,29 +418,29 @@ def test_object_set_contents(app, db, dummy_location):
         assert FileInstance.query.count() == 0
 
         # Save a file.
-        with open('LICENSE', 'rb') as fp:
+        with open("LICENSE", "rb") as fp:
             obj.set_contents(fp)
 
     # Assert size, location and checksum
     assert obj.file_id is not None
     assert obj.file.uri is not None
-    assert obj.file.size == getsize('LICENSE')
+    assert obj.file.size == getsize("LICENSE")
     assert obj.file.checksum is not None
     assert b1.size == obj.file.size
 
     # Try to overwrite
     with db.session.begin_nested():
-        with open('LICENSE', 'rb') as fp:
+        with open("LICENSE", "rb") as fp:
             pytest.raises(FileInstanceAlreadySetError, obj.set_contents, fp)
 
     # Save a new version with different content
     with db.session.begin_nested():
         obj2 = ObjectVersion.create(b1, "LICENSE")
-        with open('README.rst', 'rb') as fp:
+        with open("README.rst", "rb") as fp:
             obj2.set_contents(fp)
 
     assert obj2.file_id is not None and obj2.file_id != obj.file_id
-    assert obj2.file.size == getsize('README.rst')
+    assert obj2.file.size == getsize("README.rst")
     assert obj2.file.uri != obj.file.uri
     assert Bucket.get(b1.id).size == obj.file.size + obj2.file.size
 
@@ -432,7 +455,7 @@ def test_object_set_contents(app, db, dummy_location):
     previous_last_check_date = obj2.file.last_check_at
     with db.session.begin_nested():
         obj2.file.checksum = old_checksum
-        obj2.file.uri = 'invalid'
+        obj2.file.uri = "invalid"
     pytest.raises(ResourceNotFound, obj2.file.verify_checksum)
     assert obj2.file.last_check == previous_last_check
     assert obj2.file.last_check_at == previous_last_check_date
@@ -452,8 +475,8 @@ def test_object_set_location(app, db, dummy_location):
         obj.set_location("b1test1", 1, "achecksum")
         assert FileInstance.query.count() == 1
         pytest.raises(
-            FileInstanceAlreadySetError,
-            obj.set_location, "b1test1", 1, "achecksum")
+            FileInstanceAlreadySetError, obj.set_location, "b1test1", 1, "achecksum"
+        )
 
 
 def test_object_snapshot(app, db, dummy_location):
@@ -478,10 +501,13 @@ def test_object_snapshot(app, db, dummy_location):
     assert ObjectVersion.get_by_bucket(b2).count() == 1
 
     # check that for 'undeleted' key there is only one HEAD
-    heads = [o for o in ObjectVersion.query.filter_by(
-        bucket_id=b1.id, key='undeleted').all() if o.is_head]
+    heads = [
+        o
+        for o in ObjectVersion.query.filter_by(bucket_id=b1.id, key="undeleted").all()
+        if o.is_head
+    ]
     assert len(heads) == 1
-    assert heads[0].file.uri == 'b1u2'
+    assert heads[0].file.uri == "b1u2"
 
     b3 = b1.snapshot(lock=True)
     db.session.commit()
@@ -496,8 +522,9 @@ def test_object_snapshot(app, db, dummy_location):
     assert ObjectVersion.get_by_bucket(b1).count() == 3
     assert ObjectVersion.get_by_bucket(b2).count() == 1
     assert ObjectVersion.get_by_bucket(b3).count() == 3
-    assert ObjectVersion.get_by_bucket(b1, versions=True,
-                                       with_deleted=True).count() == 8
+    assert (
+        ObjectVersion.get_by_bucket(b1, versions=True, with_deleted=True).count() == 8
+    )
     assert ObjectVersion.get_by_bucket(b3, versions=True).count() == 3
 
 
@@ -581,10 +608,8 @@ def test_bucket_sync_add_deleted_object(app, db, dummy_location):
     """Test that adding back a deleted object in src is added in dest."""
     b1 = Bucket.create()
     b2 = Bucket.create()
-    obj1 = ObjectVersion.create(b1, "filename") \
-        .set_location("b1v1", 1, "achecksum")
-    ObjectVersion.create(b1, "filename2") \
-        .set_location("b1v2", 1, "achecksum2")
+    obj1 = ObjectVersion.create(b1, "filename").set_location("b1v1", 1, "achecksum")
+    ObjectVersion.create(b1, "filename2").set_location("b1v2", 1, "achecksum2")
 
     db.session.commit()
 
@@ -695,7 +720,7 @@ def test_object_copy(app, db, dummy_location):
     assert versions[1] == obj
 
     # Copy new key
-    obj_copy2 = obj_copy.copy(key='newkeytest')
+    obj_copy2 = obj_copy.copy(key="newkeytest")
     db.session.commit()
     assert obj_copy2.version_id != obj_copy.version_id
     assert obj_copy2.key == "newkeytest"
@@ -725,9 +750,9 @@ def test_object_mimetype(app, db, dummy_location):
     """Test object set file."""
     b = Bucket.create()
     db.session.commit()
-    obj1 = ObjectVersion.create(b, "test.pdf", stream=BytesIO(b'pdfdata'))
-    obj2 = ObjectVersion.create(b, "README", stream=BytesIO(b'pdfdata'))
-    obj3 = ObjectVersion.create(b, "test.csv.gz", stream=BytesIO(b'gzdata'))
+    obj1 = ObjectVersion.create(b, "test.pdf", stream=BytesIO(b"pdfdata"))
+    obj2 = ObjectVersion.create(b, "README", stream=BytesIO(b"pdfdata"))
+    obj3 = ObjectVersion.create(b, "test.csv.gz", stream=BytesIO(b"gzdata"))
 
     assert obj1.mimetype == "application/pdf"
     assert obj2.mimetype == "application/octet-stream"
@@ -773,9 +798,8 @@ def test_object_restore(app, db, dummy_location):
 def test_object_relink_all(app, db, dummy_location):
     """Test relinking files."""
     b1 = Bucket.create()
-    obj1 = ObjectVersion.create(
-        b1, "relink-test", stream=BytesIO(b('relinkthis')))
-    ObjectVersion.create(b1, "do-not-touch", stream=BytesIO(b('na')))
+    obj1 = ObjectVersion.create(b1, "relink-test", stream=BytesIO(b("relinkthis")))
+    ObjectVersion.create(b1, "do-not-touch", stream=BytesIO(b("na")))
     b1.snapshot()
     db.session.commit()
 
@@ -801,8 +825,8 @@ def test_object_relink_all(app, db, dummy_location):
 def test_object_validation(app, db, dummy_location):
     """Test validating the ObjectVersion."""
     b1 = Bucket.create()
-    ObjectVersion.create(b1, 'x' * 255)  # Should not raise
-    pytest.raises(InvalidKeyError, ObjectVersion.create, b1, 'x' * 256)
+    ObjectVersion.create(b1, "x" * 255)  # Should not raise
+    pytest.raises(InvalidKeyError, ObjectVersion.create, b1, "x" * 256)
 
 
 def test_bucket_tags(app, db, dummy_location):
@@ -891,7 +915,7 @@ def test_fileinstance_set_contents(app, db, dummy_location):
     counter = dict(called=False)
 
     def callback(total, size):
-        counter['called'] = True
+        counter["called"] = True
 
     f = FileInstance.create()
     db.session.commit()
@@ -899,11 +923,12 @@ def test_fileinstance_set_contents(app, db, dummy_location):
     assert f.writable is True
     data = BytesIO(b("test file instance set contents"))
     f.set_contents(
-        data, default_location=dummy_location.uri, progress_callback=callback)
+        data, default_location=dummy_location.uri, progress_callback=callback
+    )
     db.session.commit()
     assert f.readable is True
     assert f.writable is False
-    assert counter['called']
+    assert counter["called"]
 
     pytest.raises(
         ValueError,
@@ -918,10 +943,10 @@ def test_fileinstance_copy_contents(app, db, dummy_location):
     counter = dict(called=False)
 
     def callback(total, size):
-        counter['called'] = True
+        counter["called"] = True
 
     # Create source and set data.
-    data = b('this is some data')
+    data = b("this is some data")
     src = FileInstance.create()
     src.set_contents(BytesIO(data), default_location=dummy_location.uri)
     db.session.commit()
@@ -934,12 +959,13 @@ def test_fileinstance_copy_contents(app, db, dummy_location):
 
     # Copy contents
     dst.copy_contents(
-        src, progress_callback=callback, default_location=dummy_location.uri)
+        src, progress_callback=callback, default_location=dummy_location.uri
+    )
     db.session.commit()
     assert dst.size == src.size
     assert dst.checksum == src.checksum
     assert dst.uri != src.uri
-    assert counter['called']
+    assert counter["called"]
 
     # Read data
     fp = dst.storage().open()
@@ -955,7 +981,7 @@ def test_fileinstance_copy_contents_invalid(app, db, dummy_location):
     pytest.raises(ValueError, dst.copy_contents, src)
 
     # Create valid source
-    data = b('this is some data')
+    data = b("this is some data")
     src = FileInstance.create()
     src.set_contents(BytesIO(data), default_location=dummy_location.uri)
     db.session.commit()
@@ -982,15 +1008,15 @@ def test_fileinstance_send_file(app, db, dummy_location):
 
     # Send data
     with app.test_request_context():
-        res = f.send_file('test.txt')
-        assert int(res.headers['Content-Length']) == len(data)
+        res = f.send_file("test.txt")
+        assert int(res.headers["Content-Length"]) == len(data)
 
 
 def test_fileinstance_validation(app, db, dummy_location):
     """Test validating the FileInstance."""
     f = FileInstance.create()
-    f.set_uri('x' * 255, 1000, 1000)  # Should not raise
-    pytest.raises(ValueError, f.set_uri, 'x' * 256, 1000, 1000)
+    f.set_uri("x" * 255, 1000, 1000)  # Should not raise
+    pytest.raises(ValueError, f.set_uri, "x" * 256, 1000, 1000)
 
 
 def test_object_version_tags(app, db, dummy_location):
@@ -1005,14 +1031,12 @@ def test_object_version_tags(app, db, dummy_location):
     db.session.commit()
 
     # Duplicate key
-    pytest.raises(
-        IntegrityError, ObjectVersionTag.create, obj1, "mykey", "newvalue")
+    pytest.raises(IntegrityError, ObjectVersionTag.create, obj1, "mykey", "newvalue")
 
     # Test get
     assert ObjectVersionTag.query.count() == 2
     assert ObjectVersionTag.get(obj1, "mykey").value == "testvalue"
-    assert ObjectVersionTag.get_value(obj1.version_id, "another_key") \
-           == "another value"
+    assert ObjectVersionTag.get_value(obj1.version_id, "another_key") == "another value"
     assert ObjectVersionTag.get_value(obj1, "invalid") is None
 
     # Test delete
@@ -1030,7 +1054,7 @@ def test_object_version_tags(app, db, dummy_location):
 
     # Get tags as dictionary
     assert obj1.get_tags() == dict(another_key="newval", newkey="testval")
-    obj2 = ObjectVersion.create(b, 'test2')
+    obj2 = ObjectVersion.create(b, "test2")
     assert obj2.get_tags() == dict()
 
     # Copy object version
