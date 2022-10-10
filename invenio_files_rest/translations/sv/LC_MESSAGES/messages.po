@@ -1,116 +1,117 @@
-# Translations template for invenio-files-rest.
+# Swedish translations for invenio-files-rest.
 # Copyright (C) 2022 CERN
 # This file is distributed under the same license as the invenio-files-rest
 # project.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2022.
 #
-#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: invenio-files-rest 1.3.3\n"
 "Report-Msgid-Bugs-To: info@inveniosoftware.org\n"
 "POT-Creation-Date: 2022-10-10 11:15+0200\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
+"PO-Revision-Date: 2022-10-10 11:46+0200\n"
+"Last-Translator: Sam Arbid <samaa2@kth.se>\n"
+"Language-Team: sv <LL@li.org>\n"
+"Language: sv\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Generated-By: Babel 2.10.3\n"
+"X-Generator: Poedit 3.1.1\n"
 
 #: invenio_files_rest/admin.py:34
 msgid "Invalid location name."
-msgstr ""
+msgstr "Ogiltigt platsnamn."
 
 #: invenio_files_rest/admin.py:62 invenio_files_rest/admin.py:184
 #: invenio_files_rest/admin.py:240
 msgid "ID"
-msgstr ""
+msgstr "ID"
 
 #: invenio_files_rest/admin.py:63 invenio_files_rest/admin.py:142
 #: invenio_files_rest/admin.py:185
 msgid "URI"
-msgstr ""
+msgstr "URI"
 
 #: invenio_files_rest/admin.py:100
 msgid "UUID"
-msgstr ""
+msgstr "UUID"
 
 #: invenio_files_rest/admin.py:101
 msgid "Location"
-msgstr ""
+msgstr "Lokalisering"
 
 #: invenio_files_rest/admin.py:102
 msgid "Storage Class"
-msgstr ""
+msgstr "Lagring Klass"
 
 #: invenio_files_rest/admin.py:140
 msgid "Version"
-msgstr ""
+msgstr "Version"
 
 #: invenio_files_rest/admin.py:141
 msgid "File UUID"
-msgstr ""
+msgstr "Fil UUID"
 
 #: invenio_files_rest/admin.py:143
 msgid "Size"
-msgstr ""
+msgstr "Storlek"
 
 #: invenio_files_rest/admin.py:144
 msgid "Deleted"
-msgstr ""
+msgstr "Raderade"
 
 #: invenio_files_rest/admin.py:145
 msgid "Checksum"
-msgstr ""
+msgstr "Checksum"
 
 #: invenio_files_rest/admin.py:146
 msgid "Readable"
-msgstr ""
+msgstr "Läsbar"
 
 #: invenio_files_rest/admin.py:147
 msgid "Storage class"
-msgstr ""
+msgstr "Lagring Klass"
 
 #: invenio_files_rest/admin.py:148
 msgid "Objects"
-msgstr ""
+msgstr "Objekt"
 
 #: invenio_files_rest/admin.py:149 invenio_files_rest/admin.py:242
 msgid "File"
-msgstr ""
+msgstr "Fil"
 
 #: invenio_files_rest/admin.py:186
 msgid "Fixity"
-msgstr ""
+msgstr "Fixity"
 
 #: invenio_files_rest/admin.py:187
 msgid "Checked"
-msgstr ""
+msgstr "Kontrollerade"
 
 #: invenio_files_rest/admin.py:205
 msgid "Run fixity check"
-msgstr ""
+msgstr "Kör fixity kontroll"
 
 #: invenio_files_rest/admin.py:214
 msgid "Cannot find file instance."
-msgstr ""
+msgstr "Kan inte hitta filinstansen."
 
 #: invenio_files_rest/admin.py:218
 msgid "Fixity check(s) sent to queue."
-msgstr ""
+msgstr "Fixitetskontroll(er) skickas till kön."
 
 #: invenio_files_rest/admin.py:223
 msgid "Failed to run fixity checks."
-msgstr ""
+msgstr "Det gick inte att köra korrigeringskontroller."
 
 #: invenio_files_rest/admin.py:241
 msgid "Complete"
-msgstr ""
+msgstr "Komplett"
 
 #: invenio_files_rest/admin.py:257 invenio_files_rest/admin.py:261
 #: invenio_files_rest/admin.py:265 invenio_files_rest/admin.py:269
 #: invenio_files_rest/admin.py:273
 msgid "Files"
-msgstr ""
-
+msgstr "Filer"
