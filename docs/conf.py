@@ -34,6 +34,16 @@ extensions = [
     "celery.contrib.sphinx",
 ]
 
+nitpick_ignore = [
+    ("py:class", "t.ClassVar"),
+    ("py:class", "t.Optional"),
+    ("py:class", "t.Collection"),
+    ("py:class", "Response"),
+    ("py:class", "Headers"),
+    ("py:class", "WSGIApplication"),
+    ("py:class", "TStreamFactory"),
+]
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 

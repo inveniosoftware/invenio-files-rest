@@ -21,65 +21,67 @@ from invenio_files_rest.models import FileInstance, ObjectVersion
 from invenio_files_rest.tasks import remove_file_data
 
 
-def test_get_not_found(client, headers, bucket, permissions):
+@pytest.mark.parametrize(
+    "user, expected",
+    [
+        (None, 404),
+        ("auth", 404),
+        ("objects", 404),
+        ("bucket", 404),
+        ("location", 404),
+    ],
+)
+def test_get_not_found(client, headers, bucket, permissions, user, expected):
     """Test getting a non-existing object."""
-    cases = [
-        None,
-        "auth",
-        "bucket",
-        "objects",
-        "location",
-    ]
-
-    for user in cases:
-        login_user(client, permissions[user])
-        resp = client.get(
-            url_for(
-                "invenio_files_rest.object_api",
-                bucket_id=bucket.id,
-                key="non-existing.pdf",
-            ),
-            headers=headers,
-        )
-        assert resp.status_code == 404
+    login_user(client, permissions[user])
+    resp = client.get(
+        url_for(
+            "invenio_files_rest.object_api",
+            bucket_id=bucket.id,
+            key="non-existing.pdf",
+        ),
+        headers=headers,
+    )
+    assert resp.status_code == expected
 
 
-def test_get(client, headers, bucket, objects, permissions):
-    """Test getting an object."""
-    cases = [
+@pytest.mark.parametrize(
+    "user, expected",
+    [
         (None, 404),
         ("auth", 404),
         ("bucket", 200),
         ("location", 200),
         ("objects", 200),
-    ]
+    ],
+)
+def test_get(client, headers, bucket, objects, permissions, user, expected):
+    """Test getting an object."""
+    login_user(client, permissions[user])
 
-    for user, expected in cases:
-        login_user(client, permissions[user])
+    for obj in objects:
+        object_url = url_for(
+            "invenio_files_rest.object_api",
+            bucket_id=bucket.id,
+            key=obj.key,
+        )
 
-        for obj in objects:
-            object_url = url_for(
-                "invenio_files_rest.object_api",
-                bucket_id=bucket.id,
-                key=obj.key,
-            )
+        # Get specifying version (of latest obj).
+        resp = client.get(
+            object_url,
+            query_string="versionId={0}".format(obj.version_id),
+            headers=headers,
+        )
+        assert resp.status_code == expected
 
-            # Get specifying version (of latest obj).
-            resp = client.get(
-                object_url,
-                query_string="versionId={0}".format(obj.version_id),
-                headers=headers,
-            )
-            assert resp.status_code == expected
+        # Get latest
+        resp = client.get(object_url, headers=headers)
+        assert resp.status_code == expected
 
-            # Get latest
-            resp = client.get(object_url, headers=headers)
-            assert resp.status_code == expected
-
-            if resp.status_code == 200:
-                # Strips prefix 'md5:' from checksum value.
-                assert resp.content_md5 == obj.file.checksum[4:]
-                assert resp.get_etag()[0] == obj.file.checksum
+        if resp.status_code == 200:
+            # Strips prefix 'md5:' from checksum value.
+            assert resp.content_md5 == obj.file.checksum[4:]
+            assert resp.get_etag()[0] == obj.file.checksum
 
 
 def test_get_with_x_sendfile(
@@ -191,121 +193,127 @@ def test_get_unreadable_file(client, headers, bucket, objects, db, admin_user):
     assert resp.status_code == 503
 
 
-def test_get_versions(client, headers, bucket, versions, permissions):
-    """Test object version getting."""
-    cases = [
+@pytest.mark.parametrize(
+    "user, expected",
+    [
         (None, 404),
         ("auth", 404),
         ("objects", 403),
         ("bucket", 403),
         ("location", 200),
+    ],
+)
+def test_get_versions(client, headers, bucket, versions, permissions, user, expected):
+    """Test object version getting."""
+    login_user(client, permissions[user])
+
+    for obj in versions:
+        if obj.is_head is True:
+            continue
+        resp = client.get(
+            url_for(
+                "invenio_files_rest.object_api",
+                bucket_id=bucket.id,
+                key=obj.key,
+            ),
+            query_string=dict(versionId=obj.version_id),
+        )
+        assert resp.status_code == expected
+
+        if resp.status_code == 200:
+            # Strips prefix 'md5:' from checksum value.
+            assert resp.content_md5 == obj.file.checksum[4:]
+            assert resp.get_etag()[0] == obj.file.checksum
+
+
+@pytest.mark.parametrize(
+    "user",
+    [
+        None,
+        "auth",
+        "objects",
+        "bucket",
+        "location",
+    ],
+)
+def test_get_versions_invalid(client, headers, bucket, objects, permissions, user):
+    """Test object version getting."""
+    versions = [
+        ("c1057411-ad8a-4e4f-ac0e-f6f8b395d277", 404),
+        ("invalid", 422),  # Not a UUID
     ]
 
-    for user, expected in cases:
-        login_user(client, permissions[user])
-
-        for obj in versions:
-            if obj.is_head is True:
-                continue
+    login_user(client, permissions[user])
+    for v, expected in versions:
+        for obj in objects:
             resp = client.get(
                 url_for(
                     "invenio_files_rest.object_api",
                     bucket_id=bucket.id,
                     key=obj.key,
                 ),
-                query_string=dict(versionId=obj.version_id),
+                query_string=dict(versionId=v),
             )
             assert resp.status_code == expected
 
-            if resp.status_code == 200:
-                # Strips prefix 'md5:' from checksum value.
-                assert resp.content_md5 == obj.file.checksum[4:]
-                assert resp.get_etag()[0] == obj.file.checksum
 
-
-def test_get_versions_invalid(client, headers, bucket, objects, permissions):
-    """Test object version getting."""
-    cases = [
-        None,
-        "auth",
-        "objects",
-        "bucket",
-        "location",
-    ]
-
-    versions = [
-        ("c1057411-ad8a-4e4f-ac0e-f6f8b395d277", 404),
-        ("invalid", 422),  # Not a UUID
-    ]
-
-    for user in cases:
-        login_user(client, permissions[user])
-        for v, expected in versions:
-            for obj in objects:
-                resp = client.get(
-                    url_for(
-                        "invenio_files_rest.object_api",
-                        bucket_id=bucket.id,
-                        key=obj.key,
-                    ),
-                    query_string=dict(versionId=v),
-                )
-                assert resp.status_code == expected
-
-
-def test_post(client, headers, permissions, bucket):
-    """Test ObjectResource view POST method."""
-    cases = [
+@pytest.mark.parametrize(
+    "user,expected",
+    [
         (None, 404),
         ("auth", 404),
         ("bucket", 403),
         ("location", 403),
-    ]
+    ],
+)
+def test_post(client, headers, permissions, bucket, user, expected):
+    """Test ObjectResource view POST method."""
 
     key = "file.pdf"
     data = b"mycontent"
 
-    for user, expected in cases:
-        login_user(client, permissions[user])
+    login_user(client, permissions[user])
 
-        resp = client.post(
-            url_for("invenio_files_rest.object_api", bucket_id=bucket.id, key=key),
-            data={"file": (BytesIO(data), key)},
-            headers={"Accept": "*/*"},
-        )
-        assert resp.status_code == expected
+    resp = client.post(
+        url_for("invenio_files_rest.object_api", bucket_id=bucket.id, key=key),
+        data={"file": (BytesIO(data), key)},
+        headers={"Accept": "*/*"},
+    )
+    assert resp.status_code == expected
 
 
-def test_put(client, bucket, permissions, get_md5, get_json):
-    """Test upload of an object."""
-    cases = [
+@pytest.mark.parametrize(
+    "user,expected",
+    [
         (None, 404),
         ("auth", 404),
         ("objects", 404),
         ("bucket", 200),
         ("location", 200),
-    ]
+    ],
+)
+def test_put(client, bucket, permissions, get_md5, get_json, user, expected):
+    """Test upload of an object."""
 
     key = "test.txt"
     data = b"updated_content"
     checksum = get_md5(data, prefix=True)
     object_url = url_for("invenio_files_rest.object_api", bucket_id=bucket.id, key=key)
 
-    for user, expected in cases:
-        login_user(client, permissions[user])
-        resp = client.put(
-            object_url,
-            input_stream=BytesIO(data),
-        )
-        assert resp.status_code == expected
+    login_user(client, permissions[user])
+    resp = client.put(
+        object_url,
+        input_stream=BytesIO(data),
+    )
+    assert resp.status_code == expected
 
-        if expected == 200:
-            assert resp.get_etag()[0] == checksum
+    if expected == 200:
+        assert resp.get_etag()[0] == checksum
 
-            resp = client.get(object_url)
-            assert resp.status_code == 200
-            assert resp.data == data
-            assert resp.content_md5 == checksum[4:]
+        resp = client.get(object_url)
+        assert resp.status_code == 200
+        assert resp.data == data
+        assert resp.content_md5 == checksum[4:]
 
 
 def test_put_versioning(client, bucket, permissions, get_md5, get_json):

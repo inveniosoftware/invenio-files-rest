@@ -29,47 +29,48 @@ def obj_url(bucket):
     )
 
 
-def test_post_init(client, headers, permissions, bucket, get_json):
-    """Test init multipart upload."""
-    cases = [
+@pytest.mark.parametrize(
+    "user, expected",
+    [
         (None, 404),
         ("auth", 404),
         ("objects", 404),  # TODO - use 403 instead
         ("bucket", 200),
         ("location", 200),
-    ]
+    ],
+)
+def test_post_init(client, headers, permissions, bucket, get_json, user, expected):
+    """Test init multipart upload."""
+    login_user(client, permissions[user])
 
-    for user, expected in cases:
-        login_user(client, permissions[user])
+    # Initiate multipart upload
+    res = client.post(
+        obj_url(bucket),
+        query_string="uploads",
+        headers={"Content-Type": "application/json"},
+        data=json.dumps(
+            {
+                "size": 10,
+                "partSize": 4,
+            }
+        ),
+    )
+    assert res.status_code == expected
 
-        # Initiate multipart upload
-        res = client.post(
-            obj_url(bucket),
-            query_string="uploads",
-            headers={"Content-Type": "application/json"},
-            data=json.dumps(
-                {
-                    "size": 10,
-                    "partSize": 4,
-                }
-            ),
-        )
-        assert res.status_code == expected
-
-        if res.status_code == 200:
-            data = get_json(res)
-            expected_keys = [
-                "id",
-                "bucket",
-                "completed",
-                "size",
-                "part_size",
-                "last_part_number",
-                "last_part_size",
-                "links",
-            ]
-            for k in expected_keys:
-                assert k in data
+    if res.status_code == 200:
+        data = get_json(res)
+        expected_keys = [
+            "id",
+            "bucket",
+            "completed",
+            "size",
+            "part_size",
+            "last_part_number",
+            "last_part_size",
+            "links",
+        ]
+        for k in expected_keys:
+            assert k in data
 
 
 def test_post_init_querystring(client, bucket, get_json, admin_user):
@@ -203,38 +204,48 @@ def test_post_invalidkey(client, db, headers, bucket, admin_user):
     assert res.status_code == 400
 
 
-def test_put(
-    client, db, bucket, permissions, multipart, multipart_url, get_md5, get_json
-):
-    """Test part upload."""
-    cases = [
+@pytest.mark.parametrize(
+    "user, expected",
+    [
         (None, 404),
         ("auth", 404),
         ("objects", 404),  # TODO - use 403 instead
         ("bucket", 200),
         ("location", 200),
-    ]
+    ],
+)
+def test_put(
+    client,
+    db,
+    bucket,
+    permissions,
+    multipart,
+    multipart_url,
+    get_md5,
+    get_json,
+    user,
+    expected,
+):
+    """Test part upload."""
+    login_user(client, permissions[user])
 
-    for user, expected in cases:
-        login_user(client, permissions[user])
+    data = b"a" * multipart.chunk_size
+    res = client.put(
+        multipart_url + "&partNumber={0}".format(1),
+        input_stream=BytesIO(data),
+    )
+    assert res.status_code == expected
 
-        data = b"a" * multipart.chunk_size
-        res = client.put(
-            multipart_url + "&partNumber={0}".format(1),
-            input_stream=BytesIO(data),
-        )
-        assert res.status_code == expected
+    if res.status_code == 200:
+        assert res.get_etag()[0] == get_md5(data)
 
-        if res.status_code == 200:
-            assert res.get_etag()[0] == get_md5(data)
-
-            # Assert content
-            with open(multipart.file.uri, "rb") as fp:
-                fp.seek(multipart.chunk_size)
-                content = fp.read(multipart.chunk_size)
-            assert content == data
-            assert Part.count(multipart) == 1
-            assert Part.get_or_none(multipart, 1).checksum == get_md5(data)
+        # Assert content
+        with open(multipart.file.uri, "rb") as fp:
+            fp.seek(multipart.chunk_size)
+            content = fp.read(multipart.chunk_size)
+        assert content == data
+        assert Part.count(multipart) == 1
+        assert Part.get_or_none(multipart, 1).checksum == get_md5(data)
 
 
 def test_put_not_found(
@@ -347,30 +358,33 @@ def test_put_badstream(
     assert len(data["parts"]) == 0
 
 
-def test_get(client, db, bucket, permissions, multipart, multipart_url, get_json):
+@pytest.mark.parametrize(
+    "user, expected",
+    [
+        (None, 404),
+        ("auth", 404),
+        ("objects", 404),
+        ("bucket", 200),
+        ("location", 200),
+    ],
+)
+def test_get(
+    client, db, bucket, permissions, multipart, multipart_url, get_json, user, expected
+):
     """Test get parts."""
     Part.create(multipart, 0)
     Part.create(multipart, 1)
     Part.create(multipart, 3)
     db.session.commit()
 
-    cases = [
-        (None, 404),
-        ("auth", 404),
-        ("objects", 404),
-        ("bucket", 200),
-        ("location", 200),
-    ]
+    login_user(client, permissions[user])
 
-    for user, expected in cases:
-        login_user(client, permissions[user])
+    res = client.get(multipart_url)
+    assert res.status_code == expected
 
-        res = client.get(multipart_url)
-        assert res.status_code == expected
-
-        if res.status_code == 200:
-            data = get_json(res)
-            assert len(data["parts"]) == 3
+    if res.status_code == 200:
+        data = get_json(res)
+        assert len(data["parts"]) == 3
 
 
 def test_get_empty(client, multipart, multipart_url, get_json, admin_user):
@@ -544,30 +558,40 @@ def test_post_complete_timeout(
         assert client.get(data["links"]["object"]).status_code == 404
 
 
-def test_delete(
-    client, db, bucket, multipart, multipart_url, permissions, parts, get_json
-):
-    """Test complete when parts are missing."""
-    assert bucket.size == multipart.size
-
-    cases = [
+@pytest.mark.parametrize(
+    "user, expected",
+    [
         (None, 404),
         ("auth", 404),
         ("objects", 404),
         ("bucket", 404),
         ("location", 204),
-    ]
+    ],
+)
+def test_delete(
+    client,
+    db,
+    bucket,
+    multipart,
+    multipart_url,
+    permissions,
+    parts,
+    get_json,
+    user,
+    expected,
+):
+    """Test complete when parts are missing."""
+    assert bucket.size == multipart.size
 
-    for user, expected in cases:
-        login_user(client, permissions[user])
-        res = client.delete(multipart_url)
-        assert res.status_code == expected
+    login_user(client, permissions[user])
+    res = client.delete(multipart_url)
+    assert res.status_code == expected
 
-        if res.status_code == 204:
-            assert client.get(multipart_url).status_code == 404
-            assert MultipartObject.query.count() == 0
-            assert Part.query.count() == 0
-            assert Bucket.get(bucket.id).size == 0
+    if res.status_code == 204:
+        assert client.get(multipart_url).status_code == 404
+        assert MultipartObject.query.count() == 0
+        assert Part.query.count() == 0
+        assert Bucket.get(bucket.id).size == 0
 
 
 def test_delete_invalid(client, db, multipart, multipart_url, parts, get_json):
@@ -587,29 +611,39 @@ def test_delete_init_not_allowed(client, bucket):
     assert res.status_code == 405
 
 
-def test_get_listuploads(
-    client, db, bucket, multipart, multipart_url, permissions, parts, get_json
-):
-    """Test get list of multipart uploads in bucket."""
-    cases = [
+@pytest.mark.parametrize(
+    "user, expected",
+    [
         (None, 404),
         ("auth", 404),
         ("objects", 404),
         ("bucket", 404),
         ("location", 200),
-    ]
+    ],
+)
+def test_get_listuploads(
+    client,
+    db,
+    bucket,
+    multipart,
+    multipart_url,
+    permissions,
+    parts,
+    get_json,
+    user,
+    expected,
+):
+    """Test get list of multipart uploads in bucket."""
+    login_user(client, permissions[user])
 
-    for user, expected in cases:
-        login_user(client, permissions[user])
-
-        res = client.get(
-            url_for(
-                "invenio_files_rest.bucket_api",
-                bucket_id=str(bucket.id),
-            )
-            + "?uploads"
+    res = client.get(
+        url_for(
+            "invenio_files_rest.bucket_api",
+            bucket_id=str(bucket.id),
         )
-        assert res.status_code == expected
+        + "?uploads"
+    )
+    assert res.status_code == expected
 
 
 def test_already_exhausted_input_stream(app, client, db, bucket, admin_user):

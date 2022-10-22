@@ -8,14 +8,13 @@
 
 """Files download/upload REST API similar to S3 for Invenio."""
 
-import sys
 from io import BytesIO
 
 
 def login_user(client, user):
     """Log in a specified user."""
     with client.session_transaction() as sess:
-        sess["user_id"] = user.id if user else None
+        sess["_user_id"] = user.id if user else None
         sess["_fresh"] = True
 
 
