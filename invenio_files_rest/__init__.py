@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2019 CERN.
+# Copyright (C) 2023 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -53,7 +54,7 @@ Now let's initialize all required Invenio extensions:
 >>> from pprint import pprint
 >>> import json
 
->>> from flask_babelex import Babel
+>>> from invenio_i18n import Babel
 >>> from flask_menu import Menu
 >>> from invenio_db import InvenioDB, db
 >>> from invenio_rest import InvenioREST
