@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2019 CERN.
+# Copyright (C) 2023 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -17,7 +18,6 @@ from io import BytesIO
 
 import pytest
 from flask import Flask, json, url_for
-from flask_babelex import Babel
 from flask_celeryext import FlaskCeleryExt
 from flask_menu import Menu
 from invenio_access import InvenioAccess
@@ -28,6 +28,7 @@ from invenio_accounts.views import blueprint as accounts_blueprint
 from invenio_db import InvenioDB
 from invenio_db import db as db_
 from invenio_db.utils import drop_alembic_version_table
+from invenio_i18n import Babel
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.schema import DropConstraint, DropSequence, DropTable
 from sqlalchemy_utils.functions import create_database, database_exists
