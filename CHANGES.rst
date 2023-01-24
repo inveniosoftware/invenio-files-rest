@@ -10,6 +10,10 @@
 Changes
 =======
 
+Version 1.4.0 (release 2023-01-24)
+
+- tasks: add orphan cleaning celery task
+
 Version 1.3.3 (release 2022-04-06)
 
 - Fix Flask v2.1 issues.
