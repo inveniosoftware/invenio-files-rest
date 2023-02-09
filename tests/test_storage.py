@@ -212,6 +212,7 @@ def test_pyfs_checksum(get_md5):
 
 def test_pyfs_checksum_fail():
     """Test fixity problems."""
+
     # Raise an error during checksum calculation
     def callback(total, size):
         raise OSError(errno.EPERM, "Permission")

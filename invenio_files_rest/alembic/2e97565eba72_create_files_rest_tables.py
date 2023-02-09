@@ -22,7 +22,7 @@ depends_on = None
 
 def upgrade():
     """Upgrade database."""
-    # Variant types:
+
     def created():
         """Return instance of a column."""
         return sa.Column(
