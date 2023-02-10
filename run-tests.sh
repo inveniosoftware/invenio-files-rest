@@ -21,7 +21,7 @@ function cleanup() {
 trap cleanup EXIT
 
 
-python -m check_manifest
+python -m check_manifest --ignore ".*-requirements.txt"
 python -m sphinx.cmd.build -qnN docs docs/_build/html
 eval "$(docker-services-cli up --db ${DB:-postgresql} --cache ${CACHE:-redis} --env)"
 python -m pytest
