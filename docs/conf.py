@@ -2,7 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2019 CERN.
-# Copyright (C) 2022 Graz University of Technology.
+# Copyright (C) 2022-2023 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -33,6 +33,10 @@ extensions = [
     "sphinxcontrib.httpdomain",
     "celery.contrib.sphinx",
 ]
+
+# to fix an celery.contrib.sphinx error. the default value '(task)' seams not
+# correct
+celery_task_prefix = ""
 
 nitpick_ignore = [
     ("py:class", "t.ClassVar"),
