@@ -10,6 +10,11 @@
 Changes
 =======
 
+Version 1.5.0 (release 2023-03-02)
+
+- remove deprecated flask-babelex dependency and imports
+- install invenio-i18n
+
 Version 1.4.0 (release 2023-01-24)
 
 - tasks: add orphan cleaning celery task

@@ -973,7 +973,7 @@ a reference to the old :code:`FileInstance` to reference the new
 from .ext import InvenioFilesREST
 from .proxies import current_files_rest
 
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 
 __all__ = (
     "__version__",
