@@ -5,8 +5,8 @@
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2022.
 # 
 # Translators:
-# Tibor Simko <tibor.simko@cern.ch>, 2016
-# Jesús Martín <jesusmartin@sallep.net>, 2017
+# Bessem Aamira <bessemamira@gmail.com>, 2022
+# Salaheddine Ben Ali <salaheddine.benali@cnudst.tn>, 2023
 # 
 #, fuzzy
 msgid ""
@@ -15,107 +15,107 @@ msgstr ""
 "Report-Msgid-Bugs-To: info@inveniosoftware.org\n"
 "POT-Creation-Date: 2022-05-27 10:09+0200\n"
 "PO-Revision-Date: 2016-08-25 08:03+0000\n"
-"Last-Translator: Jesús Martín <jesusmartin@sallep.net>, 2017\n"
-"Language-Team: Spanish (https://app.transifex.com/inveniosoftware/teams/23537/es/)\n"
+"Last-Translator: Salaheddine Ben Ali <salaheddine.benali@cnudst.tn>, 2023\n"
+"Language-Team: Arabic (https://app.transifex.com/inveniosoftware/teams/23537/ar/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.10.1\n"
-"Language: es\n"
-"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;\n"
+"Language: ar\n"
+"Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5;\n"
 
 #: invenio_files_rest/admin.py:34
 msgid "Invalid location name."
-msgstr "Nombre de ubicación no válido."
+msgstr "إسم الموضع غير صالح."
 
 #: invenio_files_rest/admin.py:62 invenio_files_rest/admin.py:184
 #: invenio_files_rest/admin.py:240
 msgid "ID"
-msgstr "Id"
+msgstr "معرّف ID"
 
 #: invenio_files_rest/admin.py:63 invenio_files_rest/admin.py:142
 #: invenio_files_rest/admin.py:185
 msgid "URI"
-msgstr "URI"
+msgstr "معرّف موضع المورد URI"
 
 #: invenio_files_rest/admin.py:100
 msgid "UUID"
-msgstr "UUID"
+msgstr "المعرّف الفريد العالمي UUID"
 
 #: invenio_files_rest/admin.py:101
 msgid "Location"
-msgstr "Lugar"
+msgstr "الموضع"
 
 #: invenio_files_rest/admin.py:102
 msgid "Storage Class"
-msgstr "Tipo de almacenamiento"
+msgstr "صنف التّخزين"
 
 #: invenio_files_rest/admin.py:140
 msgid "Version"
-msgstr "Versión"
+msgstr "نسخة"
 
 #: invenio_files_rest/admin.py:141
 msgid "File UUID"
-msgstr "Archivo UUID"
+msgstr "المعرّف الوحيد UUID للملف"
 
 #: invenio_files_rest/admin.py:143
 msgid "Size"
-msgstr "Tamaño"
+msgstr "الحجم"
 
 #: invenio_files_rest/admin.py:144
 msgid "Deleted"
-msgstr "Borrado"
+msgstr "تمّ الحذف"
 
 #: invenio_files_rest/admin.py:145
 msgid "Checksum"
-msgstr "Checksum"
+msgstr "‫تدقيق‬ المجموع"
 
 #: invenio_files_rest/admin.py:146
 msgid "Readable"
-msgstr "Legible"
+msgstr "مقروء"
 
 #: invenio_files_rest/admin.py:147
 msgid "Storage class"
-msgstr "Tipo de almacenamiento"
+msgstr "صنف التّخزين"
 
 #: invenio_files_rest/admin.py:148
 msgid "Objects"
-msgstr "Objetos"
+msgstr "أشياء"
 
 #: invenio_files_rest/admin.py:149 invenio_files_rest/admin.py:242
 msgid "File"
-msgstr "Fichero"
+msgstr "ملفّ"
 
 #: invenio_files_rest/admin.py:186
 msgid "Fixity"
-msgstr "Fijeza"
+msgstr "ثبات"
 
 #: invenio_files_rest/admin.py:187
 msgid "Checked"
-msgstr "Comprobado"
+msgstr "تمّ التأكّد"
 
 #: invenio_files_rest/admin.py:205
 msgid "Run fixity check"
-msgstr "Ejecutar la comprobación de fijeza"
+msgstr "تدقيق‬ الثبات"
 
 #: invenio_files_rest/admin.py:214
 msgid "Cannot find file instance."
-msgstr "No es posible encontrar una instancia del archivo."
+msgstr "لا يمكن العثور على الملف."
 
 #: invenio_files_rest/admin.py:218
 msgid "Fixity check(s) sent to queue."
-msgstr "Control de fijeza enviado a la cola."
+msgstr "أرسلت عمليات التدقيق‬ من الثبات إلى قائمة الانتظار."
 
 #: invenio_files_rest/admin.py:223
 msgid "Failed to run fixity checks."
-msgstr "No ha sido posible ejecutar el control del fijeza."
+msgstr "إخفاق في تشغيل عمليات التدقيق‬ من الثبات."
 
 #: invenio_files_rest/admin.py:241
 msgid "Complete"
-msgstr "Completo"
+msgstr "تمّ"
 
 #: invenio_files_rest/admin.py:257 invenio_files_rest/admin.py:261
 #: invenio_files_rest/admin.py:265 invenio_files_rest/admin.py:269
 #: invenio_files_rest/admin.py:273
 msgid "Files"
-msgstr "Archivos"
+msgstr "الملفّات"
