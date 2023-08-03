@@ -447,21 +447,27 @@ class Bucket(db.Model, Timestamp):
         The bucket is fully mirrored with the destination bucket following the
         logic:
 
-         * same ObjectVersions are not touched
-         * new ObjectVersions are added to destination
-         * deleted ObjectVersions are deleted in destination
-         * extra ObjectVersions in dest are deleted if `delete_extras` param is
-           True
+        * same ObjectVersions are not touched
+        * new ObjectVersions are added to destination
+        * deleted ObjectVersions are deleted in destination
+        * extra ObjectVersions in dest are deleted if `delete_extras` param is True
 
         :param bucket: The destination bucket.
         :param delete_extras: Delete extra ObjectVersions in destination if
             True.
-        :returns: The bucket with an exact copy of ObjectVersions in self.
+        :returns: A tuple with the bucket having an exact copy of ObjectVersions in
+            self, and a list with the changes applied in the format (action, value).
+            Specifically, there are 2 possible actions:
+            * "add": the`value` is the new copied object version.
+            * "delete": the `value` is the key of the deleted object version.
+
         """
         assert not bucket.locked
 
         src_ovs = ObjectVersion.get_by_bucket(bucket=self, with_deleted=True)
         dest_ovs = ObjectVersion.get_by_bucket(bucket=bucket, with_deleted=True)
+        changed_ovs = []
+
         # transform into a dict { key: object version }
         src_dict_ovs = {}
         for ov in src_ovs:
@@ -482,22 +488,26 @@ class Bucket(db.Model, Timestamp):
             if ov.deleted:
                 if key_in_dest and not dest_dict_ovs[key].deleted:
                     ObjectVersion.delete(bucket, key)
+                    changed_ovs.append(("delete", key))
             else:
                 if not key_in_dest:
-                    ov.copy(bucket=bucket)
+                    new_ov = ov.copy(bucket=bucket)
+                    changed_ovs.append(("add", new_ov))
                 else:
                     dest_ov = dest_dict_ovs[key]
                     file_in_dest_differs = ov.file_id != dest_ov.file_id
                     ov_deleted_in_dest = dest_ov.deleted
                     if file_in_dest_differs or ov_deleted_in_dest:
-                        ov.copy(bucket=bucket)
+                        new_ov = ov.copy(bucket=bucket)
+                        changed_ovs.append(("add", new_ov))
 
         if delete_extras:
             for key, ov in dest_dict_ovs.items():
                 if key not in src_dict_ovs:
                     ObjectVersion.delete(bucket, key)
+                    changed_ovs.append(("delete", key))
 
-        return bucket
+        return bucket, changed_ovs
 
     def get_tags(self):
         """Get tags for bucket as dictionary."""
