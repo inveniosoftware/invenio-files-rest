@@ -54,7 +54,7 @@ Now let's initialize all required Invenio extensions:
 >>> from pprint import pprint
 >>> import json
 
->>> from invenio_i18n import Babel
+>>> from invenio_i18n import Babel, InvenioI18N
 >>> from flask_menu import Menu
 >>> from invenio_db import InvenioDB, db
 >>> from invenio_rest import InvenioREST
@@ -73,6 +73,7 @@ Now let's initialize all required Invenio extensions:
 >>> ext_admin = InvenioAdmin(app)
 >>> ext_accounts = InvenioAccounts(app)
 >>> ext_access = InvenioAccess(app)
+>>> ext_i18n = InvenioI18N(app)
 
 You can now initialize  Invenio-Files-REST. When using Invenio-Files-REST as
 dependency of an Invenio applicaton, the REST views are automatically

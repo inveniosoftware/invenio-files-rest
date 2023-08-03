@@ -28,7 +28,7 @@ from invenio_accounts.views import blueprint as accounts_blueprint
 from invenio_db import InvenioDB
 from invenio_db import db as db_
 from invenio_db.utils import drop_alembic_version_table
-from invenio_i18n import Babel
+from invenio_i18n import Babel, InvenioI18N
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.schema import DropConstraint, DropSequence, DropTable
 from sqlalchemy_utils.functions import create_database, database_exists
@@ -113,6 +113,7 @@ def base_app():
 @pytest.yield_fixture()
 def app(base_app):
     """Flask application fixture."""
+    InvenioI18N(base_app)
     InvenioAccounts(base_app)
     InvenioAccess(base_app)
     base_app.register_blueprint(accounts_blueprint)
