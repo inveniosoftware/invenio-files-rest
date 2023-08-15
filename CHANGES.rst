@@ -12,6 +12,11 @@ Changes
 
 Version 1.5.0 (release 2023-03-02)
 
+- models: `Bucket.sync` method now returns a tuple of (bucket, list_of_changes) instead
+  of bucket. That is a breaking change if you were consuming the return value.
+
+Version 1.5.0 (release 2023-03-02)
+
 - remove deprecated flask-babelex dependency and imports
 - install invenio-i18n
 
