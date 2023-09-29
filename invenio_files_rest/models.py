@@ -1302,6 +1302,7 @@ class ObjectVersion(db.Model, Timestamp):
 
         obj = cls.get(bucket_id, key)
         if obj:
+            bucket.size -= obj.file.size
             return cls.create(as_bucket(bucket), key)
         return None
 
