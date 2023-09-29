@@ -118,16 +118,17 @@ class PyFSFileStorage(FileStorage):
                 size_limit=size_limit,
                 size=size,
             )
-        except Exception:
+
+            self._size = bytes_written
+            return self.fileurl, bytes_written, checksum
+
+        except Exception as e:
             fp.close()
             self.delete()
-            raise
+            raise e
         finally:
             fp.close()
 
-        self._size = bytes_written
-
-        return self.fileurl, bytes_written, checksum
 
     def update(
         self,
