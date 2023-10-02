@@ -129,7 +129,6 @@ class PyFSFileStorage(FileStorage):
         finally:
             fp.close()
 
-
     def update(
         self,
         incoming_stream,

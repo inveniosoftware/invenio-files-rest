@@ -1298,12 +1298,12 @@ class ObjectVersion(db.Model, Timestamp):
         :param key: Key of object.
         :returns: Created delete marker object if key exists else ``None``.
         """
-        bucket_id = as_bucket_id(bucket)
+        bucket = as_bucket(bucket)
 
-        obj = cls.get(bucket_id, key)
+        obj = cls.get(bucket.id, key)
         if obj:
             bucket.size -= obj.file.size
-            return cls.create(as_bucket(bucket), key)
+            return cls.create(bucket, key)
         return None
 
     @classmethod
