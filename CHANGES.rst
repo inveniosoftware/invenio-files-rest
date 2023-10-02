@@ -10,7 +10,14 @@
 Changes
 =======
 
-Version 1.5.0 (release 2023-03-02)
+
+Version 2.0.1 (release 2023-10-02)
+
+- models: handle bucket quota update on delete
+- models: update bucket size on object version delete
+- storage: pyfs handle file upload interruption
+
+Version 2.0.0 (release 2023-08-15)
 
 - models: `Bucket.sync` method now returns a tuple of (bucket, list_of_changes) instead
   of bucket. That is a breaking change if you were consuming the return value.
