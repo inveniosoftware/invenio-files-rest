@@ -62,13 +62,13 @@ class PyFSFileStorage(FileStorage):
         exists in the directory.
         """
         fs, path = self._get_fs(create_dir=False)
-
+        root_dir = dirname(self.fileurl)
         if fs.exists(path):
             fs.remove(path)
 
         # PyFilesystem2 really doesn't want to remove the root directory,
         # so we need to be a bit creative
-        root_path, dir_name = split(fs.root_path)
+        root_path, dir_name = split(root_dir)
         if self.clean_dir and dir_name:
             parent_fs = opendir(root_path, writeable=True, create=False)
             if parent_fs.exists(dir_name):
