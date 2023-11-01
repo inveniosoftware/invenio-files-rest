@@ -1307,6 +1307,25 @@ class ObjectVersion(db.Model, Timestamp):
         return None
 
     @classmethod
+    def remove_many(cls, version_ids, bucket):
+        """Permanently removes specific object versions from the database.
+
+        :param version_ids: list of version_id.
+        :param bucket: The bucket (instance or id) to delete the object from.
+        """
+        bucket = as_bucket(bucket)
+        if bucket.locked:
+            raise BucketLockedError()
+        object_versions = cls.query.filter(
+            cls.version_id.in_(version_ids), cls.bucket_id == bucket.id
+        )
+        for object_version in object_versions.all():
+            bucket.size -= object_version.file.size
+        object_versions.delete()
+
+        return None
+
+    @classmethod
     def get_by_bucket(cls, bucket, versions=False, with_deleted=False):
         """Return query that fetches all the objects in a bucket.
 
