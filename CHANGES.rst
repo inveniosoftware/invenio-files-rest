@@ -11,6 +11,10 @@ Changes
 =======
 
 
+Version 2.0.2 (release 2023-11-01)
+
+- pyfs: fix computing parent folder path on delete action
+
 Version 2.0.1 (release 2023-10-02)
 
 - models: handle bucket quota update on delete
