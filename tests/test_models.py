@@ -735,6 +735,52 @@ def test_object_copy(app, db, dummy_location):
     assert obj_copy3.file_id == obj_copy2.file_id
 
 
+def test_object_copy_from(app, db, dummy_location):
+    """Copy many objects."""
+    f1 = FileInstance(uri="f1", size=1, checksum="mychecksum")
+    f2 = FileInstance(uri="f2", size=1, checksum="mychecksum2")
+    db.session.add(f1)
+    db.session.add(f2)
+    db.session.commit()
+    b1 = Bucket.create()
+    b2 = Bucket.create()
+
+    # Copy
+    key1 = "selftest1"
+    key2 = "selftest2"
+    key3 = "deleted"
+    obj1 = ObjectVersion.create(b1, key1).set_file(f1)
+    obj2 = ObjectVersion.create(b1, key2).set_file(f2)
+    # Create an object version in deleted state
+    ObjectVersion.create(b1, key3)
+
+    db.session.commit()
+    # bulk copy all object versions to b2 bucket
+    ObjectVersion.copy_from(b1.id, b2.id)
+
+    b2_object_versions = ObjectVersion.get_by_bucket(b2)
+    obj1_copy = next(obj for obj in b2_object_versions if obj.key == key1)
+    obj2_copy = next(obj for obj in b2_object_versions if obj.key == key2)
+
+    # object versions in deleted state should not be copied
+    with pytest.raises(StopIteration):
+        next(obj for obj in b2_object_versions if obj.key == key3)
+
+    assert obj1_copy.version_id != obj1.version_id
+    assert obj1.bucket_id != obj1_copy.bucket_id
+    assert obj1_copy.key == obj1.key
+    assert obj1.bucket_id == b1.id
+    assert obj1_copy.bucket_id == b2.id
+    assert obj1_copy.file_id == obj1.file_id
+
+    assert obj2_copy.version_id != obj2.version_id
+    assert obj2.bucket_id != obj2_copy.bucket_id
+    assert obj2_copy.key == obj2.key
+    assert obj2.bucket_id == b1.id
+    assert obj2_copy.bucket_id == b2.id
+    assert obj2_copy.file_id == obj2.file_id
+
+
 def test_object_set_file(app, db, dummy_location):
     """Test object set file."""
     b = Bucket.create()

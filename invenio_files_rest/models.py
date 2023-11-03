@@ -36,12 +36,14 @@ model.
 import re
 import sys
 import uuid
+from copy import deepcopy
 from datetime import datetime
 from functools import wraps
 from os.path import basename
 
 from flask import current_app
 from invenio_db import db
+from sqlalchemy import insert, inspect
 from sqlalchemy.dialects import mysql
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import validates
@@ -584,8 +586,10 @@ class Bucket(db.Model, Timestamp):
         :returns: ``self``.
         """
         with db.session.begin_nested():
-            ObjectVersion.query.filter_by(bucket_id=self.id).delete()
-            self.query.filter_by(id=self.id).delete()
+            ObjectVersion.query.filter_by(bucket_id=self.id).delete(
+                synchronize_session=False
+            )
+            self.query.filter_by(id=self.id).delete(synchronize_session=False)
         return self
 
 
@@ -1160,6 +1164,45 @@ class ObjectVersion(db.Model, Timestamp):
             )
 
         return new_ob
+
+    @classmethod
+    def copy_from(cls, bucket_id, destination_bucket_id):
+        """Copy all objects from source to destination bucket.
+
+        The object versions of source bucket are copied by value i.e there is no
+        interaction with the db.
+
+        The copy operation is handled completely at the metadata level. The
+        actual data on disk is not copied. Instead, the two object versions
+        will point to the same physical file (via the same FileInstance).
+
+        All the tags associated with the current object version are copied over
+        to the new instance.
+
+        :param bucket_id: The bucket id to copy the objects from.
+        :param destination_bucket_id: The bucket id to copy the objects to.
+        :returns: A list of object versions as dictionaries.
+        """
+        new_versions = []
+
+        with db.session.begin_nested():
+            obj_columns = [col.name for col in inspect(ObjectVersion).columns]
+            for o in ObjectVersion.get_by_bucket(bucket_id):
+                new_ov = deepcopy(
+                    {
+                        key: value
+                        for key, value in o.__dict__.items()
+                        if key in obj_columns
+                    }
+                )
+                new_ov["bucket_id"] = destination_bucket_id
+                new_ov["version_id"] = uuid.uuid4()
+                new_versions.append(new_ov)
+
+            if new_versions:
+                db.session.execute(insert(ObjectVersion), new_versions)
+
+        return new_versions
 
     @ensure_unlocked(getter=lambda o: not o.bucket.locked)
     def remove(self):
