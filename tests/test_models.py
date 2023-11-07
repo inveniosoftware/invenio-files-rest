@@ -381,9 +381,7 @@ def test_object_delete(app, db, dummy_location):
 
     assert ObjectVersion.get_by_bucket(b1.id, versions=True).count() == 3
 
-    obj_versions = ObjectVersion.get_by_bucket(b1.id, versions=True).all()
-    version_ids = [object_version.version_id for object_version in obj_versions]
-    ObjectVersion.remove_many(version_ids, b1)
+    ObjectVersion.remove_by_bucket(b1)
     assert ObjectVersion.get_by_bucket(b1.id, versions=True).count() == 0
 
 

@@ -1307,26 +1307,20 @@ class ObjectVersion(db.Model, Timestamp):
         return None
 
     @classmethod
-    def remove_many(cls, version_ids, bucket):
+    def remove_by_bucket(cls, bucket):
         """Permanently removes specific object versions from the database.
 
-        :param version_ids: list of version_id.
         :param bucket: The bucket (instance or id) to delete the object from.
         """
-        bucket = as_bucket(bucket)
         if bucket.locked:
             raise BucketLockedError()
-        object_versions = cls.query.filter(
-            cls.version_id.in_(version_ids), cls.bucket_id == bucket.id
+        object_versions = cls.get_by_bucket(
+            bucket, order=False, versions=True, with_deleted=True
         )
-        for object_version in object_versions.all():
-            bucket.size -= object_version.file.size
         object_versions.delete()
 
-        return None
-
     @classmethod
-    def get_by_bucket(cls, bucket, versions=False, with_deleted=False):
+    def get_by_bucket(cls, bucket, versions=False, with_deleted=False, order=True):
         """Return query that fetches all the objects in a bucket.
 
         :param bucket: The bucket (instance or id) to query.
@@ -1345,8 +1339,11 @@ class ObjectVersion(db.Model, Timestamp):
 
         if not with_deleted:
             filters.append(cls.file_id.isnot(None))
-
-        return cls.query.filter(*filters).order_by(cls.key, cls.created.desc())
+        query = cls.query.filter(*filters)
+        if order:
+            return query.order_by(cls.key, cls.created.desc())
+        else:
+            return query
 
     @classmethod
     def relink_all(cls, old_file, new_file):
