@@ -11,10 +11,6 @@ Changes
 =======
 
 
-Version 2.1.0 (release 2023-11-07)
-
-- models: add bulk remove object versions
-
 Version 2.0.2 (release 2023-11-01)
 
 - pyfs: fix computing parent folder path on delete action
