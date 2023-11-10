@@ -135,3 +135,6 @@ FILES_REST_XSENDFILE_ENABLED = False
 
 FILES_REST_XSENDFILE_RESPONSE_FUNC = create_file_streaming_redirect_response
 """Function for the creation of a file streaming redirect response."""
+
+FILES_REST_FALLBACK_MIMETYPE = "application/octet-stream"
+"""Default mimetype in case it cannot be guessed."""

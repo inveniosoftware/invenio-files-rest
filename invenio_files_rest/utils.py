@@ -54,4 +54,4 @@ def guess_mimetype(filename):
     m, encoding = mimetypes.guess_type(filename)
     if encoding:
         m = ENCODING_MIMETYPES.get(encoding, None)
-    return m or "application/octet-stream"
+    return m or current_app.config["FILES_REST_FALLBACK_MIMETYPE"]
