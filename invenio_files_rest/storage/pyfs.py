@@ -52,7 +52,11 @@ class PyFSFileStorage(FileStorage):
 
         The caller is responsible for closing the file.
         """
-        fs, path = self._get_fs()
+        if mode[0] == "r":
+            create_dir = False
+        else:
+            create_dir = True
+        fs, path = self._get_fs(create_dir=create_dir)
         return fs.open(path, mode=mode)
 
     def delete(self):
