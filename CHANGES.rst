@@ -10,6 +10,9 @@
 Changes
 =======
 
+Version 2.0.3 (release 2023-12-14)
+
+- files: avoid creating directories while opening files for reading
 
 Version 2.0.2 (release 2023-11-01)
 
