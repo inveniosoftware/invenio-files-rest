@@ -10,6 +10,10 @@
 Changes
 =======
 
+Version 2.2.0 (release 2024-01-18)
+
+- Bump for skipping yanked v2.1.0 release
+
 Version 2.1.0 (release 2024-01-18)
 
 - models: add copy_from method to ObjectVersion
