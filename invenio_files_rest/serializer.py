@@ -316,13 +316,15 @@ def json_serializer(
 
         response = current_app.response_class(
             # Stream response if waiting for task result.
-            data
-            if task_result is None
-            else wait_for_taskresult(
-                task_result,
-                data,
-                interval,
-                max_rounds,
+            (
+                data
+                if task_result is None
+                else wait_for_taskresult(
+                    task_result,
+                    data,
+                    interval,
+                    max_rounds,
+                )
             ),
             mimetype="application/json",
         )
