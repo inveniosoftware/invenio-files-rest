@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2016-2019 CERN.
+# Copyright (C) 2024 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -73,9 +74,9 @@ def test_post_init(client, headers, permissions, bucket, get_json, user, expecte
             assert k in data
 
 
-def test_post_init_querystring(client, bucket, get_json, admin_user):
+def test_post_init_querystring(client, bucket, get_json, administration_access_user):
     """Test init multipart upload."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     res = client.post(
         obj_url(bucket),
@@ -93,9 +94,11 @@ def test_get_init_not_allowed(client, bucket, get_json):
     assert res.status_code == 405
 
 
-def test_post_invalid_partsizes(client, headers, bucket, get_json, admin_user):
+def test_post_invalid_partsizes(
+    client, headers, bucket, get_json, administration_access_user
+):
     """Test invalid multipart init."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     # Part size too large
     res = client.post(
@@ -125,9 +128,9 @@ def test_post_invalid_partsizes(client, headers, bucket, get_json, admin_user):
     assert res.status_code == 400
 
 
-def test_post_size_limits(client, db, headers, bucket, admin_user):
+def test_post_size_limits(client, db, headers, bucket, administration_access_user):
     """Test invalid multipart init."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     bucket.quota_size = 100
     db.session.commit()
@@ -154,9 +157,11 @@ def test_post_size_limits(client, db, headers, bucket, admin_user):
     assert res.status_code == 400
 
 
-def test_post_locked_bucket(client, db, headers, bucket, get_json, admin_user):
+def test_post_locked_bucket(
+    client, db, headers, bucket, get_json, administration_access_user
+):
     """Test invalid multipart init."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     bucket.locked = True
     db.session.commit()
@@ -181,9 +186,9 @@ def test_post_locked_bucket(client, db, headers, bucket, get_json, admin_user):
     assert res.status_code == 404
 
 
-def test_post_invalidkey(client, db, headers, bucket, admin_user):
+def test_post_invalidkey(client, db, headers, bucket, administration_access_user):
     """Test invalid multipart init."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     object_url = (
         url_for(
@@ -265,9 +270,11 @@ def test_put_not_found(
     assert res.status_code == 404
 
 
-def test_put_wrong_sizes(client, db, bucket, multipart, multipart_url, admin_user):
+def test_put_wrong_sizes(
+    client, db, bucket, multipart, multipart_url, administration_access_user
+):
     """Test invalid part sizes."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     cases = [
         b"a" * (multipart.chunk_size + 1),
@@ -282,9 +289,11 @@ def test_put_wrong_sizes(client, db, bucket, multipart, multipart_url, admin_use
         assert res.status_code == 400
 
 
-def test_put_ngfileupload(client, db, bucket, multipart, multipart_url, admin_user):
+def test_put_ngfileupload(
+    client, db, bucket, multipart, multipart_url, administration_access_user
+):
     """Test invalid part sizes."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     res = client.put(
         multipart_url,
@@ -300,10 +309,10 @@ def test_put_ngfileupload(client, db, bucket, multipart, multipart_url, admin_us
 
 
 def test_put_invalid_part_number(
-    client, db, bucket, multipart, multipart_url, admin_user
+    client, db, bucket, multipart, multipart_url, administration_access_user
 ):
     """Test invalid part number."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     data = b"a" * multipart.chunk_size
     for c in [400, 2000, "a"]:
@@ -315,10 +324,10 @@ def test_put_invalid_part_number(
 
 
 def test_put_completed_multipart(
-    client, db, bucket, multipart, multipart_url, admin_user
+    client, db, bucket, multipart, multipart_url, administration_access_user
 ):
     """Test uploading to a completed multipart upload."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     multipart.completed = True
     db.session.commit()
@@ -331,10 +340,10 @@ def test_put_completed_multipart(
 
 
 def test_put_badstream(
-    client, db, bucket, multipart, multipart_url, get_json, admin_user
+    client, db, bucket, multipart, multipart_url, get_json, administration_access_user
 ):
     """Test uploading to a completed multipart upload."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     client.put(
         multipart_url + "&partNumber={0}".format(1),
@@ -387,18 +396,22 @@ def test_get(
         assert len(data["parts"]) == 3
 
 
-def test_get_empty(client, multipart, multipart_url, get_json, admin_user):
+def test_get_empty(
+    client, multipart, multipart_url, get_json, administration_access_user
+):
     """Test get parts when empty."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     data = get_json(client.get(multipart_url), code=200)
     assert len(data["parts"]) == 0
     assert data["id"] == str(multipart.upload_id)
 
 
-def test_get_serialization(client, multipart, multipart_url, get_json, admin_user):
+def test_get_serialization(
+    client, multipart, multipart_url, get_json, administration_access_user
+):
     """Test get parts when empty."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     client.put(
         multipart_url + "&partNumber={0}".format(1),
@@ -497,10 +510,17 @@ def test_post_complete(
 
 
 def test_post_complete_fail(
-    client, headers, bucket, multipart, multipart_url, parts, get_json, admin_user
+    client,
+    headers,
+    bucket,
+    multipart,
+    multipart_url,
+    parts,
+    get_json,
+    administration_access_user,
 ):
     """Test completing multipart when merge fails."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     # Mock celery task to emulate real usage.
     task_result = MagicMock()
@@ -526,10 +546,18 @@ def test_post_complete_fail(
 
 
 def test_post_complete_timeout(
-    app, client, headers, bucket, multipart, multipart_url, parts, get_json, admin_user
+    app,
+    client,
+    headers,
+    bucket,
+    multipart,
+    multipart_url,
+    parts,
+    get_json,
+    administration_access_user,
 ):
     """Test completing multipart when merge fails."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     max_rounds = int(
         app.config["FILES_REST_TASK_WAIT_MAX_SECONDS"]
@@ -646,7 +674,9 @@ def test_get_listuploads(
     assert res.status_code == expected
 
 
-def test_already_exhausted_input_stream(app, client, db, bucket, admin_user):
+def test_already_exhausted_input_stream(
+    app, client, db, bucket, administration_access_user
+):
     """Test server error when file stream is already read."""
     key = "test.json"
     data = b'{"json": "file"}'
@@ -663,7 +693,7 @@ def test_already_exhausted_input_stream(app, client, db, bucket, admin_user):
         request.data
 
     app.before_request(consume_request_input_stream)
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
     resp = client.put(
         object_url,
         input_stream=BytesIO(data),

@@ -2,7 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2024 CERN.
-# Copyright (C) 2023 Graz University of Technology.
+# Copyright (C) 2023-2024 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -58,7 +58,6 @@ Now let's initialize all required Invenio extensions:
 >>> from flask_menu import Menu
 >>> from invenio_db import InvenioDB, db
 >>> from invenio_rest import InvenioREST
->>> from invenio_admin import InvenioAdmin
 >>> from invenio_accounts import InvenioAccounts
 >>> from invenio_access import InvenioAccess
 >>> from invenio_accounts.views import blueprint as accounts_blueprint
@@ -70,7 +69,6 @@ Now let's initialize all required Invenio extensions:
 >>> ext_menu = Menu(app)
 >>> ext_db = InvenioDB(app)
 >>> ext_rest = InvenioREST(app)
->>> ext_admin = InvenioAdmin(app)
 >>> ext_accounts = InvenioAccounts(app)
 >>> ext_access = InvenioAccess(app)
 >>> ext_i18n = InvenioI18N(app)

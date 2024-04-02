@@ -2,7 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2019 CERN.
-# Copyright (C) 2023 Graz University of Technology.
+# Copyright (C) 2023-2024 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -344,8 +344,8 @@ def permissions(db, bucket):
 
 
 @pytest.yield_fixture()
-def admin_user(db):
-    """Permission for admin users."""
+def administration_access_user(db):
+    """Permission for administration_access users."""
     perms = [
         location_update_all,
         bucket_read_all,
@@ -366,19 +366,21 @@ def admin_user(db):
         object_read_all,
     ]
 
-    admin = Role(name="admin")
+    administration_access_role = Role(name="administration-access")
 
     for perm in perms:
-        db.session.add(ActionRoles.allow(perm, role=admin))
+        db.session.add(ActionRoles.allow(perm, role=administration_access_role))
 
-    admin_user = create_test_user(
-        email="admin@invenio-software.org", password="pass1", active=True
+    administration_access_user = create_test_user(
+        email="administration_access@invenio-software.org",
+        password="pass1",
+        active=True,
     )
-    admin.users.append(admin_user)
+    administration_access_role.users.append(administration_access_user)
 
     db.session.commit()
 
-    yield admin_user
+    yield administration_access_user
 
 
 @pytest.fixture()
