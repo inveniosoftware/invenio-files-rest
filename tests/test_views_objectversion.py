@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2016-2019 CERN.
+# Copyright (C) 2024 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -174,9 +175,11 @@ def test_last_modified_utc_conversion(client, headers, bucket, permissions):
     assert abs(last_modified - updated) < timedelta(seconds=1)
 
 
-def test_get_unreadable_file(client, headers, bucket, objects, db, admin_user):
+def test_get_unreadable_file(
+    client, headers, bucket, objects, db, administration_access_user
+):
     """Test getting an object with an unreadable file."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     obj = objects[0]
     assert obj.is_head
@@ -354,10 +357,17 @@ def test_put_versioning(client, bucket, permissions, get_md5, get_json):
     ],
 )
 def test_put_file_size_errors(
-    client, db, bucket, quota_size, max_file_size, expected, err, admin_user
+    client,
+    db,
+    bucket,
+    quota_size,
+    max_file_size,
+    expected,
+    err,
+    administration_access_user,
 ):
     """Test that file size errors are properly raised."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     filedata = b"a" * 75
     object_url = url_for(
@@ -383,8 +393,8 @@ def test_put_file_size_errors(
         assert resp.status_code == 400
 
 
-def test_put_invalid_key(client, db, bucket, admin_user):
-    login_user(client, admin_user)
+def test_put_invalid_key(client, db, bucket, administration_access_user):
+    login_user(client, administration_access_user)
 
     """Test invalid key name."""
     key = "a" * 2000
@@ -395,9 +405,9 @@ def test_put_invalid_key(client, db, bucket, admin_user):
     assert resp.status_code == 400
 
 
-def test_put_zero_size(client, bucket, admin_user):
+def test_put_zero_size(client, bucket, administration_access_user):
     """Test zero size file."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     object_url = url_for(
         "invenio_files_rest.object_api", bucket_id=bucket.id, key="test.txt"
@@ -408,9 +418,9 @@ def test_put_zero_size(client, bucket, admin_user):
     assert resp.status_code == 400
 
 
-def test_put_deleted_locked(client, db, bucket, admin_user):
+def test_put_deleted_locked(client, db, bucket, administration_access_user):
     """Test that file size errors are properly raised."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     object_url = url_for(
         "invenio_files_rest.object_api", bucket_id=bucket.id, key="test.txt"
@@ -433,9 +443,9 @@ def test_put_deleted_locked(client, db, bucket, admin_user):
     assert resp.status_code == 404
 
 
-def test_put_error(client, bucket, admin_user):
+def test_put_error(client, bucket, administration_access_user):
     """Test upload - cancelled by user."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     object_url = url_for(
         "invenio_files_rest.object_api", bucket_id=bucket.id, key="test.txt"
@@ -451,9 +461,9 @@ def test_put_error(client, bucket, admin_user):
     assert len(list(fs.walk("."))) == 3
 
 
-def test_put_multipartform(client, bucket, admin_user):
+def test_put_multipartform(client, bucket, administration_access_user):
     """Test upload via multipart/form-data."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     object_url = url_for(
         "invenio_files_rest.object_api", bucket_id=bucket.id, key="test.txt"
@@ -562,9 +572,11 @@ def test_delete_versions(client, db, bucket, versions, permissions, user, expect
         )
 
 
-def test_delete_versions_head_reset(client, db, bucket, versions, admin_user):
+def test_delete_versions_head_reset(
+    client, db, bucket, versions, administration_access_user
+):
     """Test head setting after deletion."""
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
     key = "LICENSE"
     versions_to_delete = [version for version in versions if version.key == key]
     assert len(versions_to_delete) == 2
@@ -586,7 +598,9 @@ def test_delete_versions_head_reset(client, db, bucket, versions, admin_user):
     assert new_head_obj.is_head
 
 
-def test_delete_locked_deleted(client, db, bucket, versions, admin_user):
+def test_delete_locked_deleted(
+    client, db, bucket, versions, administration_access_user
+):
     """Test a deleted/locked bucket."""
     obj = versions[0]
     object_url = url_for(
@@ -597,7 +611,7 @@ def test_delete_locked_deleted(client, db, bucket, versions, admin_user):
     bucket.locked = True
     db.session.commit()
 
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     # Latest version
     resp = client.delete(object_url)
@@ -621,7 +635,7 @@ def test_delete_locked_deleted(client, db, bucket, versions, admin_user):
     assert resp.status_code == 404
 
 
-def test_delete_unwritable(client, db, bucket, versions, admin_user):
+def test_delete_unwritable(client, db, bucket, versions, administration_access_user):
     """Test deleting a file which is not writable."""
     obj = versions[0]
 
@@ -629,7 +643,7 @@ def test_delete_unwritable(client, db, bucket, versions, admin_user):
     obj.file.writable = False
     db.session.commit()
 
-    login_user(client, admin_user)
+    login_user(client, administration_access_user)
 
     # Delete specific version
     with patch("invenio_files_rest.views.remove_file_data") as task:
