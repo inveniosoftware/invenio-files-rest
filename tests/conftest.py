@@ -3,6 +3,7 @@
 # This file is part of Invenio.
 # Copyright (C) 2015-2019 CERN.
 # Copyright (C) 2023 Graz University of Technology.
+# Copyright (C) 2024 KTH Royal Institute of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -24,7 +25,6 @@ from invenio_access import InvenioAccess
 from invenio_access.models import ActionRoles, ActionUsers, Role
 from invenio_accounts import InvenioAccounts
 from invenio_accounts.testutils import create_test_user
-from invenio_accounts.views import blueprint as accounts_blueprint
 from invenio_db import InvenioDB
 from invenio_db import db as db_
 from invenio_db.utils import drop_alembic_version_table
@@ -116,7 +116,6 @@ def app(base_app):
     InvenioI18N(base_app)
     InvenioAccounts(base_app)
     InvenioAccess(base_app)
-    base_app.register_blueprint(accounts_blueprint)
     InvenioFilesREST(base_app)
     base_app.register_blueprint(blueprint)
 
