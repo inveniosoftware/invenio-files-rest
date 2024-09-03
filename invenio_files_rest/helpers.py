@@ -14,11 +14,10 @@ import os
 import unicodedata
 import warnings
 from time import time
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 from flask import current_app, make_response, request
 from werkzeug.datastructures import Headers
-from werkzeug.urls import url_quote
 from werkzeug.wsgi import FileWrapper
 
 MIMETYPE_TEXTFILES = {"readme"}
@@ -147,7 +146,10 @@ def send_stream(
         try:
             filenames = {"filename": filename.encode("latin-1")}
         except UnicodeEncodeError:
-            filenames = {"filename*": "UTF-8''%s" % url_quote(filename)}
+            # in the header-field Content-Disposition, filename* is a "extended parameter" (RFC 8187)
+            # safe=characters that need not be %-encoded in extended parameter's value (RFC 8187 `attr-char`)
+            quoted = quote(filename, safe="!#$%&+-.^_`|~")
+            filenames = {"filename*": f"UTF-8''{quoted}"}
             encoded_filename = unicodedata.normalize("NFKD", filename).encode(
                 "latin-1", "ignore"
             )
