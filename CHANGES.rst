@@ -10,6 +10,11 @@
 Changes
 =======
 
+Version 2.2.1 (release 2024-09-19)
+
+- fix: downloading for some weird filenames
+- i18n: push translations
+
 Version 2.2.0 (release 2024-01-18)
 
 - Bump for skipping yanked v2.1.0 release
