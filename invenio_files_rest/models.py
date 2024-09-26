@@ -1498,7 +1498,7 @@ class ObjectVersionTag(db.Model):
     def create(cls, object_version, key, value):
         """Create a new tag for a given object version."""
         assert len(key) < 256
-        assert len(value) < 256
+        assert len(value) <= current_app.config["FILES_REST_OBJECT_TAG_VALUE_MAX_LEN"]
         with db.session.begin_nested():
             obj = cls(
                 version_id=as_object_version_id(object_version), key=key, value=value
@@ -1510,7 +1510,7 @@ class ObjectVersionTag(db.Model):
     def create_or_update(cls, object_version, key, value):
         """Create or update a new tag for a given object version."""
         assert len(key) < 256
-        assert len(value) < 256
+        assert len(value) <= current_app.config["FILES_REST_OBJECT_TAG_VALUE_MAX_LEN"]
         obj = cls.get(object_version, key)
         if obj:
             obj.value = value
