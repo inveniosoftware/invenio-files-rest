@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2016-2019 CERN.
+# Copyright © 2024 KTH Royal Institute of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -11,6 +12,8 @@
 import hashlib
 from calendar import timegm
 from functools import partial
+
+from invenio_i18n import gettext as _
 
 from ..errors import FileSizeError, StorageError, UnexpectedFileSizeError
 from ..helpers import chunk_size_or_default, compute_checksum, send_stream
@@ -29,7 +32,7 @@ def check_sizelimit(size_limit, bytes_written, total_size):
     """
     if size_limit is not None and bytes_written > size_limit:
         desc = (
-            "File size limit exceeded."
+            _("File size limit exceeded.")
             if isinstance(size_limit, int)
             else size_limit.reason
         )
@@ -37,7 +40,7 @@ def check_sizelimit(size_limit, bytes_written, total_size):
 
     # Never write more than advertised
     if total_size is not None and bytes_written > total_size:
-        raise UnexpectedFileSizeError(description="File is bigger than expected.")
+        raise UnexpectedFileSizeError(description=_("File is bigger than expected."))
 
 
 def check_size(bytes_written, total_size):
@@ -49,7 +52,7 @@ def check_size(bytes_written, total_size):
         written exceed the total size.
     """
     if total_size and bytes_written < total_size:
-        raise UnexpectedFileSizeError(description="File is smaller than expected.")
+        raise UnexpectedFileSizeError(description=_("File is smaller than expected."))
 
 
 class FileStorage(object):
@@ -114,7 +117,7 @@ class FileStorage(object):
         try:
             fp = self.open(mode="rb")
         except Exception as e:
-            raise StorageError("Could not send file: {}".format(e))
+            raise StorageError(_("Could not send file: {error}").format(error=e))
 
         try:
             md5_checksum = None
@@ -139,7 +142,7 @@ class FileStorage(object):
             )
         except Exception as e:
             fp.close()
-            raise StorageError("Could not send file: {}".format(e))
+            raise StorageError(_("Could not send file: {error}").format(error=e))
 
     def checksum(self, chunk_size=None, progress_callback=None, **kwargs):
         """Compute checksum of file."""
@@ -206,7 +209,9 @@ class FileStorage(object):
                 **kwargs
             )
         except Exception as e:
-            raise StorageError("Could not compute checksum of file: {0}".format(e))
+            raise StorageError(
+                _("Could not compute checksum of file: {error}").format(error=e)
+            )
 
     def _write_stream(
         self,
