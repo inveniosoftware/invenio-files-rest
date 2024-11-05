@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2019 CERN.
+# Copyright (C) 2024 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -43,7 +44,7 @@ def verify_checksum(
 
     :param file_id: The file ID.
     """
-    f = FileInstance.query.get(uuid.UUID(file_id))
+    f = db.session.get(FileInstance, uuid.UUID(file_id))
 
     # Anything might happen during the task, so being pessimistic and marking
     # the file as unchecked is a reasonable precaution
