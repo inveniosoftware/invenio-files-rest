@@ -10,6 +10,12 @@
 Changes
 =======
 
+Version 2.2.2 (release 2024-11-05)
+
+- fix: LegacyAPIWarning of sqlalchemy
+- global: move to db.session.query syntax
+- fix: compatibility with werkzeug >= 3.0.0
+
 Version 2.2.1 (release 2024-09-19)
 
 - fix: downloading for some weird filenames
