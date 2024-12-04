@@ -11,6 +11,10 @@
 Changes
 =======
 
+Version 2.2.4 (release 2024-12-04)
+
+- workflows: add translation flag for publishing
+
 Version 2.2.3 (release 2024-11-28)
 
 - setup: pin dependencies
