@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2016-2019 CERN.
+# Copyright (C) 2024 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -144,7 +145,7 @@ def send_stream(
     if as_attachment or mimetype == "application/octet-stream":
         # See https://github.com/pallets/flask/commit/0049922f2e690a6d
         try:
-            filenames = {"filename": filename.encode("latin-1")}
+            filenames = {"filename": filename.encode("latin-1").decode("utf-8")}
         except UnicodeEncodeError:
             # in the header-field Content-Disposition, filename* is a "extended parameter" (RFC 8187)
             # safe=characters that need not be %-encoded in extended parameter's value (RFC 8187 `attr-char`)
@@ -154,7 +155,7 @@ def send_stream(
                 "latin-1", "ignore"
             )
             if encoded_filename:
-                filenames["filename"] = encoded_filename
+                filenames["filename"] = encoded_filename.decode("utf-8")
         headers.add("Content-Disposition", "attachment", **filenames)
     else:
         headers.add("Content-Disposition", "inline")
