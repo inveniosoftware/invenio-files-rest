@@ -2,7 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2019 CERN.
-# Copyright (C) 2022-2023 Graz University of Technology.
+# Copyright (C) 2022-2024 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -350,3 +350,16 @@ autoclass_content = "both"
 
 # Describe the type hints in bullet points rather than in-line in the function signatures
 autodoc_typehints = "description"
+
+# To address <unknown>:1:py:class reference target not found
+# (better ideas welcomed)
+nitpick_ignore = [
+    ("py:class", "t.ClassVar"),
+    ("py:class", "Query"),
+    ("py:class", "t.Collection"),
+    ("py:class", "t.Any"),
+    ("py:class", "ft.ResponseReturnValue"),
+    ("py:class", "TStreamFactory"),
+    ("py:class", "MultiDict"),
+    ("py:attr", "query_class"),
+]
