@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2019 CERN.
+# Copyright (C) 2024 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -25,6 +26,11 @@ class BadBytesIO(BytesIO):
         """Initialize."""
         self.called = False
         return super(BadBytesIO, self).__init__(*args, **kwargs)
+
+    def readinto(self, b: bytearray = None):
+        """Raise error."""
+        if self.called:
+            raise ValueError("readinto raise")
 
     def read(self, *args, **kwargs):
         """Fail on second read."""
