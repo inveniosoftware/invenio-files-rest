@@ -2,7 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2019 CERN.
-# Copyright (C) 2023 Graz University of Technology.
+# Copyright (C) 2023-2024 Graz University of Technology.
 # Copyright (C) 2024 KTH Royal Institute of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
@@ -126,8 +126,8 @@ def app(base_app):
 @pytest.yield_fixture()
 def db(app):
     """Get setup database."""
-    if not database_exists(str(db_.engine.url)):
-        create_database(str(db_.engine.url))
+    if not database_exists(str(db_.engine.url.render_as_string(hide_password=False))):
+        create_database(str(db_.engine.url.render_as_string(hide_password=False)))
     db_.create_all()
     yield db_
     db_.session.remove()

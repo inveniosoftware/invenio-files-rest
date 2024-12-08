@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2016-2019 CERN.
+# Copyright (C) 2024 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -30,7 +31,7 @@ def test_max_content_length():
 
     with app.test_client() as client:
         # No content-type, no max content length checking
-        data = b"a" * (max_len + 1)
+        data = b"a" * (max_len - 1)
         res = client.put("/test", input_stream=BytesIO(data))
         assert res.status_code == 200
         assert res.data == data

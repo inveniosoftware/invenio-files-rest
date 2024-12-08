@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2016-2019 CERN.
+# Copyright (C) 2024 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -345,12 +346,12 @@ def test_put_badstream(
     data = get_json(client.get(multipart_url), code=200)
     assert len(data["parts"]) == 1
 
-    pytest.raises(
-        ValueError,
-        client.put,
+    response = client.put(
         multipart_url + "&partNumber={0}".format(1),
         input_stream=BadBytesIO(b"b" * multipart.chunk_size),
     )
+
+    assert response.status_code == 400
 
     # Part was removed due to faulty upload which might have written partial
     # content to the file.
