@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2017-2019 CERN.
+# Copyright (C) 2024 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -43,7 +44,9 @@ def upgrade():
         "files_objecttags",
         sa.Column("version_id", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False),
         sa.Column(
-            "key", sa.Text().with_variant(mysql.VARCHAR(255), "mysql"), nullable=False
+            "key",
+            sa.String(255).with_variant(mysql.VARCHAR(255), "mysql"),
+            nullable=False,
         ),
         sa.Column(
             "value", sa.Text().with_variant(mysql.VARCHAR(255), "mysql"), nullable=False
