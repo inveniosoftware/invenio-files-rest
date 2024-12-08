@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2016-2019 CERN.
+# Copyright (C) 2024 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -440,10 +441,10 @@ def test_put_error(client, bucket, admin_user):
     object_url = url_for(
         "invenio_files_rest.object_api", bucket_id=bucket.id, key="test.txt"
     )
+    response = client.put(object_url, input_stream=BadBytesIO(b"a" * 128))
 
-    pytest.raises(
-        ValueError, client.put, object_url, input_stream=BadBytesIO(b"a" * 128)
-    )
+    assert response.status_code == 400
+
     assert FileInstance.query.count() == 0
     assert ObjectVersion.query.count() == 0
     # Ensure that the file was removed.
