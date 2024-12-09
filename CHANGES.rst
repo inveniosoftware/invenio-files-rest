@@ -11,6 +11,17 @@
 Changes
 =======
 
+Version 3.0.0 (release 2024-12-09)
+
+- filename: replace encoding/decoding
+- fix: alembic assert error
+- fix: max content type
+- fix: werkzeug changed raise handling for tests
+- fix: docs reference target not found
+- fix: filename is marked as byte
+- tests: apply changes for sqlalchemy>=2.0
+- setup: bump invenio dependencies
+
 Version 2.2.4 (release 2024-12-04)
 
 - workflows: add translation flag for publishing
