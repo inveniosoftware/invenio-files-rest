@@ -143,19 +143,18 @@ def send_stream(
     # Force Content-Disposition for application/octet-stream to prevent
     # Content-Type sniffing.
     if as_attachment or mimetype == "application/octet-stream":
-        # See https://github.com/pallets/flask/commit/0049922f2e690a6d
+        # see https://github.com/pallets/werkzeug/blob/main/src/werkzeug/utils.py#L456-L465
         try:
-            filenames = {"filename": filename.encode("latin-1").decode("utf-8")}
+            filename.encode("ascii")
         except UnicodeEncodeError:
-            # in the header-field Content-Disposition, filename* is a "extended parameter" (RFC 8187)
-            # safe=characters that need not be %-encoded in extended parameter's value (RFC 8187 `attr-char`)
-            quoted = quote(filename, safe="!#$%&+-.^_`|~")
-            filenames = {"filename*": f"UTF-8''{quoted}"}
-            encoded_filename = unicodedata.normalize("NFKD", filename).encode(
-                "latin-1", "ignore"
-            )
-            if encoded_filename:
-                filenames["filename"] = encoded_filename.decode("utf-8")
+            simple = unicodedata.normalize("NFKD", filename)
+            simple = simple.encode("ascii", "ignore").decode("ascii")
+            # safe = RFC 5987 attr-char
+            quoted = quote(filename, safe="!#$&+-.^_`|~")
+            filenames = {"filename": simple, "filename*": f"UTF-8''{quoted}"}
+        else:
+            filenames = {"filename": filename}
+
         headers.add("Content-Disposition", "attachment", **filenames)
     else:
         headers.add("Content-Disposition", "inline")
