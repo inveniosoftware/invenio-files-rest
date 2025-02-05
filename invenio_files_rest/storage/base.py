@@ -117,7 +117,7 @@ class FileStorage(object):
         try:
             fp = self.open(mode="rb")
         except Exception as e:
-            raise StorageError(_("Could not send file: {error}").format(error=e))
+            raise StorageError(_("Could not send file: %(error)s") % {"error": e})
 
         try:
             md5_checksum = None
@@ -142,7 +142,7 @@ class FileStorage(object):
             )
         except Exception as e:
             fp.close()
-            raise StorageError(_("Could not send file: {error}").format(error=e))
+            raise StorageError(_("Could not send file: %(error)s") % {"error": e})
 
     def checksum(self, chunk_size=None, progress_callback=None, **kwargs):
         """Compute checksum of file."""
@@ -210,7 +210,7 @@ class FileStorage(object):
             )
         except Exception as e:
             raise StorageError(
-                _("Could not compute checksum of file: {error}").format(error=e)
+                _("Could not compute checksum of file: %(error)s") % {"error": e}
             )
 
     def _write_stream(
