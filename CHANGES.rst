@@ -11,6 +11,10 @@
 Changes
 =======
 
+Version 2.2.5 (release 2025-03-18)
+
+- i18n: mark missing strings for translations
+
 Version 2.2.4 (release 2024-12-04)
 
 - workflows: add translation flag for publishing
