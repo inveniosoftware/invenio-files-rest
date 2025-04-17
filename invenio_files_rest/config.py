@@ -68,6 +68,14 @@ FILES_REST_OBJECT_KEY_MAX_LEN = 255
    with PostgreSQL database.
 """
 
+FILES_REST_OBJECT_TAG_VALUE_MAX_LEN = 255
+"""Maximum length of the ObjectTag.value field.
+
+.. warning::
+   Setting this variable to anything higher than 255 is only supported
+   with PostgreSQL database.
+"""
+
 FILES_REST_FILE_URI_MAX_LEN = 255
 """Maximum length of the FileInstance.uri field.
 
