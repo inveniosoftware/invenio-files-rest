@@ -10,6 +10,7 @@
 """Test object related views."""
 
 from datetime import timedelta, timezone
+from http import HTTPStatus
 from io import BytesIO
 from unittest.mock import patch
 
@@ -699,3 +700,122 @@ def test_put_header_invalid_tags(app, client, bucket, permissions, get_md5, get_
         headers={header_name: "a=1&a=2"},
     )
     assert resp.status_code == 400
+
+
+def test_get_range_request_enabled(
+    app, client, headers, bucket, permissions, monkeypatch
+):
+    """Test getting an object with Range header when range requests are enabled."""
+    app.config.update(
+        dict(
+            FILES_REST_ALLOW_RANGE_REQUESTS=True,
+        )
+    )
+
+    login_user(client, permissions["bucket"])
+
+    key = "range_test.txt"
+    content = b"0123456789" * 10  # 100 bytes of data
+    object_url = url_for("invenio_files_rest.object_api", bucket_id=bucket.id, key=key)
+
+    resp = client.put(object_url, input_stream=BytesIO(content))
+    assert resp.status_code == 200
+
+    # Test valid range request - first 10 bytes
+    headers_with_range = dict(headers)
+    headers_with_range["Range"] = "bytes=0-9"
+    resp = client.get(object_url, headers=headers_with_range)
+
+    assert resp.status_code == HTTPStatus.PARTIAL_CONTENT
+    assert resp.headers["Content-Range"] == "bytes 0-9/100"
+    assert resp.headers["Content-Length"] == "10"
+    assert resp.data == b"0123456789"
+
+    # Test valid range request - last 10 bytes
+    headers_with_range["Range"] = "bytes=90-99"
+    resp = client.get(object_url, headers=headers_with_range)
+
+    assert resp.status_code == HTTPStatus.PARTIAL_CONTENT
+    assert resp.headers["Content-Range"] == "bytes 90-99/100"
+    assert resp.headers["Content-Length"] == "10"
+    assert resp.data == b"0123456789"
+
+    # Test valid range request - middle bytes
+    headers_with_range["Range"] = "bytes=40-59"
+    resp = client.get(object_url, headers=headers_with_range)
+
+    assert resp.status_code == HTTPStatus.PARTIAL_CONTENT
+    assert resp.headers["Content-Range"] == "bytes 40-59/100"
+    assert resp.headers["Content-Length"] == "20"
+    assert resp.data == b"01234567890123456789"
+
+    # Test range request with only start byte specified
+    headers_with_range["Range"] = "bytes=90-"
+    resp = client.get(object_url, headers=headers_with_range)
+
+    assert resp.status_code == HTTPStatus.PARTIAL_CONTENT
+    assert resp.headers["Content-Range"] == "bytes 90-99/100"
+    assert resp.headers["Content-Length"] == "10"
+    assert resp.data == b"0123456789"
+
+    # Test range request with only suffix length specified
+    headers_with_range["Range"] = "bytes=-10"
+    resp = client.get(object_url, headers=headers_with_range)
+
+    assert resp.status_code == HTTPStatus.PARTIAL_CONTENT
+    assert resp.headers["Content-Range"] == "bytes 90-99/100"
+    assert resp.headers["Content-Length"] == "10"
+    assert resp.data == b"0123456789"
+
+    # Test invalid range request - start byte beyond file size
+    headers_with_range["Range"] = "bytes=100-109"
+    resp = client.get(object_url, headers=headers_with_range)
+
+    assert resp.status_code == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE
+    assert resp.headers["Content-Range"] == "bytes */100"
+
+    # Test invalid range request - start byte greater than end byte
+    headers_with_range["Range"] = "bytes=50-40"
+    resp = client.get(object_url, headers=headers_with_range)
+
+    assert resp.status_code == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE
+    assert resp.headers["Content-Range"] == "bytes */100"
+
+
+def test_get_range_request_disabled(
+    app, client, headers, bucket, permissions, monkeypatch
+):
+    """Test getting an object with Range header when range requests are disabled."""
+    app.config.update(
+        dict(
+            FILES_REST_ALLOW_RANGE_REQUESTS=False,
+        )
+    )
+
+    login_user(client, permissions["bucket"])
+
+    key = "range_test.txt"
+    content = b"0123456789" * 10  # 100 bytes of data
+    object_url = url_for("invenio_files_rest.object_api", bucket_id=bucket.id, key=key)
+
+    resp = client.put(object_url, input_stream=BytesIO(content))
+    assert resp.status_code == 200
+
+    # Test range request - should be ignored when disabled
+    headers_with_range = dict(headers)
+    headers_with_range["Range"] = "bytes=0-9"
+    resp = client.get(object_url, headers=headers_with_range)
+
+    assert resp.status_code == 200
+    assert "Content-Range" not in resp.headers
+    assert resp.headers["Content-Length"] == "100"
+    assert resp.data == content
+
+    # Try another range - should also be ignored
+    headers_with_range["Range"] = "bytes=40-59"
+    resp = client.get(object_url, headers=headers_with_range)
+
+    assert resp.status_code == 200
+    assert "Content-Range" not in resp.headers
+    assert resp.headers["Content-Length"] == "100"
+    assert resp.data == content
