@@ -14,15 +14,11 @@ import mimetypes
 import os
 import unicodedata
 import warnings
-from http import HTTPStatus
 from time import time
 from urllib.parse import quote, urlsplit
 
 from flask import current_app, make_response, request
 from werkzeug.datastructures import Headers
-from werkzeug.wsgi import FileWrapper
-
-from .wsgi import RangeFileWrapper
 
 MIMETYPE_TEXTFILES = {"readme"}
 
