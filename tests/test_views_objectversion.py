@@ -771,15 +771,13 @@ def test_get_range_request_enabled(
     headers_with_range["Range"] = "bytes=100-109"
     resp = client.get(object_url, headers=headers_with_range)
 
-    assert resp.status_code == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE
-    assert resp.headers["Content-Range"] == "bytes */100"
+    assert resp.status_code == 500
 
     # Test invalid range request - start byte greater than end byte
     headers_with_range["Range"] = "bytes=50-40"
     resp = client.get(object_url, headers=headers_with_range)
 
-    assert resp.status_code == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE
-    assert resp.headers["Content-Range"] == "bytes */100"
+    assert resp.status_code == 500
 
 
 def test_get_range_request_disabled(

@@ -123,56 +123,8 @@ def send_stream(
     # Construct headers
     headers = Headers()
 
-    range_header = request.headers.get("Range")
-    partial_response = False
-    start_byte = 0
-    end_byte = size - 1
-
-    if (
-        range_header
-        and size
-        and current_app.config.get("FILES_REST_ALLOW_RANGE_REQUESTS", False)
-    ):
-        ranges = range_header.replace("bytes=", "").split(",")
-
-        if len(ranges) == 1:  # We only support a single range for now
-            byte_range = ranges[0].strip()
-            if byte_range.startswith("-"):
-                # Suffix byte range: -500 (last 500 bytes)
-                start_byte = max(0, size - int(byte_range[1:]))
-            elif byte_range.endswith("-"):
-                # Prefix byte range: 500- (from byte 500 to end)
-                start_byte = int(byte_range[:-1])
-            else:
-                # Range with start and end: 500-1000
-                start_byte, end_byte = map(int, byte_range.split("-"))
-                end_byte = min(end_byte, size - 1)
-
-            if start_byte >= size or start_byte > end_byte:
-                response = current_app.response_class(
-                    status=HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE,
-                    headers={"Content-Range": f"bytes */{size}"},
-                )
-                return response
-
-            partial_response = True
-
-            headers["Content-Range"] = f"bytes {start_byte}-{end_byte}/{size}"
-            headers["Content-Length"] = end_byte - start_byte + 1
-
-            # Create a file wrapper and then wrap it with our custom range wrapper
-            # This handles seekable streams efficiently and properly manages the byte range boundaries
-            file_wrapper = FileWrapper(stream, buffer_size=chunk_size)
-            stream = RangeFileWrapper(
-                file_wrapper,
-                start_byte=start_byte,
-                byte_range=end_byte - start_byte + 1,
-            )
-        else:
-            # Multiple ranges are not supported
-            pass
-    else:
-        headers["Content-Length"] = size
+    # Set Content-Length for the full response
+    headers["Content-Length"] = size
 
     if content_md5:
         headers["Content-MD5"] = content_md5
@@ -221,9 +173,6 @@ def send_stream(
         direct_passthrough=True,
     )
 
-    if partial_response:
-        rv.status_code = HTTPStatus.PARTIAL_CONTENT
-
     # Set etag if defined
     if etag:
         rv.set_etag(etag)
@@ -240,8 +189,14 @@ def send_stream(
             rv.cache_control.max_age = cache_timeout
             rv.expires = int(time() + cache_timeout)
 
-    if conditional and not partial_response:
-        rv = rv.make_conditional(request)
+    if conditional:
+        rv = rv.make_conditional(
+            request,
+            accept_ranges=current_app.config.get(
+                "FILES_REST_ALLOW_RANGE_REQUESTS", False
+            ),
+            complete_length=size,
+        )
 
     return rv
 
