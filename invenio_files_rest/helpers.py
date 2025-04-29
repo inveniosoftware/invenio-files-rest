@@ -184,7 +184,11 @@ def send_stream(
             rv.expires = int(time() + cache_timeout)
 
     if conditional:
-        rv = rv.make_conditional(request)
+        # make_conditional erroneously returns a 206 when accept_ranges is False
+        if current_app.config.get("FILES_REST_ALLOW_RANGE_REQUESTS", False):
+            rv = rv.make_conditional(request, accept_ranges=current_app.config.get("FILES_REST_ALLOW_RANGE_REQUESTS", False), complete_length=size)
+        else:
+            rv = rv.make_conditional(request)
 
     return rv
 
