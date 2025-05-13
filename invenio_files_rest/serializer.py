@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2019 CERN.
+# Copyright (C) 2025 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -99,7 +100,7 @@ class ObjectVersionSchema(BaseSchema):
 
         return data
 
-    @post_dump(pass_many=True)
+    @post_dump(pass_collection=True)
     def wrap(self, data, many):
         """Wrap response in envelope."""
         if not many:
@@ -183,7 +184,7 @@ class PartSchema(BaseSchema):
 
     links = None
 
-    @post_dump(pass_many=True)
+    @post_dump(pass_collection=True)
     def wrap(self, data, many):
         """Wrap response in envelope."""
         if not many:
