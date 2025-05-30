@@ -193,7 +193,7 @@ def test_object_create(app, db, dummy_location):
         assert obj1.bucket == b
 
         # Set fake location.
-        obj1.set_location("file:///tmp/obj1", 1, "checksum")
+        obj1.set_location("file:///tmp/obj1", 1, "checksum:value")
 
         # Create one object version for same object key
         obj2 = ObjectVersion.create(b, "test")
@@ -205,7 +205,7 @@ def test_object_create(app, db, dummy_location):
         assert obj2.bucket == b
 
         # Set fake location
-        obj2.set_location("file:///tmp/obj2", 2, "checksum")
+        obj2.set_location("file:///tmp/obj2", 2, "checksum:value")
 
         # Create a new object version for a different object with no location.
         # I.e. it is considered a delete marker.
@@ -293,9 +293,9 @@ def test_object_multibucket(app, db, dummy_location):
         b1 = Bucket.create()
         b2 = Bucket.create()
         obj1 = ObjectVersion.create(b1, "test")
-        obj1.set_location("file:///tmp/obj1", 1, "checksum")
+        obj1.set_location("file:///tmp/obj1", 1, "checksum:value")
         obj2 = ObjectVersion.create(b2, "test")
-        obj2.set_location("file:///tmp/obj2", 2, "checksum")
+        obj2.set_location("file:///tmp/obj2", 2, "checksum:value")
 
     # Sanity check
     assert ObjectVersion.query.count() == 2
@@ -316,16 +316,16 @@ def test_object_get_by_bucket(app, db, dummy_location):
 
     # First version of object
     obj1_first = ObjectVersion.create(b1, "test")
-    obj1_first.set_location("b1test1", 1, "achecksum")
+    obj1_first.set_location("b1test1", 1, "achecksum:value")
     # Intermediate version which is a delete marker.
     obj1_intermediate = ObjectVersion.create(b1, "test")
-    obj1_intermediate.set_location("b1test2", 1, "achecksum")
+    obj1_intermediate.set_location("b1test2", 1, "achecksum:value")
     # Latest version of object
     obj1_latest = ObjectVersion.create(b1, "test")
-    obj1_latest.set_location("b1test3", 1, "achecksum")
+    obj1_latest.set_location("b1test3", 1, "achecksum:value")
     # Create objects in/not in same bucket using different key.
-    ObjectVersion.create(b1, "another").set_location("b1another1", 1, "achecksum")
-    ObjectVersion.create(b2, "test").set_location("b2test1", 1, "achecksum")
+    ObjectVersion.create(b1, "another").set_location("b1another1", 1, "achecksum:value")
+    ObjectVersion.create(b2, "test").set_location("b2test1", 1, "achecksum:value")
     db.session.commit()
 
     # Sanity check
@@ -361,8 +361,8 @@ def test_object_delete(app, db, dummy_location):
     # Create three versions, with latest being a delete marker.
     with db.session.begin_nested():
         b1 = Bucket.create()
-        ObjectVersion.create(b1, "test").set_location("b1test1", 1, "achecksum")
-        ObjectVersion.create(b1, "test").set_location("b1test2", 1, "achecksum")
+        ObjectVersion.create(b1, "test").set_location("b1test1", 1, "achecksum:value")
+        ObjectVersion.create(b1, "test").set_location("b1test2", 1, "achecksum:value")
         obj_deleted = ObjectVersion.delete(b1, "test")
 
     assert ObjectVersion.query.count() == 3
@@ -373,7 +373,7 @@ def test_object_delete(app, db, dummy_location):
     assert obj.deleted
     assert obj.file_id is None
 
-    ObjectVersion.create(b1, "test").set_location("b1test4", 1, "achecksum")
+    ObjectVersion.create(b1, "test").set_location("b1test4", 1, "achecksum:value")
 
     assert ObjectVersion.query.count() == 4
     assert ObjectVersion.get(b1.id, "test") is not None
@@ -472,10 +472,14 @@ def test_object_set_location(app, db, dummy_location):
         obj = ObjectVersion.create(b1, "LICENSE")
         assert obj.file_id is None
         assert FileInstance.query.count() == 0
-        obj.set_location("b1test1", 1, "achecksum")
+        obj.set_location("b1test1", 1, "achecksum:value")
         assert FileInstance.query.count() == 1
         pytest.raises(
-            FileInstanceAlreadySetError, obj.set_location, "b1test1", 1, "achecksum"
+            FileInstanceAlreadySetError,
+            obj.set_location,
+            "b1test1",
+            1,
+            "achecksum:value",
         )
 
 
@@ -483,15 +487,15 @@ def test_object_snapshot(app, db, dummy_location):
     """Test snapshot creation."""
     b1 = Bucket.create()
     b2 = Bucket.create()
-    ObjectVersion.create(b1, "versioned").set_location("b1v1", 1, "achecksum")
-    ObjectVersion.create(b1, "versioned").set_location("b1v2", 1, "achecksum")
-    ObjectVersion.create(b1, "deleted").set_location("b1d1", 1, "achecksum")
+    ObjectVersion.create(b1, "versioned").set_location("b1v1", 1, "achecksum:value")
+    ObjectVersion.create(b1, "versioned").set_location("b1v2", 1, "achecksum:value")
+    ObjectVersion.create(b1, "deleted").set_location("b1d1", 1, "achecksum:value")
     ObjectVersion.delete(b1, "deleted")
-    ObjectVersion.create(b1, "undeleted").set_location("b1u1", 1, "achecksum")
+    ObjectVersion.create(b1, "undeleted").set_location("b1u1", 1, "achecksum:value")
     ObjectVersion.delete(b1, "undeleted")
-    ObjectVersion.create(b1, "undeleted").set_location("b1u2", 1, "achecksum")
-    ObjectVersion.create(b1, "simple").set_location("b1s1", 1, "achecksum")
-    ObjectVersion.create(b2, "another").set_location("b2a1", 1, "achecksum")
+    ObjectVersion.create(b1, "undeleted").set_location("b1u2", 1, "achecksum:value")
+    ObjectVersion.create(b1, "simple").set_location("b1s1", 1, "achecksum:value")
+    ObjectVersion.create(b2, "another").set_location("b2a1", 1, "achecksum:value")
     db.session.commit()
 
     assert ObjectVersion.query.count() == 9
@@ -549,7 +553,7 @@ def test_bucket_sync_new_object(app, db, dummy_location):
     """Test that a new file in src in synced to dest."""
     b1 = Bucket.create()
     b2 = Bucket.create()
-    ObjectVersion.create(b1, "filename").set_location("b1v1", 1, "achecksum")
+    ObjectVersion.create(b1, "filename").set_location("b1v1", 1, "achecksum:value")
     db.session.commit()
 
     assert ObjectVersion.get_by_bucket(b1).count() == 1
@@ -564,7 +568,7 @@ def test_bucket_sync_same_object(app, db, dummy_location):
     """Test that an exiting file in src and dest is not changed."""
     b1 = Bucket.create()
     b2 = Bucket.create()
-    ObjectVersion.create(b1, "filename").set_location("b1v1", 1, "achecksum")
+    ObjectVersion.create(b1, "filename").set_location("b1v1", 1, "achecksum:value")
     b1.sync(b2)
     db.session.commit()
 
@@ -583,9 +587,9 @@ def test_bucket_sync_deleted_object(app, db, dummy_location):
     """Test that a deleted object in src is deleted in dest."""
     b1 = Bucket.create()
     b2 = Bucket.create()
-    ObjectVersion.create(b1, "filename").set_location("b1v1", 1, "achecksum")
-    ObjectVersion.create(b2, "filename").set_location("b2v1", 1, "achecksum")
-    ObjectVersion.create(b2, "extra-deleted").set_location("b3v1", 1, "asum")
+    ObjectVersion.create(b1, "filename").set_location("b1v1", 1, "achecksum:value")
+    ObjectVersion.create(b2, "filename").set_location("b2v1", 1, "achecksum:value")
+    ObjectVersion.create(b2, "extra-deleted").set_location("b3v1", 1, "asum:value")
     ObjectVersion.delete(b1, "filename")
     db.session.commit()
 
@@ -608,8 +612,10 @@ def test_bucket_sync_add_deleted_object(app, db, dummy_location):
     """Test that adding back a deleted object in src is added in dest."""
     b1 = Bucket.create()
     b2 = Bucket.create()
-    obj1 = ObjectVersion.create(b1, "filename").set_location("b1v1", 1, "achecksum")
-    ObjectVersion.create(b1, "filename2").set_location("b1v2", 1, "achecksum2")
+    obj1 = ObjectVersion.create(b1, "filename").set_location(
+        "b1v1", 1, "achecksum:value"
+    )
+    ObjectVersion.create(b1, "filename2").set_location("b1v2", 1, "achecksum2:value2")
 
     db.session.commit()
 
@@ -642,9 +648,9 @@ def test_bucket_sync_delete_extras(app, db, dummy_location):
     """Test that an extra object in dest is deleted when syncing."""
     b1 = Bucket.create()
     b2 = Bucket.create()
-    ObjectVersion.create(b1, "filename").set_location("b1v1", 1, "achecksum")
-    ObjectVersion.create(b2, "filename").set_location("b2v1", 1, "achecksum")
-    ObjectVersion.create(b2, "extra-deleted").set_location("b3v1", 1, "asum")
+    ObjectVersion.create(b1, "filename").set_location("b1v1", 1, "achecksum:value")
+    ObjectVersion.create(b2, "filename").set_location("b2v1", 1, "achecksum:value")
+    ObjectVersion.create(b2, "extra-deleted").set_location("b3v1", 1, "asum:value")
     db.session.commit()
 
     b1.sync(b2, delete_extras=True)
@@ -658,10 +664,10 @@ def test_bucket_sync(app, db, dummy_location):
     """Test that a bucket is correctly synced."""
     b1 = Bucket.create()
     b2 = Bucket.create()
-    ObjectVersion.create(b1, "filename1").set_location("b1v11", 1, "achecksum")
-    ObjectVersion.create(b1, "filename2").set_location("b1v12", 1, "achecksum")
-    ObjectVersion.create(b1, "filename3").set_location("b1v13", 1, "achecksum")
-    ObjectVersion.create(b2, "extra1").set_location("b2v11", 1, "achecksum")
+    ObjectVersion.create(b1, "filename1").set_location("b1v11", 1, "achecksum:value")
+    ObjectVersion.create(b1, "filename2").set_location("b1v12", 1, "achecksum:value")
+    ObjectVersion.create(b1, "filename3").set_location("b1v13", 1, "achecksum:value")
+    ObjectVersion.create(b2, "extra1").set_location("b2v11", 1, "achecksum:value")
     db.session.commit()
 
     b1.sync(b2)
@@ -670,8 +676,8 @@ def test_bucket_sync(app, db, dummy_location):
     assert ObjectVersion.get_by_bucket(b2).count() == 4
 
     ObjectVersion.delete(b1, "filename1")
-    ObjectVersion.create(b2, "extra2").set_location("b2v12", 1, "achecksum")
-    ObjectVersion.create(b2, "extra3").set_location("b2v13", 1, "achecksum")
+    ObjectVersion.create(b2, "extra2").set_location("b2v12", 1, "achecksum:value")
+    ObjectVersion.create(b2, "extra3").set_location("b2v13", 1, "achecksum:value")
     ObjectVersion.delete(b2, "extra3")
     db.session.commit()
 
@@ -694,7 +700,7 @@ def test_bucket_sync_deleted(app, db, dummy_location):
 
 def test_object_copy(app, db, dummy_location):
     """Copy object."""
-    f = FileInstance(uri="f1", size=1, checksum="mychecksum")
+    f = FileInstance(uri="f1", size=1, checksum="mychecksum:value")
     db.session.add(f)
     db.session.commit()
     b1 = Bucket.create()
@@ -737,8 +743,8 @@ def test_object_copy(app, db, dummy_location):
 
 def test_object_copy_from(app, db, dummy_location):
     """Copy many objects."""
-    f1 = FileInstance(uri="f1", size=1, checksum="mychecksum")
-    f2 = FileInstance(uri="f2", size=1, checksum="mychecksum2")
+    f1 = FileInstance(uri="f1", size=1, checksum="mychecksum:value")
+    f2 = FileInstance(uri="f2", size=1, checksum="mychecksum2:value2")
     db.session.add(f1)
     db.session.add(f2)
     db.session.commit()
@@ -784,7 +790,7 @@ def test_object_copy_from(app, db, dummy_location):
 def test_object_set_file(app, db, dummy_location):
     """Test object set file."""
     b = Bucket.create()
-    f = FileInstance(uri="f1", size=1, checksum="mychecksum")
+    f = FileInstance(uri="f1", size=1, checksum="mychecksum:value")
     obj = ObjectVersion.create(b, "test").set_file(f)
     db.session.commit()
     assert obj.file == f
@@ -812,8 +818,8 @@ def test_object_mimetype(app, db, dummy_location):
 
 def test_object_restore(app, db, dummy_location):
     """Restore object."""
-    f1 = FileInstance(uri="f1", size=1, checksum="mychecksum")
-    f2 = FileInstance(uri="f2", size=2, checksum="mychecksum2")
+    f1 = FileInstance(uri="f1", size=1, checksum="mychecksum:value")
+    f2 = FileInstance(uri="f2", size=2, checksum="mychecksum2:value2")
     db.session.add(f1)
     db.session.add(f2)
     b1 = Bucket.create()
@@ -1061,13 +1067,13 @@ def test_fileinstance_send_file(app, db, dummy_location):
 def test_fileinstance_validation(app, db, dummy_location):
     """Test validating the FileInstance."""
     f = FileInstance.create()
-    f.set_uri("x" * 255, 1000, 1000)  # Should not raise
-    pytest.raises(ValueError, f.set_uri, "x" * 256, 1000, 1000)
+    f.set_uri("x" * 255, 1000, "checksum:value")  # Should not raise
+    pytest.raises(ValueError, f.set_uri, "x" * 256, 1000, "checksum:value")
 
 
 def test_object_version_tags(app, db, dummy_location):
     """Test object version tags."""
-    f = FileInstance(uri="f1", size=1, checksum="mychecksum")
+    f = FileInstance(uri="f1", size=1, checksum="mychecksum:value")
     db.session.add(f)
     db.session.commit()
     b = Bucket.create()

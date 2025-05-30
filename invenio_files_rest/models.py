@@ -543,7 +543,7 @@ class Bucket(db.Model, Timestamp):
                 default_location=location.id,
                 default_storage_class=storage_class
                 or current_app.config["FILES_REST_DEFAULT_STORAGE_CLASS"],
-                **kwargs
+                **kwargs,
             )
             db.session.add(obj)
         return obj
@@ -731,6 +731,18 @@ class FileInstance(db.Model, Timestamp):
             raise ValueError("FileInstance URI too long ({0}).".format(len(uri)))
         return uri
 
+    @validates("checksum")
+    def validate_checksum(self, key, checksum):
+        """Validate uri."""
+        if checksum and (
+            checksum.count(":") != 1
+            or not all(part.strip() for part in checksum.split(":", 1))
+        ):
+            raise ValueError(
+                f"Invalid checksum format: {checksum!r}. Expected format 'algorithm:value'."
+            )
+        return checksum
+
     @classmethod
     def get(cls, file_id):
         """Get a file instance."""
@@ -790,7 +802,7 @@ class FileInstance(db.Model, Timestamp):
         self.checksum = self.storage(**kwargs).checksum(
             progress_callback=progress_callback,
             chunk_size=chunk_size,
-            **(checksum_kwargs or {})
+            **(checksum_kwargs or {}),
         )
 
     def clear_last_check(self):
@@ -806,7 +818,7 @@ class FileInstance(db.Model, Timestamp):
         chunk_size=None,
         throws=True,
         checksum_kwargs=None,
-        **kwargs
+        **kwargs,
     ):
         """Verify checksum of file instance.
 
@@ -822,7 +834,7 @@ class FileInstance(db.Model, Timestamp):
             real_checksum = self.storage(**kwargs).checksum(
                 progress_callback=progress_callback,
                 chunk_size=chunk_size,
-                **(checksum_kwargs or {})
+                **(checksum_kwargs or {}),
             )
         except Exception as exc:
             current_app.logger.exception(str(exc))
@@ -851,7 +863,7 @@ class FileInstance(db.Model, Timestamp):
         size=None,
         chunk_size=None,
         progress_callback=None,
-        **kwargs
+        **kwargs,
     ):
         """Save contents of stream to this file.
 
@@ -876,7 +888,7 @@ class FileInstance(db.Model, Timestamp):
         size=None,
         size_limit=None,
         progress_callback=None,
-        **kwargs
+        **kwargs,
     ):
         """Save contents of stream to this file.
 
@@ -921,7 +933,7 @@ class FileInstance(db.Model, Timestamp):
         trusted=False,
         chunk_size=None,
         as_attachment=False,
-        **kwargs
+        **kwargs,
     ):
         """Send file to client."""
         return self.storage(**kwargs).send_file(
@@ -1129,7 +1141,7 @@ class ObjectVersion(db.Model, Timestamp):
             restricted=restricted,
             mimetype=self.mimetype,
             trusted=trusted,
-            **kwargs
+            **kwargs,
         )
 
     @ensure_is_previous_version()
@@ -1250,7 +1262,7 @@ class ObjectVersion(db.Model, Timestamp):
         stream=None,
         mimetype=None,
         version_id=None,
-        **kwargs
+        **kwargs,
     ):
         """Create a new object in a bucket.
 

@@ -36,7 +36,7 @@ def test_admin_views(app, db, dummy_location):
     finalize_app(app)
 
     b1 = Bucket.create(location=dummy_location)
-    obj = ObjectVersion.create(b1, "test").set_location("placeuri", 1, "chk")
+    obj = ObjectVersion.create(b1, "test").set_location("placeuri", 1, "chk:value")
     db.session.commit()
 
     with app.test_client() as client:
