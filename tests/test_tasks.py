@@ -106,6 +106,36 @@ def test_schedule_checksum_verification(app, db, dummy_location):
     assert checked_files() == 21
 
 
+def test_checksum_verification_non_readable(app, db, dummy_location):
+    """Test file checksum verification scheduling celery task."""
+    b1 = Bucket.create()
+    objects = []
+
+    # Add non-readable files
+    for i in range(100):
+        ov = ObjectVersion.create(b1, f"non-readable-{i}", stream=BytesIO(b"tests"))
+        # set the file to non-readable
+        ov.file.readable = False
+        db.session.add(ov.file)
+        objects.append(ov)
+    db.session.commit()
+
+    for obj in objects:
+        assert obj.file.last_check is True
+        assert obj.file.last_check_at is None
+
+    schedule_task = schedule_checksum_verification.s(
+        frequency={"minutes": 20}, batch_interval={"minutes": 1}
+    )
+
+    def checked_files():
+        return len([o for o in ObjectVersion.get_by_bucket(b1) if o.file.last_check_at])
+
+    # Try to compute checksums for non-readable files - should not check any files
+    schedule_task.apply(kwargs={"max_count": 0})
+    assert checked_files() == 0
+
+
 def test_migrate_file(app, db, dummy_location, extra_location, bucket, objects):
     """Test file migration."""
     obj = objects[0]
