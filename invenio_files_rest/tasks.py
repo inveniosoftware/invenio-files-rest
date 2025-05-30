@@ -62,7 +62,7 @@ def verify_checksum(
 
 def default_checksum_verification_files_query():
     """Return a query of valid FileInstances for checksum verification."""
-    return FileInstance.query
+    return FileInstance.query.filter_by(readable=True)
 
 
 @shared_task(ignore_result=True)
@@ -119,11 +119,10 @@ def schedule_checksum_verification(
 
     total_batches = int(frequency.total_seconds() / batch_interval.total_seconds())
 
-    files = obj_or_import_string(
+    all_files = files = obj_or_import_string(
         files_query, default=default_checksum_verification_files_query
     )()
     files = files.order_by(sa.func.coalesce(FileInstance.last_check_at, date.min))
-
     if max_count is not None:
         all_files_count = files.count()
         min_count = int(math.ceil(all_files_count / total_batches))
@@ -139,7 +138,9 @@ def schedule_checksum_verification(
         files = files.limit(max_count)
 
     if max_size is not None:
-        all_files_size = db.session.query(sa.func.sum(FileInstance.size)).scalar()
+        all_files_size = all_files.with_entities(
+            sa.func.sum(FileInstance.size)
+        ).scalar()
         min_size = int(math.ceil(all_files_size / total_batches))
         max_size = min_size if max_size == 0 else max_size
         if max_size < min_size:
