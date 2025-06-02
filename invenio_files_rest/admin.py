@@ -16,6 +16,7 @@ from flask_admin.contrib.sqla import ModelView
 from flask_wtf import FlaskForm
 from invenio_admin.filters import FilterConverter
 from invenio_admin.forms import LazyChoices
+from invenio_db import db
 from markupsafe import Markup
 from wtforms.validators import ValidationError
 
@@ -337,7 +338,11 @@ class FileInstanceModelView(ModelView):
         try:
             count = 0
             for file_id in ids:
-                f = FileInstance.query.filter_by(id=uuid.UUID(file_id)).one_or_none()
+                f = (
+                    db.session.query(FileInstance)
+                    .filter_by(id=uuid.UUID(file_id))
+                    .one_or_none()
+                )
                 if f is None:
                     raise ValueError(_("Cannot find file instance."))
                 verify_checksum.delay(file_id)
