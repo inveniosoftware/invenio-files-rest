@@ -18,6 +18,7 @@ from time import time
 from urllib.parse import quote, urlsplit
 
 from flask import current_app, make_response, request
+from invenio_db import db
 from werkzeug.datastructures import Headers
 from werkzeug.wsgi import FileWrapper
 
@@ -287,9 +288,11 @@ def populate_from_path(bucket, source, checksum=True, key_prefix="", chunk_size=
             file_checksum = compute_md5_checksum(
                 open(path, "rb"), chunk_size=chunk_size
             )
-            file_instance = FileInstance.query.filter_by(
-                checksum=file_checksum, size=os.path.getsize(path)
-            ).first()
+            file_instance = (
+                db.session.query(FileInstance)
+                .filter_by(checksum=file_checksum, size=os.path.getsize(path))
+                .first()
+            )
             if file_instance:
                 return ObjectVersion.create(bucket, key, _file_id=file_instance.id)
         return ObjectVersion.create(bucket, key, stream=open(path, "rb"))

@@ -62,7 +62,7 @@ def verify_checksum(
 
 def default_checksum_verification_files_query():
     """Return a query of valid FileInstances for checksum verification."""
-    return FileInstance.query.filter_by(readable=True)
+    return db.session.query(FileInstance).filter_by(readable=True)
 
 
 @shared_task(ignore_result=True)
@@ -254,7 +254,7 @@ def merge_multipartobject(upload_id, version_id=None):
     :returns: The :class:`invenio_files_rest.models.ObjectVersion` version
         ID.
     """
-    mp = MultipartObject.query.filter_by(upload_id=upload_id).one_or_none()
+    mp = db.session.query(MultipartObject).filter_by(upload_id=upload_id).one_or_none()
     if not mp:
         raise RuntimeError("Upload ID does not exists.")
     if not mp.completed:
@@ -327,7 +327,7 @@ def clear_orphaned_files(force_delete_check=lambda file_instance: False, limit=1
     """
     # with the tilde (~) operator, we get all file instances that *don't*
     # have any associated object versions
-    query = FileInstance.query.filter(~FileInstance.objects.any())
+    query = db.session.query(FileInstance).filter(~FileInstance.objects.any())
     if limit > 0:
         query = query.limit(limit)
 
