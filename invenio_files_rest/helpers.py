@@ -20,7 +20,6 @@ from urllib.parse import quote, urlsplit
 from flask import current_app, make_response, request
 from invenio_db import db
 from werkzeug.datastructures import Headers
-from werkzeug.wsgi import FileWrapper
 
 MIMETYPE_TEXTFILES = {"readme"}
 
@@ -120,7 +119,10 @@ def send_stream(
 
     # Construct headers
     headers = Headers()
+
+    # Set Content-Length for the full response
     headers["Content-Length"] = size
+
     if content_md5:
         headers["Content-MD5"] = content_md5
 
@@ -162,7 +164,7 @@ def send_stream(
 
     # Construct response object.
     rv = current_app.response_class(
-        FileWrapper(stream, buffer_size=chunk_size),
+        stream,
         mimetype=mimetype,
         headers=headers,
         direct_passthrough=True,
@@ -185,7 +187,13 @@ def send_stream(
             rv.expires = int(time() + cache_timeout)
 
     if conditional:
-        rv = rv.make_conditional(request)
+        rv = rv.make_conditional(
+            request,
+            accept_ranges=current_app.config.get(
+                "FILES_REST_ALLOW_RANGE_REQUESTS", False
+            ),
+            complete_length=size,
+        )
 
     return rv
 
