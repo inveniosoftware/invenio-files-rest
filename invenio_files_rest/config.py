@@ -133,5 +133,8 @@ FILES_REST_XSENDFILE_ENABLED = False
 """Use the X-Accel-Redirect header to stream the file through a reverse proxy(
     e.g NGINX)."""
 
+FILES_REST_ALLOW_RANGE_REQUESTS = False
+"""Enable support for HTTP Range Requests."""
+
 FILES_REST_XSENDFILE_RESPONSE_FUNC = create_file_streaming_redirect_response
 """Function for the creation of a file streaming redirect response."""
