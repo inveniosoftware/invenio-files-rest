@@ -187,13 +187,16 @@ def send_stream(
             rv.expires = int(time() + cache_timeout)
 
     if conditional:
+        accept_ranges = current_app.config.get("FILES_REST_ALLOW_RANGE_REQUESTS", False)
         rv = rv.make_conditional(
             request,
-            accept_ranges=current_app.config.get(
-                "FILES_REST_ALLOW_RANGE_REQUESTS", False
-            ),
+            accept_ranges=accept_ranges,
             complete_length=size,
         )
+        if accept_ranges and "Accept-Ranges" not in rv.headers:
+            # werkzeug does not set Accept-Ranges header unless byte range is requested
+            # we want to advertise that we support byte ranges, so we set it here explicitly
+            rv.headers["Accept-Ranges"] = "bytes"
 
     return rv
 
