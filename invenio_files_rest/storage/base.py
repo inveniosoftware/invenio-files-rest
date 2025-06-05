@@ -14,6 +14,7 @@ from calendar import timegm
 from functools import partial
 
 from invenio_i18n import gettext as _
+from werkzeug.exceptions import HTTPException
 
 from ..errors import FileSizeError, StorageError, UnexpectedFileSizeError
 from ..helpers import chunk_size_or_default, compute_checksum, send_stream
@@ -140,6 +141,12 @@ class FileStorage(object):
                 trusted=trusted,
                 as_attachment=as_attachment,
             )
+        except HTTPException:
+            # A http exception here can be raised by the werkzeug's handling incorrect
+            # range header. We close the file and re-raise the exception to the caller.
+            # See https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Range_requests#partial_request_responses
+            fp.close()
+            raise
         except Exception as e:
             fp.close()
             raise StorageError(_("Could not send file: %(error)s") % {"error": e})
