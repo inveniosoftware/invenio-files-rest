@@ -11,6 +11,20 @@
 Changes
 =======
 
+Version v3.1.0 (released 2025-06-05)
+
+- Adds range request support for accessing files (#321)
+    * Adds range request support for accessing files, delegated to werkzeug
+- fix(deps): Use sqlalchemy 2.0 compatible query syntax
+- fix: skip non-readable files on checksum verification
+    * FileInstance can be marked as non-readable.
+      Currently, even those instances are verified,
+      which might raise an exception. This commit fixes
+      that by adding readable=True to the default filter
+      and changing the way the total size is computed
+      to use this filter
+- fix: setuptools require underscores instead of dashes
+
 Version 3.0.0 (release 2024-12-09)
 
 - filename: replace encoding/decoding

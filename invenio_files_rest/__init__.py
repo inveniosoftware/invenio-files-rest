@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2015-2024 CERN.
+# Copyright (C) 2015-2025 CERN.
 # Copyright (C) 2023-2024 Graz University of Technology.
 # Copyright (C) 2024 KTH Royal Institute of Technology.
 #
@@ -973,7 +973,7 @@ a reference to the old :code:`FileInstance` to reference the new
 from .ext import InvenioFilesREST
 from .proxies import current_files_rest
 
-__version__ = "3.0.0"
+__version__ = "3.1.0"
 
 __all__ = (
     "__version__",
