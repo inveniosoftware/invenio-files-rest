@@ -721,6 +721,11 @@ def test_get_range_request_enabled(
     resp = client.put(object_url, input_stream=BytesIO(content))
     assert resp.status_code == 200
 
+    # Check Accept-Ranges advertisement
+    resp = client.head(object_url)
+    assert resp.status_code == 200
+    assert resp.headers["Accept-Ranges"] == "bytes"
+
     # Test valid range request - first 10 bytes
     headers_with_range = dict(headers)
     headers_with_range["Range"] = "bytes=0-9"
@@ -771,13 +776,20 @@ def test_get_range_request_enabled(
     headers_with_range["Range"] = "bytes=100-109"
     resp = client.get(object_url, headers=headers_with_range)
 
-    assert resp.status_code == 500
+    assert resp.status_code == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE
 
     # Test invalid range request - start byte greater than end byte
     headers_with_range["Range"] = "bytes=50-40"
     resp = client.get(object_url, headers=headers_with_range)
 
-    assert resp.status_code == 500
+    assert resp.status_code == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE
+
+    # Test malformed range request
+    headers_with_range["Range"] = "bytes=invalid"
+    resp = client.get(object_url, headers=headers_with_range)
+    # this should ideally return 400 Bad Request, but currently
+    # Werkzeug's handling of the Range header returns 416 Requested Range Not Satisfiable
+    assert resp.status_code == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE
 
 
 def test_get_range_request_disabled(
