@@ -11,6 +11,19 @@
 Changes
 =======
 
+Version v3.2.0 (released 2025-06-06)
+
+- fix: always send Accept-Ranges header if ranges are enabled
+    * The current Werkzeug version only sends the `Accept-Ranges`
+      header when a `Range` header is provided by the caller. As
+      a result, the caller cannot determine range support
+      beforehand. This change ensures the header is always sent
+      when ranges are enabled.
+- fix: pass werkzeug exceptions, such as RequestedRangeNotSatisfiable
+    * Werkzeug performs Range header validation and raises an
+      exception (HTTP 416) when it is invalid. We pass the exception
+      to caller instead of raising generic HTTP 500 (StorageError)
+
 Version v3.1.0 (released 2025-06-05)
 
 - Adds range request support for accessing files (#321)
