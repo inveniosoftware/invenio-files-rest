@@ -11,12 +11,12 @@
 import errno
 from io import BytesIO
 from os.path import exists, join
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-from fs.errors import FSError, ResourceNotFound
 
 from invenio_files_rest.models import Bucket, FileInstance, ObjectVersion
+from invenio_files_rest.storage.pyfs import FS
 from invenio_files_rest.tasks import (
     clear_orphaned_files,
     migrate_file,
@@ -43,7 +43,7 @@ def test_verify_checksum(app, db, dummy_location):
     f.uri = "invalid"
     db.session.add(f)
     db.session.commit()
-    pytest.raises(ResourceNotFound, verify_checksum, str(file_id), throws=True)
+    pytest.raises(FileNotFoundError, verify_checksum, str(file_id), throws=True)
 
     f = FileInstance.query.get(file_id)
     assert f.last_check is True
@@ -55,7 +55,7 @@ def test_verify_checksum(app, db, dummy_location):
     f.last_check = True
     db.session.add(f)
     db.session.commit()
-    with pytest.raises(ResourceNotFound):
+    with pytest.raises(FileNotFoundError):
         verify_checksum(str(file_id), pessimistic=True)
     f = FileInstance.query.get(file_id)
     assert f.last_check is None
@@ -175,12 +175,12 @@ def test_migrate_file_copyfail(
     obj = objects[0]
 
     assert FileInstance.query.count() == 4
-    with patch("fs.osfs.io") as io:
+    with patch.object(FS, "open") as io:
         e = OSError()
         e.errno = errno.EPERM
-        io.open = MagicMock(side_effect=e)
+        io.side_effect = e
         pytest.raises(
-            FSError, migrate_file, obj.file_id, location_name=extra_location.name
+            OSError, migrate_file, obj.file_id, location_name=extra_location.name
         )
     assert FileInstance.query.count() == 4
 

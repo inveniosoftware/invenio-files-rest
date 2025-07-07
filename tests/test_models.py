@@ -14,7 +14,6 @@ from io import BytesIO
 from os.path import getsize
 
 import pytest
-from fs.errors import ResourceNotFound
 from sqlalchemy.exc import IntegrityError
 
 from invenio_files_rest.errors import (
@@ -456,7 +455,7 @@ def test_object_set_contents(app, db, dummy_location):
     with db.session.begin_nested():
         obj2.file.checksum = old_checksum
         obj2.file.uri = "invalid"
-    pytest.raises(ResourceNotFound, obj2.file.verify_checksum)
+    pytest.raises(FileNotFoundError, obj2.file.verify_checksum)
     assert obj2.file.last_check == previous_last_check
     assert obj2.file.last_check_at == previous_last_check_date
 
