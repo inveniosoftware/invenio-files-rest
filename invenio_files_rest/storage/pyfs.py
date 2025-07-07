@@ -8,12 +8,141 @@
 
 """Storage related module."""
 
+import os
+import warnings
+from pathlib import Path
+
 from flask import current_app
-from fs.opener import open_fs as opendir
-from fs.path import basename, dirname, split
 
 from ..helpers import make_path
 from .base import FileStorage
+
+
+class FS:
+    """An abstraction over the local filesystem.
+
+    This is present for a "backward" compatibility with the PyFilesystem2 interface,
+    but it is not a full implementation of PyFilesystem2's `osfs.OSFS`.
+
+    When we remove this abstraction from the classes that inherit from PyFSFileStorage
+    (such as in invenio-s3), we can remove this class and use `pathlib.Path` directly
+    for file operations in PyFSFileStorage.
+    """
+
+    def __init__(self, base_directory, writeable=True, create=True):
+        """Initialize the filesystem with a base directory.
+
+        :param base_directory: The base directory for the filesystem.
+        :param writeable: If True, the filesystem allows writing.
+        :param create: If True, the base directory will be created if it does not exist.
+        :raises FileNotFoundError: If the base directory does not exist and create is False
+        """
+        self._root_directory = Path(base_directory).resolve()
+        self._writeable = writeable
+        if create:
+            self._root_directory.mkdir(parents=True, exist_ok=True)
+        elif not self._root_directory.is_dir():
+            raise FileNotFoundError(f"Directory {self._root_directory} does not exist.")
+
+    def open(self, path, mode="rb"):
+        """Open a file in the filesystem.
+
+        :param path: The path to the file relative to the base directory.
+        :param mode: The mode in which to open the file (e.g., 'rb', 'wb').
+        :raises OSError: If trying to write to a read-only filesystem.
+        :raises FileNotFoundError: If the file does not exist and mode is 'r'.
+        :return: A file object opened in the specified mode.
+        """
+        full_path = self._get_full_path(path)
+        if mode[0] == "w" and not self._writeable:
+            raise OSError(f"Cannot write to {full_path}")
+        return full_path.open(mode=mode)
+
+    def exists(self, path):
+        """Check if a file exists in the filesystem.
+
+        :param path: The path to the file relative to the base directory.
+        :return: True if the file exists, False otherwise.
+        """
+        full_path = self._get_full_path(path)
+        return full_path.exists()
+
+    def remove(self, path):
+        """Remove a file from the filesystem.
+
+        :param path: The path to the file relative to the base directory.
+        :raises OSError: If the filesystem is not writeable.
+        :raises FileNotFoundError: If the file does not exist.
+        """
+        full_path = self._get_full_path(path)
+        if not self._writeable:
+            raise OSError(f"Cannot remove {full_path} - not writeable")
+        full_path.unlink()
+
+    def removedir(self, path):
+        """Remove a directory from the filesystem, provided it is empty.
+
+        :param path: The path to the directory relative to the base directory.
+        :raises OSError: If the filesystem is not writeable or if the directory is not empty.
+        :raises FileNotFoundError: If the directory does not exist.
+        """
+        full_path = self._get_full_path(path)
+        if not self._writeable:
+            raise OSError(f"Cannot remove directory {full_path} - not writeable")
+        full_path.rmdir()
+
+    def walk(self, path):
+        """Walk through the directory and yield file paths.
+
+        :param path: The path to the directory relative to the base directory.
+        :yield: A generator yielding file paths in the directory.
+
+        Note: incompatible from the original PyFilesystem2 walk method as it returns
+        a generator of tuples (dirpath, dirnames, filenames) where dirnames and filenames
+        are lists of names, not FileInfo instances. It seems that this is used only
+        in tests, so the implementation here should be good enough for that purpose.
+        """
+        full_path = self._get_full_path(path)
+        yield from os.walk(full_path)
+
+    def _get_full_path(self, path):
+        """Concatenate root directory and the path.
+
+        Checks that the resulting path is relative to the root directory and if not,
+        raises a ValueError.
+        """
+        # make sure that path does not escape the base directory
+        full_path = self._root_directory / path
+        if not full_path.is_relative_to(self._root_directory):
+            raise ValueError("Path must be relative to the root directory.")
+        return full_path
+
+    @classmethod
+    def _get_path_from_uri(cls, uri_or_path):
+        """Return the path from a URI or path string."""
+        if uri_or_path.startswith("file://"):
+            # Strip the 'file://' prefix
+            uri_or_path = uri_or_path[7:]
+        if "://" in uri_or_path:
+            raise ValueError("Invalid URI format, expected a file URI or path.")
+
+        return Path(uri_or_path)
+
+    @classmethod
+    def dirname(cls, uri_or_path):
+        """Return the directory name of the given path."""
+        return str(cls._get_path_from_uri(uri_or_path).parent)
+
+    @classmethod
+    def basename(cls, uri_or_path):
+        """Return the base name of the given path."""
+        return str(cls._get_path_from_uri(uri_or_path).name)
+
+    @classmethod
+    def split_path(cls, uri_or_path):
+        """Split the path into directory and base name."""
+        path = cls._get_path_from_uri(uri_or_path)
+        return str(path.parent), str(path.name)
 
 
 class PyFSFileStorage(FileStorage):
@@ -37,13 +166,20 @@ class PyFSFileStorage(FileStorage):
         self.clean_dir = clean_dir
         super(PyFSFileStorage, self).__init__(size=size, modified=modified)
 
+        if self._get_fs.__func__ is not PyFSFileStorage._get_fs:
+            warnings.warn(
+                "The _get_fs method is deprecated and will be removed. "
+                "Please implement the abstract FileStorage instead of "
+                "extending the PyFSFileStorage class.",
+                DeprecationWarning,
+            )
+
     def _get_fs(self, create_dir=True):
         """Return tuple with filesystem and filename."""
-        filedir = dirname(self.fileurl)
-        filename = basename(self.fileurl)
+        filedir, filename = FS.split_path(self.fileurl)
 
         return (
-            opendir(filedir, writeable=True, create=create_dir),
+            FS(filedir, writeable=True, create=create_dir),
             filename,
         )
 
@@ -66,15 +202,15 @@ class PyFSFileStorage(FileStorage):
         exists in the directory.
         """
         fs, path = self._get_fs(create_dir=False)
-        root_dir = dirname(self.fileurl)
+        root_dir = FS.dirname(self.fileurl)
         if fs.exists(path):
             fs.remove(path)
 
         # PyFilesystem2 really doesn't want to remove the root directory,
         # so we need to be a bit creative
-        root_path, dir_name = split(root_dir)
+        root_path, dir_name = FS.split_path(root_dir)
         if self.clean_dir and dir_name:
-            parent_fs = opendir(root_path, writeable=True, create=False)
+            parent_fs = FS(root_path, writeable=True, create=False)
             if parent_fs.exists(dir_name):
                 parent_fs.removedir(dir_name)
 
