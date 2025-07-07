@@ -16,10 +16,10 @@ from unittest.mock import patch
 
 import pytest
 from flask import url_for
-from fs.opener import open_fs as opendir
 from testutils import BadBytesIO, login_user
 
 from invenio_files_rest.models import FileInstance, ObjectVersion
+from invenio_files_rest.storage.pyfs import FS
 from invenio_files_rest.tasks import remove_file_data
 
 
@@ -449,7 +449,7 @@ def test_put_error(client, bucket, admin_user):
     assert FileInstance.query.count() == 0
     assert ObjectVersion.query.count() == 0
     # Ensure that the file was removed.
-    fs = opendir(bucket.location.uri)
+    fs = FS(bucket.location.uri)
     assert len(list(fs.walk("."))) == 3
 
 
