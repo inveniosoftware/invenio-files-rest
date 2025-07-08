@@ -10,6 +10,7 @@
 
 import pytest
 from invenio_admin import InvenioAdmin
+from invenio_admin.ext import finalize_app as admin_finalize_app
 from wtforms.validators import ValidationError
 
 from invenio_files_rest.admin import require_slug
@@ -31,6 +32,9 @@ def test_admin_views(app, db, dummy_location):
     """Test admin views."""
     app.config["SECRET_KEY"] = "CHANGEME"
     InvenioAdmin(app, permission_factory=None, view_class_factory=lambda x: x)
+
+    # we need to finalize the app as the admin views are registered in there
+    admin_finalize_app(app)
 
     b1 = Bucket.create(location=dummy_location)
     obj = ObjectVersion.create(b1, "test").set_location("placeuri", 1, "chk")
