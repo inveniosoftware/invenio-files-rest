@@ -1,116 +1,139 @@
 # Translations template for invenio-files-rest.
-# Copyright (C) 2024 CERN
+# Copyright (C) 2025 CERN
 # This file is distributed under the same license as the invenio-files-rest
 # project.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2024.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: invenio-files-rest 2.2.0\n"
+"Project-Id-Version: invenio-files-rest 3.2.0\n"
 "Report-Msgid-Bugs-To: info@inveniosoftware.org\n"
-"POT-Creation-Date: 2024-08-06 08:48+0000\n"
+"POT-Creation-Date: 2025-07-08 19:31+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.15.0\n"
+"Generated-By: Babel 2.17.0\n"
 
-#: invenio_files_rest/admin.py:41
+#: invenio_files_rest/admin.py:42
 msgid "Invalid location name."
 msgstr ""
 
-#: invenio_files_rest/admin.py:68 invenio_files_rest/admin.py:279
-#: invenio_files_rest/admin.py:368
+#: invenio_files_rest/admin.py:69 invenio_files_rest/admin.py:280
+#: invenio_files_rest/admin.py:373
 msgid "ID"
 msgstr ""
 
-#: invenio_files_rest/admin.py:69 invenio_files_rest/admin.py:196
-#: invenio_files_rest/admin.py:280
+#: invenio_files_rest/admin.py:70 invenio_files_rest/admin.py:197
+#: invenio_files_rest/admin.py:281
 msgid "URI"
 msgstr ""
 
-#: invenio_files_rest/admin.py:133
+#: invenio_files_rest/admin.py:134
 msgid "UUID"
 msgstr ""
 
-#: invenio_files_rest/admin.py:134
+#: invenio_files_rest/admin.py:135
 msgid "Location"
 msgstr ""
 
-#: invenio_files_rest/admin.py:135
+#: invenio_files_rest/admin.py:136
 msgid "Storage Class"
 msgstr ""
 
-#: invenio_files_rest/admin.py:194
+#: invenio_files_rest/admin.py:195
 msgid "Version"
 msgstr ""
 
-#: invenio_files_rest/admin.py:195
+#: invenio_files_rest/admin.py:196
 msgid "File UUID"
 msgstr ""
 
-#: invenio_files_rest/admin.py:197
+#: invenio_files_rest/admin.py:198
 msgid "Size"
 msgstr ""
 
-#: invenio_files_rest/admin.py:198
+#: invenio_files_rest/admin.py:199
 msgid "Deleted"
 msgstr ""
 
-#: invenio_files_rest/admin.py:199
+#: invenio_files_rest/admin.py:200
 msgid "Checksum"
 msgstr ""
 
-#: invenio_files_rest/admin.py:200
+#: invenio_files_rest/admin.py:201
 msgid "Readable"
 msgstr ""
 
-#: invenio_files_rest/admin.py:201
+#: invenio_files_rest/admin.py:202
 msgid "Storage class"
 msgstr ""
 
-#: invenio_files_rest/admin.py:202
+#: invenio_files_rest/admin.py:203
 msgid "Objects"
 msgstr ""
 
-#: invenio_files_rest/admin.py:203 invenio_files_rest/admin.py:370
+#: invenio_files_rest/admin.py:204 invenio_files_rest/admin.py:375
 msgid "File"
 msgstr ""
 
-#: invenio_files_rest/admin.py:281
+#: invenio_files_rest/admin.py:282
 msgid "Fixity"
 msgstr ""
 
-#: invenio_files_rest/admin.py:282
+#: invenio_files_rest/admin.py:283
 msgid "Checked"
 msgstr ""
 
-#: invenio_files_rest/admin.py:334
+#: invenio_files_rest/admin.py:335
 msgid "Run fixity check"
 msgstr ""
 
-#: invenio_files_rest/admin.py:342
+#: invenio_files_rest/admin.py:347
 msgid "Cannot find file instance."
 msgstr ""
 
-#: invenio_files_rest/admin.py:346
+#: invenio_files_rest/admin.py:351
 msgid "Fixity check(s) sent to queue."
 msgstr ""
 
-#: invenio_files_rest/admin.py:351
+#: invenio_files_rest/admin.py:356
 msgid "Failed to run fixity checks."
 msgstr ""
 
-#: invenio_files_rest/admin.py:369
+#: invenio_files_rest/admin.py:374
 msgid "Complete"
 msgstr ""
 
-#: invenio_files_rest/admin.py:397 invenio_files_rest/admin.py:399
-#: invenio_files_rest/admin.py:401 invenio_files_rest/admin.py:404
-#: invenio_files_rest/admin.py:407
+#: invenio_files_rest/admin.py:402 invenio_files_rest/admin.py:404
+#: invenio_files_rest/admin.py:406 invenio_files_rest/admin.py:409
+#: invenio_files_rest/admin.py:412
 msgid "Files"
+msgstr ""
+
+#: invenio_files_rest/storage/base.py:36
+msgid "File size limit exceeded."
+msgstr ""
+
+#: invenio_files_rest/storage/base.py:44
+msgid "File is bigger than expected."
+msgstr ""
+
+#: invenio_files_rest/storage/base.py:56
+msgid "File is smaller than expected."
+msgstr ""
+
+#: invenio_files_rest/storage/base.py:121
+#: invenio_files_rest/storage/base.py:152
+#, python-format
+msgid "Could not send file: %(error)s"
+msgstr ""
+
+#: invenio_files_rest/storage/base.py:220
+#, python-format
+msgid "Could not compute checksum of file: %(error)s"
 msgstr ""
 
