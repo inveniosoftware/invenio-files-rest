@@ -2,7 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2025 CERN.
-# Copyright (C) 2024 Graz University of Technology.
+# Copyright (C) 2024-2025 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -38,7 +38,7 @@ import re
 import sys
 import uuid
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
 from os.path import basename
 
@@ -225,38 +225,7 @@ ensure_is_previous_version = ensure_state(
 """Ensure file is the previous version."""
 
 
-#
-# Model definitions
-#
-class Timestamp(object):
-    """Timestamp model mix-in with fractional seconds support.
-
-    SQLAlchemy-Utils timestamp model, does not have support for fractional
-    seconds.
-    """
-
-    created = db.Column(
-        db.DateTime().with_variant(mysql.DATETIME(fsp=6), "mysql"),
-        default=datetime.utcnow,
-        nullable=False,
-    )
-    """Creation timestamp."""
-
-    updated = db.Column(
-        db.DateTime().with_variant(mysql.DATETIME(fsp=6), "mysql"),
-        default=datetime.utcnow,
-        nullable=False,
-    )
-    """Modification timestamp."""
-
-
-@db.event.listens_for(Timestamp, "before_update", propagate=True)
-def timestamp_before_update(mapper, connection, target):
-    """Listen for updating updated field."""
-    target.updated = datetime.utcnow()
-
-
-class Location(db.Model, Timestamp):
+class Location(db.Model, db.Timestamp):
     """Model defining base locations."""
 
     __tablename__ = "files_location"
@@ -318,7 +287,7 @@ class Location(db.Model, Timestamp):
         return self.name
 
 
-class Bucket(db.Model, Timestamp):
+class Bucket(db.Model, db.Timestamp):
     """Model for storing buckets.
 
     A bucket is a container of objects. Buckets have a default location and
@@ -671,7 +640,7 @@ class BucketTag(db.Model):
             ).delete()
 
 
-class FileInstance(db.Model, Timestamp):
+class FileInstance(db.Model, db.Timestamp):
     """Model for storing files.
 
     A file instance represents a file on disk. A file instance may be linked
@@ -809,7 +778,7 @@ class FileInstance(db.Model, Timestamp):
         """Clear the checksum of the file."""
         with db.session.begin_nested():
             self.last_check = None
-            self.last_check_at = datetime.utcnow()
+            self.last_check_at = datetime.now(tz=timezone.utc).replace(tzinfo=None)
         return self
 
     def verify_checksum(
@@ -845,7 +814,7 @@ class FileInstance(db.Model, Timestamp):
             self.last_check = (
                 None if real_checksum is None else (self.checksum == real_checksum)
             )
-            self.last_check_at = datetime.utcnow()
+            self.last_check_at = datetime.now(tz=timezone.utc).replace(tzinfo=None)
         return self.last_check
 
     @ensure_writable()
@@ -963,7 +932,7 @@ class FileInstance(db.Model, Timestamp):
         return self
 
 
-class ObjectVersion(db.Model, Timestamp):
+class ObjectVersion(db.Model, db.Timestamp):
     """Model for storing versions of objects.
 
     A bucket stores one or more objects identified by a key. Each object is
@@ -1554,7 +1523,7 @@ class ObjectVersionTag(db.Model):
             q.delete()
 
 
-class MultipartObject(db.Model, Timestamp):
+class MultipartObject(db.Model, db.Timestamp):
     """Model for storing files in chunks.
 
     A multipart object belongs to a specific bucket and key and is identified
@@ -1767,7 +1736,7 @@ class MultipartObject(db.Model, Timestamp):
         return db.session.query(cls).filter(cls.bucket_id == as_bucket_id(bucket))
 
 
-class Part(db.Model, Timestamp):
+class Part(db.Model, db.Timestamp):
     """Part object."""
 
     __tablename__ = "files_multipartobject_part"
