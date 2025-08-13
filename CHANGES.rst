@@ -11,6 +11,14 @@
 Changes
 =======
 
+Version v3.3.1 (released 2025-08-13)
+
+- fix: ensure that checksums have only one `:`
+    * This behaviour was actually already enforced by the fact that
+      `FileStorage.send_file` assumed that if a checksum value is
+      present, it can be split on a `:` and the result unpacked
+      into two values that are then used to set the md5 HTTP header.
+
 Version v3.3.0 (released 2025-07-18)
 
 - fix(tests): invenio-admin entry-points handling
