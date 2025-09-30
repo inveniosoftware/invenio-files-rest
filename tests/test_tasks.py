@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2025 CERN.
+# Copyright (C) 2025 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -36,7 +37,7 @@ def test_verify_checksum(app, db, dummy_location):
 
     verify_checksum(str(file_id))
 
-    f = FileInstance.query.get(file_id)
+    f = db.session.get(FileInstance, file_id)
     assert f.last_check_at
     assert f.last_check is True
 
@@ -45,11 +46,11 @@ def test_verify_checksum(app, db, dummy_location):
     db.session.commit()
     pytest.raises(FileNotFoundError, verify_checksum, str(file_id), throws=True)
 
-    f = FileInstance.query.get(file_id)
+    f = db.session.get(FileInstance, file_id)
     assert f.last_check is True
 
     verify_checksum(str(file_id), throws=False)
-    f = FileInstance.query.get(file_id)
+    f = db.session.get(FileInstance, file_id)
     assert f.last_check is None
 
     f.last_check = True
@@ -57,7 +58,7 @@ def test_verify_checksum(app, db, dummy_location):
     db.session.commit()
     with pytest.raises(FileNotFoundError):
         verify_checksum(str(file_id), pessimistic=True)
-    f = FileInstance.query.get(file_id)
+    f = db.session.get(FileInstance, file_id)
     assert f.last_check is None
 
 
