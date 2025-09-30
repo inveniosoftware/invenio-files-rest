@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2016-2019 CERN.
+# Copyright (C) 2025 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -10,6 +11,7 @@
 
 import pytest
 from flask import url_for
+from marshmallow_utils.context import context_schema
 from testutils import login_user
 
 from invenio_files_rest.models import ObjectVersion
@@ -77,6 +79,7 @@ def test_head_locked_deleted(client, db, headers, bucket, permissions):
 def test_get(client, headers, permissions, bucket, objects, get_json, user, expected):
     """Test listing objects."""
     login_user(client, permissions[user])
+    context_schema.set({"bucket": bucket})
     # Existing bucket
     resp = client.get(
         url_for(
