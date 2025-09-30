@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2019 CERN.
+# Copyright (C) 2025 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -14,6 +15,7 @@ from time import sleep
 from flask import current_app, request, url_for
 from invenio_rest.serializer import BaseSchema as InvenioRestBaseSchema
 from marshmallow import fields, missing, post_dump
+from marshmallow_utils.context import context_schema
 
 from .errors import FilesException
 from .models import Bucket, MultipartObject, ObjectVersion, Part
@@ -106,9 +108,9 @@ class ObjectVersionSchema(BaseSchema):
             return data
         else:
             data = {"contents": data}
-            bucket = self.context.get("bucket")
+            bucket = context_schema.get().get("bucket", False)
             if bucket:
-                data.update(BucketSchema().dump(bucket).data)
+                data.update(BucketSchema().dump(bucket))
             return data
 
 
@@ -144,7 +146,7 @@ class MultipartObjectSchema(BaseSchema):
             ),
         }
 
-        version_id = self.context.get("object_version_id")
+        version_id = context_schema.get().get("object_version_id", False)
         if version_id:
             links.update(
                 {
@@ -157,8 +159,7 @@ class MultipartObjectSchema(BaseSchema):
                     )
                 }
             )
-
-        bucket = self.context.get("bucket")
+        bucket = context_schema.get().get("bucket", False)
         if bucket:
             links.update(
                 {
@@ -190,12 +191,12 @@ class PartSchema(BaseSchema):
             return data
         else:
             data = {"parts": data}
-            multipart = self.context.get("multipart")
+            multipart = context_schema.get().get("multipart", False)
             if multipart:
                 data.update(
-                    MultipartObjectSchema(context={"bucket": multipart.bucket})
-                    .dump(multipart)
-                    .data
+                    MultipartObjectSchema().dump(
+                        multipart, context={"bucket": multipart.bucket}
+                    )
                 )
             return data
 
@@ -306,7 +307,7 @@ def json_serializer(
     if data is not None:
         # Generate JSON response
         data = json.dumps(
-            schema_class(context=context).dump(data, many=many).data, **_format_args()
+            schema_class().dump(data, many=many, context=context), **_format_args()
         )
 
         interval = current_app.config["FILES_REST_TASK_WAIT_INTERVAL"]
