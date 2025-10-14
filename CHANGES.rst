@@ -11,6 +11,10 @@
 Changes
 =======
 
+Version v3.4.0 (released 2025-10-14)
+
+- models: adds index on version_id and bucket_id
+
 Version v3.3.1 (released 2025-08-13)
 
 - fix: ensure that checksums have only one `:`
