@@ -15,7 +15,6 @@ from os.path import dirname, exists, getsize, join
 from unittest.mock import patch
 
 import pytest
-from fs.errors import DirectoryNotEmpty, FSError
 
 from invenio_files_rest.errors import (
     FileSizeError,
@@ -66,14 +65,14 @@ def test_pyfs_delete(app, db, dummy_location):
 
     # this used to raise a ResourceNotFound, but fs>=2.0 raises CreateFailed
     # FSError is their last common ancestor
-    pytest.raises(FSError, s.delete)
+    pytest.raises(FileNotFoundError, s.delete)
 
 
 def test_pyfs_delete_fail(pyfs, pyfs_testpath):
     """Test init of files."""
     pyfs.save(BytesIO(b"somedata"))
     os.rename(pyfs_testpath, join(dirname(pyfs_testpath), "newname"))
-    pytest.raises(DirectoryNotEmpty, pyfs.delete)
+    pytest.raises(OSError, pyfs.delete)
 
 
 def test_pyfs_save(pyfs, pyfs_testpath, get_md5):
@@ -366,3 +365,20 @@ def test_non_unicode_filename(app, pyfs):
         res = pyfs.send_file("żółć.txt", mimetype="text/plain", checksum=checksum)
         assert res.status_code == 200
         assert res.headers["Content-Disposition"] == "inline"
+
+
+def test_get_fs_deprecation(pyfs):
+    """Test deprecation of _get_fs method."""
+
+    class MyFSFileStorage(PyFSFileStorage):
+        def _get_fs(self, create_dir=True):
+            return super()._get_fs(create_dir=create_dir)
+
+    # check that no warnings are emitted for the PyFSFileStorage class
+    with pytest.raises(pytest.fail.Exception):
+        with pytest.warns(DeprecationWarning, match="The _get_fs method is deprecated"):
+            PyFSFileStorage("file:///tmp/")
+
+    # check that warnings are emitted for the subclasses that override _get_fs
+    with pytest.warns(DeprecationWarning, match="The _get_fs method is deprecated"):
+        MyFSFileStorage("file:///tmp/")
