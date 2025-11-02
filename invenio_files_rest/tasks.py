@@ -2,7 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2025 CERN.
-# Copyright (C) 2024 Graz University of Technology.
+# Copyright (C) 2024-2025 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -11,7 +11,7 @@
 
 import math
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import sqlalchemy as sa
 from celery import current_app as current_celery
@@ -274,7 +274,7 @@ def merge_multipartobject(upload_id, version_id=None):
 def remove_expired_multipartobjects():
     """Remove expired multipart objects."""
     delta = current_app.config["FILES_REST_MULTIPART_EXPIRES"]
-    expired_dt = datetime.utcnow() - delta
+    expired_dt = datetime.now(timezone.utc) - delta
 
     file_ids = []
     for mp in MultipartObject.query_expired(expired_dt):
