@@ -2,7 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2025 CERN.
-# Copyright (C) 2024 Graz University of Technology.
+# Copyright (C) 2024-2025 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -44,7 +44,7 @@ from os.path import basename
 
 from flask import current_app
 from invenio_db import db
-from sqlalchemy import insert, inspect
+from sqlalchemy import Index, insert, inspect
 from sqlalchemy.dialects import mysql
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import validates
@@ -1029,7 +1029,12 @@ class ObjectVersion(db.Model, Timestamp):
     file = db.relationship(FileInstance, backref="objects")
     """Relationship to file instance."""
 
-    __table_args__ = (db.UniqueConstraint("bucket_id", "version_id", "key"),)
+    __table_args__ = (
+        db.UniqueConstraint("bucket_id", "version_id", "key"),
+        Index("ix_uq_partial_files_object_is_head", bucket_id).ddl_if(
+            dialect="postgresql"
+        ),
+    )
 
     @validates("key")
     def validate_key(self, key, key_):
@@ -1434,26 +1439,6 @@ class ObjectVersion(db.Model, Timestamp):
     def __ne__(self, other):
         """Check if are not equal."""
         return not self.__eq__(other=other)
-
-    # DDL string used to avoid automap in mysql until sqlalchemy 2.0
-    # https://github.com/sqlalchemy/sqlalchemy/discussions/7597
-    @classmethod
-    def ix_uq_partial_files_object_is_head_dll(cls):
-        """Return DDL instruction for ix_uq_partial_files_object_is_head."""
-        return db.DDL(
-            "CREATE UNIQUE INDEX ix_uq_partial_files_object_is_head "
-            "ON %(table)s (bucket_id, key) WHERE is_head"
-        )
-
-
-db.event.listen(
-    ObjectVersion.__table__,
-    "after_create",
-    ObjectVersion.ix_uq_partial_files_object_is_head_dll().execute_if(
-        dialect="postgresql"
-    ),
-)
-"""Create ix_uq_partial_files_object_is_head only on postgresql backend."""
 
 
 class ObjectVersionTag(db.Model):
