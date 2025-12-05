@@ -8,6 +8,7 @@
 # Berat Aldemir <berataldemir@gmail.com>, 2020
 # Ben Translation and Interpreting Services <info@bentercume.com>, 2021
 # BEN TERCÜME, 2025
+# Eylül-1 -, 2025
 # 
 #, fuzzy
 msgid ""
@@ -16,7 +17,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: info@inveniosoftware.org\n"
 "POT-Creation-Date: 2025-07-08 19:31+0000\n"
 "PO-Revision-Date: 2016-08-25 08:03+0000\n"
-"Last-Translator: BEN TERCÜME, 2025\n"
+"Last-Translator: Eylül-1 -, 2025\n"
 "Language-Team: Turkish (https://app.transifex.com/inveniosoftware/teams/23537/tr/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -105,7 +106,7 @@ msgstr "Dosya örneği bulunamıyor."
 
 #: invenio_files_rest/admin.py:351
 msgid "Fixity check(s) sent to queue."
-msgstr "Sabitlik kontrolü/kontrolleri sıraya alındı."
+msgstr "Sabitlik kontrolü/kontrolleri kuyruğa alındı."
 
 #: invenio_files_rest/admin.py:356
 msgid "Failed to run fixity checks."
@@ -127,19 +128,19 @@ msgstr "Dosya boyutu sınırı aşıldı."
 
 #: invenio_files_rest/storage/base.py:44
 msgid "File is bigger than expected."
-msgstr ""
+msgstr "Dosya boyutu beklenenden daha büyük."
 
 #: invenio_files_rest/storage/base.py:56
 msgid "File is smaller than expected."
-msgstr ""
+msgstr "Dosya boyutu beklenenden daha küçük."
 
 #: invenio_files_rest/storage/base.py:121
 #: invenio_files_rest/storage/base.py:152
 #, python-format
 msgid "Could not send file: %(error)s"
-msgstr ""
+msgstr "Dosya gönderilemedi: %(error)s"
 
 #: invenio_files_rest/storage/base.py:220
 #, python-format
 msgid "Could not compute checksum of file: %(error)s"
-msgstr ""
+msgstr "Dosyanın sağlama toplamı hesaplanamadı: %(error)s"
