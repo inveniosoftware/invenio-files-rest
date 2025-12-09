@@ -57,7 +57,7 @@ def minsize_validator(value):
     """Validate Content-Length header.
 
     :raises invenio_files_rest.errors.FileSizeError: If the value is less
-        than :data:`invenio_files_rest.config.FILES_REST_MIN_FILE_SIZE` size.
+        than :data:``invenio_files_rest.config.FILES_REST_MIN_FILE_SIZE`` size.
     """
     if value < current_app.config["FILES_REST_MIN_FILE_SIZE"]:
         raise FileSizeError()
