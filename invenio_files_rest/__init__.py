@@ -164,9 +164,9 @@ contain. It is controlled by the function
 :py:func:`invenio_files_rest.limiters.file_size_limiters`:
 by default, a new object can be added to the bucket if the maximum
 size of the file is lower than
-:py:data:`invenio_files_rest.config.FILES_REST_DEFAULT_MAX_FILE_SIZE`
+:py:data:``invenio_files_rest.config.FILES_REST_DEFAULT_MAX_FILE_SIZE``
 and if the total quota (the sum of sizes of all files) is lower than
-:py:data:`invenio_files_rest.config.FILES_REST_DEFAULT_QUOTA_SIZE`.
+:py:data:``invenio_files_rest.config.FILES_REST_DEFAULT_QUOTA_SIZE``.
 
 Buckets can be marked as :code:`locked`. When a bucket is locked, objects
 can be retrieved but no object can be added and deleted.
@@ -201,7 +201,7 @@ For a given :code:`key` in a Bucket, normally the latest version in history
 is marked as the :code:`head`.
 
 The :code:`key` has a maximum length defined via
-:py:data:`invenio_files_rest.config.FILES_REST_OBJECT_KEY_MAX_LEN`.
+:py:data:``invenio_files_rest.config.FILES_REST_OBJECT_KEY_MAX_LEN``.
 
 ObjectVersion can be marked as deleted by removing its reference to the
 file it represents: from the user perspective, deleting a file normally
@@ -224,8 +224,8 @@ a unique final path for the file. You can modify how the path is generated
 with the default storage
 :py:func:`invenio_files_rest.storage.pyfs_storage_factory`
 by changing
-:py:data:`invenio_files_rest.config.FILES_REST_STORAGE_PATH_SPLIT_LENGTH` or
-:py:data:`invenio_files_rest.config.FILES_REST_STORAGE_PATH_DIMENSIONS`.
+:py:data:``invenio_files_rest.config.FILES_REST_STORAGE_PATH_SPLIT_LENGTH`` or
+:py:data:``invenio_files_rest.config.FILES_REST_STORAGE_PATH_DIMENSIONS``.
 
 A file instance may not be ready to be accessed, for example in case of
 multipart uploads: the attribute :code:`readable` marks it. It can also be
@@ -397,7 +397,7 @@ your Web Proxy (e.g. NGINX, Apache) to your external storage, finally streaming
 the file directly to the user.
 To use this feature you will need to configure your Web Proxy accordingly and
 then enable the
-:py:data:`invenio_files_rest.config.FILES_REST_XSENDFILE_ENABLED`.
+:py:data:``invenio_files_rest.config.FILES_REST_XSENDFILE_ENABLED``.
 
 API Reference
 ^^^^^^^^^^^^^
@@ -616,7 +616,7 @@ above as described in the Invenio-Access documentation.
 If instead you want to define permissions based on other object, for example
 on records to which the files are attached to, then you will have to
 define your own permission factory and used via the configuration variable
-:py:data:`invenio_files_rest.config.FILES_REST_PERMISSION_FACTORY`.
+:py:data:``invenio_files_rest.config.FILES_REST_PERMISSION_FACTORY``.
 
 See :mod:`invenio_files_rest.permissions` for more documentation.
 
@@ -738,7 +738,7 @@ Optional methods to implement:
 Then, you will have to re-implement a storage factory in a similar way as the
 default :py:func:`invenio_files_rest.storage.pyfs_storage_factory` and
 set configuration variable
-:py:data:`invenio_files_rest.config.FILES_REST_STORAGE_FACTORY`.
+:py:data:``invenio_files_rest.config.FILES_REST_STORAGE_FACTORY``.
 
 
 .. _usage-js-uploaders:
@@ -762,8 +762,8 @@ If you have to create a new custom factory, you have to:
    :py:func:`invenio_files_rest.views.ngfileupload_uploadfactory`.
 
 2. Instruct Invenio-Files-REST to use it by setting the configuration variables
-:py:data:`invenio_files_rest.config.FILES_REST_MULTIPART_PART_FACTORIES` and
-:py:data:`invenio_files_rest.config.FILES_REST_UPLOAD_FACTORIES`
+:py:data:``invenio_files_rest.config.FILES_REST_MULTIPART_PART_FACTORIES`` and
+:py:data:``invenio_files_rest.config.FILES_REST_UPLOAD_FACTORIES``
 
 
 .. _usage-multipart-upload:
@@ -897,16 +897,16 @@ You can also abort a multipart upload (and delete all uploaded parts):
 
 Multiparts uploads limits can be controlled via configuration variables:
 
-* Set :py:data:`invenio_files_rest.config.FILES_REST_MULTIPART_MAX_PARTS`
+* Set :py:data:``invenio_files_rest.config.FILES_REST_MULTIPART_MAX_PARTS``
   to limit the maximum number of parts for a single multipart upload.
 
-* Set :py:data:`invenio_files_rest.config.FILES_REST_MULTIPART_CHUNKSIZE_MIN`
+* Set :py:data:``invenio_files_rest.config.FILES_REST_MULTIPART_CHUNKSIZE_MIN``
   to define the minimum size of each part.
 
-* Set :py:data:`invenio_files_rest.config.FILES_REST_MULTIPART_CHUNKSIZE_MAX`
+* Set :py:data:``invenio_files_rest.config.FILES_REST_MULTIPART_CHUNKSIZE_MAX``
   to define the maximum size of each part.
 
-* Set :py:data:`invenio_files_rest.config.FILES_REST_MULTIPART_EXPIRES`
+* Set :py:data:``invenio_files_rest.config.FILES_REST_MULTIPART_EXPIRES``
   to define the maximum number of days for which a multipart upload is
   considered valid and accepts new part uploads.
 
