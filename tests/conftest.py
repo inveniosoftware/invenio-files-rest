@@ -133,6 +133,7 @@ def db(app):
     db_.session.remove()
     db_.drop_all()
     drop_alembic_version_table()
+    db_.engine.dispose()
 
 
 @pytest.yield_fixture()
