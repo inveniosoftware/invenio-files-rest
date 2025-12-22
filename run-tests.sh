@@ -43,7 +43,12 @@ fi
 
 export LC_TIME=en_US.UTF-8
 python -m check_manifest
-python -m sphinx.cmd.build -qnNW docs docs/_build/html
+
+# run the sphinx only if python>3.9 to avoid issues in decorators and python 3.9
+if [[ $(python -c 'import sys; print(sys.version_info[:2] > (3,9))') == "True" ]]; then
+	python -m sphinx.cmd.build -qnNW docs docs/_build/html
+fi
+
 eval "$(docker-services-cli up --db ${DB:-postgresql} --search ${SEARCH:-opensearch} --mq ${MQ:-rabbitmq} --cache ${CACHE:-redis} --env)"
 # Note: expansion of pytest_args looks like below to not cause an unbound
 # variable error when 1) "nounset" and 2) the array is empty.
