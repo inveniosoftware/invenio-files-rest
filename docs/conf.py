@@ -9,7 +9,6 @@
 
 """Sphinx configuration."""
 
-import os
 
 from invenio_files_rest import __version__
 
@@ -33,10 +32,6 @@ extensions = [
     "sphinxcontrib.httpdomain",
     "celery.contrib.sphinx",
 ]
-
-# to fix an celery.contrib.sphinx error. the default value '(task)' seams not
-# correct
-celery_task_prefix = ""
 
 nitpick_ignore = [
     ("py:class", "t.ClassVar"),

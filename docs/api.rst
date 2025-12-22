@@ -45,6 +45,19 @@ Tasks
    :undoc-members:
     .. for `undoc-members`, see https://github.com/celery/celery/pull/5135
 
+   .. autotask:: verify_checksum(file_id, pessimistic=False, chunk_size=None, throws=True, checksum_kwargs=None)
+   .. autotask:: schedule_checksum_verification(frequency=None,batch_interval=None,max_count=None,max_size=None,files_query=None,checksum_kwargs=None)
+   .. autotask:: migrate_file(src_id, location_name, post_fixity_check=False)
+   .. autotask:: remove_file_data(file_id, silent=True, force=False)
+   .. autotask:: merge_multipartobject(upload_id, version_id=None)
+   .. autotask:: remove_expired_multipartobjects()
+   .. autotask:: clear_orphaned_files(force_delete_check=lambda file_instance: False, limit=1000)
+   .. 
+      note: Sphinx in versions >=6.0.0 has issues with celery decorators and does not
+      document the functions properly. Hence, the functions are documented manually
+      below until Sphinx fixes the issue
+
+
 Exceptions
 ----------
 
