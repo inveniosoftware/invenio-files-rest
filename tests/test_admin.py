@@ -2,7 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2016-2025 CERN.
-# Copyright (C) 2025 Graz University of Technology.
+# Copyright (C) 2025-2026 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -10,6 +10,7 @@
 """Admin tests."""
 
 import pytest
+from flask_menu import Menu
 from invenio_admin import InvenioAdmin
 from invenio_admin.ext import finalize_app
 from wtforms.validators import ValidationError
@@ -33,6 +34,7 @@ def test_admin_views(app, db, dummy_location):
     """Test admin views."""
     app.config["SECRET_KEY"] = "CHANGEME"
     InvenioAdmin(app, permission_factory=None, view_class_factory=lambda x: x)
+    Menu(app)
     finalize_app(app)
 
     b1 = Bucket.create(location=dummy_location)

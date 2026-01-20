@@ -2,7 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2019 CERN.
-# Copyright (C) 2023-2024 Graz University of Technology.
+# Copyright (C) 2023-2026 Graz University of Technology.
 # Copyright (C) 2024 KTH Royal Institute of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@ from invenio_access import InvenioAccess
 from invenio_access.models import ActionRoles, ActionUsers, Role
 from invenio_accounts import InvenioAccounts
 from invenio_accounts.testutils import create_test_user
+from invenio_app.factory import create_api as _create_api
 from invenio_db import InvenioDB
 from invenio_db import db as db_
 from invenio_db.utils import drop_alembic_version_table
@@ -73,66 +74,37 @@ def _compile_drop_sequence(element, compiler, **kwargs):
     return compiler.visit_drop_sequence(element) + " CASCADE"
 
 
-@pytest.fixture()
-def base_app():
-    """Flask application fixture."""
-    app_ = Flask("testapp")
-    app_.config.update(
-        TESTING=True,
-        # Celery 3
-        CELERY_ALWAYS_EAGER=True,
-        CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
-        # Celery 4
-        CELERY_TASK_ALWAYS_EAGER=True,
-        CELERY_TASK_EAGER_PROPAGATES=True,
-        SQLALCHEMY_TRACK_MODIFICATIONS=True,
-        SQLALCHEMY_DATABASE_URI=os.environ.get(
-            "SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:"
-        ),
-        WTF_CSRF_ENABLED=False,
-        SERVER_NAME="invenio.org",
-        SECURITY_PASSWORD_SALT="TEST_SECURITY_PASSWORD_SALT",
-        SECRET_KEY="TEST_SECRET_KEY",
-        FILES_REST_MULTIPART_CHUNKSIZE_MIN=2,
-        FILES_REST_MULTIPART_CHUNKSIZE_MAX=20,
-        FILES_REST_MULTIPART_MAX_PARTS=100,
-        FILES_REST_TASK_WAIT_INTERVAL=0.1,
-        FILES_REST_TASK_WAIT_MAX_SECONDS=1,
-        APP_THEME=["semantic-ui"],
-        THEME_ICONS={"semantic-ui": dict(link="linkify icon")},
+@pytest.fixture(scope="module")
+def app_config(app_config):
+    """Mimic an instance's configuration."""
+    app_config["TESTING"] = True
+    # Celery 3
+    app_config["CELERY_ALWAYS_EAGER"] = True
+    app_config["CELERY_EAGER_PROPAGATES_EXCEPTIONS"] = True
+    app_config["ELERY_TASK_ALWAYS_EAGER"] = True
+    app_config["CELERY_TASK_EAGER_PROPAGATES"] = True
+    app_config["SQLALCHEMY_TRACK_MODIFICATIONS"] = True
+    app_config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
+        "SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:"
     )
-
-    FlaskCeleryExt(app_)
-    InvenioDB(app_)
-    Babel(app_)
-    Menu(app_)
-
-    return app_
-
-
-@pytest.yield_fixture()
-def app(base_app):
-    """Flask application fixture."""
-    InvenioI18N(base_app)
-    InvenioAccounts(base_app)
-    InvenioAccess(base_app)
-    InvenioFilesREST(base_app)
-    base_app.register_blueprint(blueprint)
-
-    with base_app.app_context():
-        yield base_app
+    app_config["WTF_CSRF_ENABLED"] = False
+    app_config["SERVER_NAME"] = "invenio.org"
+    app_config["SECURITY_PASSWORD_SALT"] = "TEST_SECURITY_PASSWORD_SALT"
+    app_config["SECRET_KEY"] = "TEST_SECRET_KEY"
+    app_config["FILES_REST_MULTIPART_CHUNKSIZE_MIN"] = 2
+    app_config["FILES_REST_MULTIPART_CHUNKSIZE_MAX"] = 20
+    app_config["FILES_REST_MULTIPART_MAX_PARTS"] = 100
+    app_config["FILES_REST_TASK_WAIT_INTERVAL"] = 0.1
+    app_config["FILES_REST_TASK_WAIT_MAX_SECONDS"] = 1
+    app_config["APP_THEME"] = ["semantic-ui"]
+    app_config["THEME_ICONS"] = {"semantic-ui": dict(link="linkify icon")}
+    return app_config
 
 
-@pytest.yield_fixture()
-def db(app):
-    """Get setup database."""
-    if not database_exists(str(db_.engine.url.render_as_string(hide_password=False))):
-        create_database(str(db_.engine.url.render_as_string(hide_password=False)))
-    db_.create_all()
-    yield db_
-    db_.session.remove()
-    db_.drop_all()
-    drop_alembic_version_table()
+@pytest.fixture(scope="module")
+def create_app(instance_path):
+    """Application factory fixture."""
+    return _create_api
 
 
 @pytest.yield_fixture()
