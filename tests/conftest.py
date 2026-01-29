@@ -31,6 +31,7 @@ from invenio_db import db as db_
 from invenio_db.utils import drop_alembic_version_table
 from invenio_i18n import Babel, InvenioI18N
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.pool import NullPool
 from sqlalchemy.schema import DropConstraint, DropSequence, DropTable
 from sqlalchemy_utils.functions import create_database, database_exists
 
@@ -98,6 +99,9 @@ def app_config(app_config):
     app_config["FILES_REST_TASK_WAIT_MAX_SECONDS"] = 1
     app_config["APP_THEME"] = ["semantic-ui"]
     app_config["THEME_ICONS"] = {"semantic-ui": dict(link="linkify icon")}
+    app_config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "poolclass": NullPool,
+    }
     return app_config
 
 

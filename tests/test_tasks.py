@@ -2,7 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2015-2025 CERN.
-# Copyright (C) 2025 Graz University of Technology.
+# Copyright (C) 2025-2026 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -35,7 +35,7 @@ def test_verify_checksum(app, db, dummy_location):
     db.session.commit()
     file_id = obj.file_id
 
-    verify_checksum(str(file_id))
+    verify_checksum.apply(args=[str(file_id)])
 
     f = db.session.get(FileInstance, file_id)
     assert f.last_check_at
@@ -155,8 +155,9 @@ def test_migrate_file(app, db, dummy_location, extra_location, bucket, objects):
 
     # Migrate file
     with patch("invenio_files_rest.tasks.verify_checksum") as verify_checksum:
-        migrate_file(
-            obj.file_id, location_name=extra_location.name, post_fixity_check=True
+        migrate_file.apply(
+            args=[obj.file_id],
+            kwargs={"location_name": extra_location.name, "post_fixity_check": True},
         )
         assert verify_checksum.delay.called
 
