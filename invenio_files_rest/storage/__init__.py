@@ -10,9 +10,11 @@
 
 from .base import FileStorage
 from .pyfs import PyFSFileStorage, pyfs_storage_factory
+from .router import storage_factory_router
 
 __all__ = (
     "FileStorage",
     "pyfs_storage_factory",
     "PyFSFileStorage",
+    "storage_factory_router",
 )

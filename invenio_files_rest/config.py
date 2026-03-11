@@ -54,8 +54,18 @@ FILES_REST_MIN_FILE_SIZE = 1
 FILES_REST_SIZE_LIMITERS = "invenio_files_rest.limiters.file_size_limiters"
 """Import path of file size limiters factory to control bucket size limits."""
 
+FILES_REST_STORAGE_FACTORIES = {}
+"""Specific storage factories for specific storage classes. The key is the storage class
+and the value is the import path of the factory used to create a storage instance 
+for that storage class. If a storage class is not found in this dict, 
+`FILES_REST_STORAGE_FACTORY` will be used to create the storage instance.
+"""
+
 FILES_REST_STORAGE_FACTORY = "invenio_files_rest.storage.pyfs_storage_factory"
 """Import path of factory used to create a storage instance."""
+
+FILES_REST_STORAGE_FACTORY_ROUTER = "invenio_files_rest.storage.storage_factory_router"
+"""Import path of factory used to route the creation of a storage instance."""
 
 FILES_REST_PERMISSION_FACTORY = "invenio_files_rest.permissions.permission_factory"
 """Permission factory to control the files access from the REST interface."""

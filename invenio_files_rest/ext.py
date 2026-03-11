@@ -9,6 +9,7 @@
 """Files download/upload REST API similar to S3 for Invenio."""
 
 from flask import abort
+from invenio_base.utils import obj_or_import_string
 from werkzeug.exceptions import UnprocessableEntity
 from werkzeug.utils import cached_property
 
@@ -26,9 +27,26 @@ class _FilesRESTState(object):
         self.app = app
 
     @cached_property
-    def storage_factory(self):
+    def default_storage_factory(self):
         """Load default storage factory."""
         return load_or_import_from_config("FILES_REST_STORAGE_FACTORY", app=self.app)
+
+    @cached_property
+    def storage_factories(self):
+        """Load storage factories for specific storage classes."""
+        return {
+            storage_class: obj_or_import_string(factory_path)
+            for storage_class, factory_path in self.app.config.get(
+                "FILES_REST_STORAGE_FACTORIES", {}
+            ).items()
+        }
+
+    @cached_property
+    def storage_factory(self):
+        """Return the storage factory router."""
+        return load_or_import_from_config(
+            "FILES_REST_STORAGE_FACTORY_ROUTER", app=self.app
+        )
 
     @cached_property
     def permission_factory(self):
