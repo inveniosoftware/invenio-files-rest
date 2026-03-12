@@ -8,7 +8,7 @@
 
 """Errors for Invenio-Files-REST."""
 
-from invenio_rest.errors import RESTException
+from invenio_rest.errors import RESTException, RESTValidationError
 
 
 class FilesException(RESTException):
@@ -161,3 +161,9 @@ class ExhaustedStreamError(FilesException):
     """The incoming file stream has been already consumed."""
 
     code = 500
+
+
+class RESTUnprocessableEntity(RESTValidationError):
+    """Exception raised when the request is well-formed but cannot be processed."""
+
+    code = 422
