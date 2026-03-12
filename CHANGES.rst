@@ -12,6 +12,12 @@
 Changes
 =======
 
+Version v4.1.0 (released 2026-03-12)
+
+- fix(webargs): Made sources compatible with upgraded webargs
+- fix(sphinx): Ignoring ErrorHandler to prevent sphinx reference error
+- fix: connections to postgresql exhausted in python 3.14.2
+
 Version v4.0.0 (released 2026-01-29)
 
 - chore(black): update formatting to >= 26.0
