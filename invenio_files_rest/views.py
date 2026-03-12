@@ -3,6 +3,7 @@
 # This file is part of Invenio.
 # Copyright (C) 2015-2019 CERN.
 # Copyright (C) 2022 Graz University of Technology.
+# Copyright (C) 2026 CESNET z.s.p.o.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -13,13 +14,15 @@ import uuid
 from functools import partial, wraps
 from urllib.parse import parse_qsl
 
+import marshmallow as ma
 from flask import Blueprint, abort, current_app, request
 from flask_login import current_user
 from invenio_db import db
 from invenio_rest import ContentNegotiatedMethodView
+from invenio_rest.errors import FieldError
 from marshmallow import missing
-from webargs import fields
-from webargs.flaskparser import use_kwargs
+from webargs import ValidationError, fields
+from webargs.flaskparser import FlaskParser as FlaskParserBase
 
 from .errors import (
     DuplicateTagError,
@@ -28,12 +31,69 @@ from .errors import (
     InvalidTagError,
     MissingQueryParameter,
     MultipartInvalidChunkSize,
+    RESTUnprocessableEntity,
 )
 from .models import Bucket, MultipartObject, ObjectVersion, ObjectVersionTag, Part
 from .proxies import current_files_rest, current_permission_factory
 from .serializer import json_serializer
 from .signals import file_deleted, file_downloaded, file_uploaded
 from .tasks import merge_multipartobject, remove_file_data
+
+
+class FlaskParser(FlaskParserBase):
+    """Parser to add FieldError to validation errors."""
+
+    def handle_error(self, error, *args, **kwargs):
+        """Handle errors during parsing."""
+        if isinstance(error, ValidationError):
+            _errors = []
+            try:
+                # webargs >=6.0.0b7
+                for location, field_data in error.messages.items():
+                    for field, messages in field_data.items():
+                        _errors.extend([FieldError(field, msg) for msg in messages])
+            except AttributeError:
+                # webargs < 6.0.0b7
+                for field, messages in error.messages.items():
+                    _errors.extend([FieldError(field, msg) for msg in messages])
+            raise RESTUnprocessableEntity(errors=_errors)
+        super(FlaskParser, self).handle_error(error, *args, **kwargs)
+
+
+webargs_parser = FlaskParser()
+
+try:
+
+    @webargs_parser.use_kwargs({}, location="query")
+    def just_to_test_webargs_version():
+        """Just to test webargs version compatibility.
+
+        The decorator will raise TypeError for version <6.0.0b7.
+        """
+        pass
+
+    use_kwargs_from_query = partial(
+        webargs_parser.use_kwargs, location="query", unknown=ma.EXCLUDE
+    )
+    use_kwargs_from_headers = partial(
+        webargs_parser.use_kwargs, location="headers", unknown=ma.EXCLUDE
+    )
+    use_kwargs_from_form = partial(
+        webargs_parser.use_kwargs, location="form", unknown=ma.EXCLUDE
+    )
+    use_kwargs_from_files = partial(
+        webargs_parser.use_kwargs, location="files", unknown=ma.EXCLUDE
+    )
+    use_kwargs_from_json = partial(
+        webargs_parser.use_kwargs, location="json", unknown=ma.EXCLUDE
+    )
+except TypeError:
+    # webargs < 6.0.0b7
+    use_kwargs_from_query = partial(webargs_parser.use_kwargs, locations=["query"])
+    use_kwargs_from_headers = partial(webargs_parser.use_kwargs, locations=["headers"])
+    use_kwargs_from_form = partial(webargs_parser.use_kwargs, locations=["form"])
+    use_kwargs_from_files = partial(webargs_parser.use_kwargs, locations=["files"])
+    use_kwargs_from_json = partial(webargs_parser.use_kwargs, locations=["json"])
 
 blueprint = Blueprint(
     "invenio_files_rest",
@@ -103,37 +163,25 @@ def parse_header_tags():
 #
 # Part upload factories
 #
-@use_kwargs(
+@use_kwargs_from_query(
     {
         "part_number": fields.Int(
-            metadata={
-                "load_from": "partNumber",
-                "location": "query",
-            },
             required=True,
             data_key="partNumber",
-        ),
+        )
+    }
+)
+@use_kwargs_from_headers(
+    {
         "content_length": fields.Int(
-            metadata={
-                "load_from": "Content-Length",
-                "location": "headers",
-            },
             required=True,
             validate=minsize_validator,
             data_key="Content-Length",
         ),
         "content_type": fields.Str(
-            metadata={
-                "load_from": "Content-Type",
-                "location": "headers",
-            },
             data_key="Content-Type",
         ),
         "content_md5": fields.Str(
-            metadata={
-                "load_from": "Content-MD5",
-                "location": "headers",
-            },
             data_key="Content-MD5",
         ),
     }
@@ -153,30 +201,18 @@ def default_partfactory(
     return content_length, part_number, request.stream, content_type, content_md5, None
 
 
-@use_kwargs(
+@use_kwargs_from_headers(
     {
         "content_md5": fields.Str(
-            metadata={
-                "load_from": "Content-MD5",
-                "location": "headers",
-            },
             data_key="Content-MD5",
             load_default=None,
         ),
         "content_length": fields.Int(
-            metadata={
-                "load_from": "Content-Length",
-                "location": "headers",
-            },
             data_key="Content-Length",
             required=True,
             validate=minsize_validator,
         ),
         "content_type": fields.Str(
-            metadata={
-                "load_from": "Content-Type",
-                "location": "headers",
-            },
             data_key="Content-Type",
             load_default="",
         ),
@@ -198,30 +234,22 @@ def stream_uploadfactory(content_md5=None, content_length=None, content_type=Non
     return request.stream, content_length, content_md5, parse_header_tags()
 
 
-@use_kwargs(
+@use_kwargs_from_form(
     {
         "part_number": fields.Int(
-            metadata={
-                "load_from": "_chunkNumber",
-                "location": "form",
-            },
             data_key="_chunkNumber",
             required=True,
         ),
         "content_length": fields.Int(
-            metadata={
-                "load_from": "_currentChunkSize",
-                "location": "form",
-            },
             data_key="_currentChunkSize",
             required=True,
             validate=minsize_validator,
         ),
+    }
+)
+@use_kwargs_from_files(
+    {
         "uploaded_file": fields.Raw(
-            metadata={
-                "load_from": "file",
-                "location": "files",
-            },
             data_key="file",
             required=True,
         ),
@@ -246,29 +274,25 @@ def ngfileupload_partfactory(part_number=None, content_length=None, uploaded_fil
     )
 
 
-@use_kwargs(
+@use_kwargs_from_form(
     {
         "content_length": fields.Int(
-            metadata={
-                "load_from": "_totalSize",
-                "location": "form",
-            },
             data_key="_totalSize",
             required=True,
         ),
+    }
+)
+@use_kwargs_from_headers(
+    {
         "content_type": fields.Str(
-            metadata={
-                "load_from": "Content-Type",
-                "location": "headers",
-            },
             data_key="Content-Type",
             required=True,
         ),
+    }
+)
+@use_kwargs_from_files(
+    {
         "uploaded_file": fields.Raw(
-            metadata={
-                "load_from": "file",
-                "location": "files",
-            },
             data_key="file",
             required=True,
         ),
@@ -426,12 +450,8 @@ class BucketResource(ContentNegotiatedMethodView):
     """Bucket item resource."""
 
     get_args = {
-        "versions": fields.Raw(
-            metadata={"location": "query"},
-        ),
-        "uploads": fields.Raw(
-            metadata={"location": "query"},
-        ),
+        "versions": fields.Raw(),
+        "uploads": fields.Raw(),
     }
 
     def __init__(self, *args, **kwargs):
@@ -481,7 +501,7 @@ class BucketResource(ContentNegotiatedMethodView):
             },
         )
 
-    @use_kwargs(get_args)
+    @use_kwargs_from_query(get_args)
     @pass_bucket
     def get(self, bucket=None, versions=missing, uploads=missing):
         """Get list of objects in the bucket.
@@ -505,25 +525,14 @@ class ObjectResource(ContentNegotiatedMethodView):
 
     delete_args = {
         "version_id": fields.UUID(
-            metadata={
-                "load_from": "versionId",
-                "location": "query",
-            },
             data_key="versionId",
             load_default=None,
         ),
         "upload_id": fields.UUID(
-            metadata={
-                "load_from": "uploadId",
-                "location": "query",
-            },
             data_key="uploadId",
             load_default=None,
         ),
         "uploads": fields.Raw(
-            metadata={
-                "location": "query",
-            },
             validate=invalid_subresource_validator,
         ),
     }
@@ -531,24 +540,13 @@ class ObjectResource(ContentNegotiatedMethodView):
     get_args = dict(
         delete_args,
         download=fields.Raw(
-            metadata={
-                "location": "query",
-            },
             load_default=None,
         ),
     )
 
     post_args = {
-        "uploads": fields.Raw(
-            metadata={
-                "location": "query",
-            }
-        ),
+        "uploads": fields.Raw(),
         "upload_id": fields.UUID(
-            metadata={
-                "location": "query",
-                "load_from": "uploadId",
-            },
             data_key="uploadId",
             load_default=None,
         ),
@@ -556,27 +554,27 @@ class ObjectResource(ContentNegotiatedMethodView):
 
     put_args = {
         "upload_id": fields.UUID(
-            metadata={
-                "location": "query",
-                "load_from": "uploadId",
-            },
             data_key="uploadId",
             load_default=None,
         ),
     }
 
     multipart_init_args = {
-        "size": fields.Int(
-            metadata={
-                "locations": ("query", "json"),
-            },
+        "query_size": fields.Int(
             load_default=None,
+            data_key="size",
         ),
-        "part_size": fields.Int(
-            metadata={
-                "locations": ("query", "json"),
-                "load_from": "partSize",
-            },
+        "query_part_size": fields.Int(
+            load_default=None,
+            data_key="partSize",
+        ),
+    }
+    multipart_init_json_args = {
+        "json_size": fields.Int(
+            load_default=None,
+            data_key="size",
+        ),
+        "json_part_size": fields.Int(
             load_default=None,
             data_key="partSize",
         ),
@@ -754,8 +752,17 @@ class ObjectResource(ContentNegotiatedMethodView):
             },
         )
 
-    @use_kwargs(multipart_init_args)
-    def multipart_init(self, bucket, key, size=None, part_size=None):
+    @use_kwargs_from_query(multipart_init_args)
+    @use_kwargs_from_json(multipart_init_json_args)
+    def multipart_init(
+        self,
+        bucket,
+        key,
+        query_size=None,
+        query_part_size=None,
+        json_size=None,
+        json_part_size=None,
+    ):
         """Initialize a multipart upload.
 
         :param bucket: The bucket (instance or id) to get the object from.
@@ -766,6 +773,8 @@ class ObjectResource(ContentNegotiatedMethodView):
             part_size are not defined.
         :returns: A Flask response.
         """
+        size = query_size or json_size
+        part_size = query_part_size or json_part_size
         if size is None:
             raise MissingQueryParameter("size")
         if part_size is None:
@@ -876,7 +885,7 @@ class ObjectResource(ContentNegotiatedMethodView):
     #
     # HTTP methods implementations
     #
-    @use_kwargs(get_args)
+    @use_kwargs_from_query(get_args)
     @pass_bucket
     def get(
         self,
@@ -910,7 +919,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             # the value None.
             return self.send_object(bucket, obj, as_attachment=download is not None)
 
-    @use_kwargs(post_args)
+    @use_kwargs_from_query(post_args)
     @pass_bucket
     @need_bucket_permission("bucket-update")
     @ensure_input_stream_is_not_exhausted
@@ -929,7 +938,7 @@ class ObjectResource(ContentNegotiatedMethodView):
             return self.multipart_complete(bucket, key, upload_id)
         abort(403)
 
-    @use_kwargs(put_args)
+    @use_kwargs_from_query(put_args)
     @pass_bucket
     @need_bucket_permission("bucket-update")
     @ensure_input_stream_is_not_exhausted
@@ -947,7 +956,7 @@ class ObjectResource(ContentNegotiatedMethodView):
         else:
             return self.create_object(bucket, key)
 
-    @use_kwargs(delete_args)
+    @use_kwargs_from_query(delete_args)
     @pass_bucket
     def delete(
         self, bucket=None, key=None, version_id=None, upload_id=None, uploads=None

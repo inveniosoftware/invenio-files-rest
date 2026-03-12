@@ -14,7 +14,7 @@ from werkzeug.utils import cached_property
 
 from . import config
 from .cli import files as files_cmd
-from .errors import MultipartNoPart
+from .errors import MultipartNoPart, RESTUnprocessableEntity
 from .utils import load_or_import_from_config, obj_or_import_string
 
 
@@ -73,7 +73,7 @@ class _FilesRESTState(object):
         for factory in self.part_factories:
             try:
                 return factory()
-            except (MultipartNoPart, UnprocessableEntity):
+            except (MultipartNoPart, RESTUnprocessableEntity, UnprocessableEntity):
                 pass
         raise MultipartNoPart()
 
@@ -82,7 +82,7 @@ class _FilesRESTState(object):
         for factory in self.upload_factories:
             try:
                 return factory()
-            except UnprocessableEntity:
+            except (RESTUnprocessableEntity, UnprocessableEntity):
                 pass
         abort(400)
 
