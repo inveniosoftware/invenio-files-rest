@@ -362,4 +362,6 @@ nitpick_ignore = [
     ("py:class", "TStreamFactory"),
     ("py:class", "MultiDict"),
     ("py:attr", "query_class"),
+    ("py:class", "ErrorHandler"),
+    ("py:class", "ma.Schema"),
 ]
