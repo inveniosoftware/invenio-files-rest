@@ -74,7 +74,7 @@ def _compile_drop_sequence(element, compiler, **kwargs):
     return compiler.visit_drop_sequence(element) + " CASCADE"
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def base_app():
     """Flask application fixture."""
     app_ = Flask("testapp")
@@ -114,7 +114,7 @@ def base_app():
     return app_
 
 
-@pytest.yield_fixture()
+@pytest.fixture(scope="module")
 def app(base_app):
     """Flask application fixture."""
     InvenioI18N(base_app)
@@ -127,16 +127,73 @@ def app(base_app):
         yield base_app
 
 
-@pytest.yield_fixture()
-def db(app):
-    """Get setup database."""
+# @pytest.yield_fixture()
+# def db(app):
+#     """Get setup database."""
+#     if not database_exists(str(db_.engine.url.render_as_string(hide_password=False))):
+#         create_database(str(db_.engine.url.render_as_string(hide_password=False)))
+#     db_.create_all()
+#     yield db_
+#     db_.session.remove()
+#     db_.drop_all()
+#     drop_alembic_version_table()
+
+
+@pytest.fixture(scope="module")
+def _database(app):
+    """Module-scoped database fixture.
+
+    Use the function-scoped `db` fixture in tests that modify the database.
+    """
     if not database_exists(str(db_.engine.url.render_as_string(hide_password=False))):
         create_database(str(db_.engine.url.render_as_string(hide_password=False)))
+
+    # maybe use unlogged for Postgresql according to pytest-invenio
+    # but skipping for now
     db_.create_all()
     yield db_
     db_.session.remove()
     db_.drop_all()
     drop_alembic_version_table()
+
+
+@pytest.fixture()
+def db(_database):
+    """Function-scoped database fixture.
+
+    Use it to isolate database changes during a test.
+
+    See pytest-invenio repo under pytest_invenio/fixtures.py::db for more
+    details.
+    """
+    from flask_sqlalchemy.session import Session as FlaskSQLAlchemySession
+
+    session_old = _database.session
+    connection = _database.engine.connect()
+    transaction = connection.begin()
+
+    class PytestInvenioSession(FlaskSQLAlchemySession):
+        def get_bind(self, mapper=None, clause=None, bind=None, **kwargs):
+            # Override get_bind to return the Connection instead of the Engine.
+            return connection
+
+    session_new = _database._make_scoped_session(
+        dict(
+            class_=PytestInvenioSession,
+            bind=connection,
+            binds={},
+            join_transaction_mode="create_savepoint",
+        )
+    )
+    _database.session = session_new
+
+    yield _database
+
+    session_new.rollback()
+    session_new.close()
+    transaction.rollback()
+    connection.close()
+    _database.session = session_old
 
 
 @pytest.yield_fixture()
