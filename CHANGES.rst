@@ -1,11 +1,8 @@
 ..
-    This file is part of Invenio.
-    Copyright (C) 2015-2024 CERN.
-    Copyright (C) 2024-2026 Graz University of Technology.
-    Copyright (C) 2025 KTH Royal Institute of Technology.
-
-    Invenio is free software; you can redistribute it and/or modify it
-    under the terms of the MIT License; see LICENSE file for more details.
+    SPDX-FileCopyrightText: 2015-2024 CERN.
+    SPDX-FileCopyrightText: 2024-2026 Graz University of Technology.
+    SPDX-FileCopyrightText: 2025 KTH Royal Institute of Technology.
+    SPDX-License-Identifier: MIT
 
 
 
