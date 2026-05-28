@@ -12,6 +12,10 @@
 Changes
 =======
 
+Version v5.0.0 (released 2026-05-28)
+
+- chore(setup): bump dependencies
+
 Version v4.1.0 (released 2026-03-12)
 
 - fix(webargs): Made sources compatible with upgraded webargs
