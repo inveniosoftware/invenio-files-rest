@@ -117,6 +117,10 @@ class FileStorage(object):
         """Send the file to the client."""
         try:
             fp = self.open(mode="rb")
+        except FileNotFoundError as e:
+            raise StorageError(
+                errors=[e], description=_("Could not send file: File not found")
+            )
         except Exception as e:
             raise StorageError(
                 errors=[e],
