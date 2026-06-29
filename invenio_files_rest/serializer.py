@@ -73,14 +73,14 @@ class ObjectVersionSchema(BaseSchema):
                 bucket_id=o.bucket_id,
                 key=o.key,
                 _external=True,
-                **(params if not o.is_head or o.deleted else {})
+                **(params if not o.is_head or o.deleted else {}),
             ),
             "version": url_for(
                 ".object_api",
                 bucket_id=o.bucket_id,
                 key=o.key,
                 _external=True,
-                **params
+                **params,
             ),
         }
 
