@@ -1,3 +1,148 @@
+# SPDX-FileCopyrightText: 2015-2025 CERN.
+# SPDX-FileCopyrightText: 2022-2026 Graz University of Technology
+# SPDX-FileCopyrightText: 2024 KTH Royal Institute of Technology.
+# SPDX-FileCopyrightText: 2026 TU Wien.
+# SPDX-License-Identifier: MIT
+
+[project]
+name = "invenio-files-rest"
+description = "Files download/upload REST API similar to S3 for Invenio."
+readme = "README.rst"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [
+  { name = "CERN", email = "info@inveniosoftware.org" },
+]
+keywords = [
+  "REST",
+  "files",
+  "invenio",
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+]
+dependencies = [
+  "click-default-group>=1.2.2,<2.0.0",
+  "flask-wtf>=0.15.1",
+  "invenio-accounts>=8.0.0,<9.0.0",
+  "invenio-i18n>=3.0.0,<4.0.0",
+  "marshmallow-utils>=0.15.0,<1.0.0",
+]
+dynamic = ["version"]
+
+[project.urls]
+Repositoroy = "https://github.com/inveniosoftware/invenio-files-rest"
+
+[project.entry-points."invenio_access.actions"]
+bucket_listmultiparts_all = "invenio_files_rest.permissions:bucket_listmultiparts_all"
+bucket_read_all = "invenio_files_rest.permissions:bucket_read_all"
+bucket_read_versions_all = "invenio_files_rest.permissions:bucket_read_versions_all"
+bucket_update_all = "invenio_files_rest.permissions:bucket_update_all"
+location_update_all = "invenio_files_rest.permissions:location_update_all"
+multipart_delete_all = "invenio_files_rest.permissions:multipart_delete_all"
+multipart_read_all = "invenio_files_rest.permissions:multipart_read_all"
+object_delete_all = "invenio_files_rest.permissions:object_delete_all"
+object_delete_version_all = "invenio_files_rest.permissions:object_delete_version_all"
+object_read_all = "invenio_files_rest.permissions:object_read_all"
+object_read_version_all = "invenio_files_rest.permissions:object_read_version_all"
+
+[project.entry-points."invenio_admin.views"]
+bucket_adminview = "invenio_files_rest.admin:bucket_adminview"
+fileinstance_adminview = "invenio_files_rest.admin:fileinstance_adminview"
+location_adminview = "invenio_files_rest.admin:location_adminview"
+multipartobject_adminview = "invenio_files_rest.admin:multipartobject_adminview"
+object_adminview = "invenio_files_rest.admin:object_adminview"
+
+[project.entry-points."invenio_base.api_apps"]
+invenio_files_rest = "invenio_files_rest:InvenioFilesREST"
+
+[project.entry-points."invenio_base.api_blueprints"]
+invenio_files_rest = "invenio_files_rest.views:blueprint"
+
+[project.entry-points."invenio_base.apps"]
+invenio_files_rest = "invenio_files_rest:InvenioFilesREST"
+
+[project.entry-points."invenio_celery.tasks"]
+invenio_files_rest = "invenio_files_rest.tasks"
+
+[project.entry-points."invenio_db.alembic"]
+invenio_files_rest = "invenio_files_rest:alembic"
+
+[project.entry-points."invenio_db.models"]
+invenio_files_rest = "invenio_files_rest.models"
+
+[project.entry-points."invenio_i18n.translations"]
+invenio_files_rest = "invenio_files_rest"
+
+[project.optional-dependencies]
+mysql = []
+postgresql = []
+sqlite = []
+tests = [
+  "future>=0.18.2",
+  "invenio-access>=6.0.0,<7.0.0",
+  "invenio-admin>=1.6.0,<2.0.0",
+  "invenio-db[postgresql,mysql,versioning]>=2.2.0,<3.0.0",
+  "pytest-black>=0.6.0",
+  "pytest-invenio>=4.0.0,<5.0.0",
+  "sphinx>=5.0.0,<6.0.0",
+  "sphinxcontrib-httpdomain>=1.4.0",
+  "standard-imghdr>=3.13.0,<4.0.0; python_version >= \"3.13\"",
+]
+
 [build-system]
-requires = ["setuptools", "wheel", "babel>2.8"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# see https://babel.pocoo.org/en/latest/messages.html#toml-configuration-format
+[tool.babel]
+[tool.babel.compile_catalog]
+directory = "invenio_files_rest/translations/"
+use_fuzzy = true
+
+[tool.babel.extract_messages]
+copyright_holder = "CERN"
+msgid_bugs_address = "info@inveniosoftware.org"
+mapping_file = "pyproject.toml"
+output_file = "invenio_files_rest/translations/messages.pot"
+add_comments = "NOTE"
+
+[tool.babel.init_catalog]
+input_file = "invenio_files_rest/translations/messages.pot"
+output_dir = "invenio_files_rest/translations/"
+
+[[tool.babel.mappings]]
+method = "javascript"
+pattern = "**.js"
+encoding = "utf-8"
+extract_messages = "$._, jQuery._"
+
+[[tool.babel.mappings]]
+method = "python"
+pattern = "**.py"
+encoding = "utf-8"
+
+[[tool.babel.mappings]]
+method = "jinja2"
+pattern = "**/templates/**.html"
+encoding = "utf-8"
+
+[tool.hatch.version]
+path = "invenio_files_rest/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/invenio_files_rest",
+]
+
+[tool.isort]
+profile = "black"
+
+[tool.pydocstyle]
+add_ignore = ""
+
+[tool.pytest.ini_options]
+addopts = '--black --isort --pydocstyle --doctest-glob="*.rst" --doctest-modules --cov=invenio_files_rest --cov-report=term-missing'
+filterwarnings = ["ignore::pytest.PytestDeprecationWarning"]
+testpaths = "tests invenio_files_rest"
+live_server_scope = "module"
