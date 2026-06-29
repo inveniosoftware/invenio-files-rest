@@ -3,9 +3,6 @@
 
 """Create files_rest branch."""
 
-import sqlalchemy as sa
-from alembic import op
-
 # revision identifiers, used by Alembic.
 revision = "52ce868f33c3"
 down_revision = None
