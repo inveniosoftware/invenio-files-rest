@@ -207,7 +207,7 @@ class FileStorage(object):
                 m,
                 chunk_size=chunk_size,
                 progress_callback=progress_callback,
-                **kwargs
+                **kwargs,
             )
         except Exception as e:
             raise StorageError(
