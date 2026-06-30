@@ -1,5 +1,0 @@
-# SPDX-FileCopyrightText: 2015-2019 CERN.
-# SPDX-License-Identifier: MIT
-
--e git+https://github.com/marshmallow-code/marshmallow#egg=marshmallow
--e git+https://github.com/inveniosoftware/invenio-base#egg=invenio-base
