@@ -2,12 +2,18 @@
     SPDX-FileCopyrightText: 2015-2024 CERN.
     SPDX-FileCopyrightText: 2024-2026 Graz University of Technology.
     SPDX-FileCopyrightText: 2025 KTH Royal Institute of Technology.
+    SPDX-FileCopyrightText: 2026 TU Wien.
     SPDX-License-Identifier: MIT
-
 
 
 Changes
 =======
+
+Version v6.0.1 (released 2026-07-09)
+
+- fix(errors): handle FileNotFoundError to avoid leaking details
+- fix(errors): fix construction of StorageError instances
+- chore(setup): migrate from setuptools to hatchling
 
 Version v6.0.0 (released 2026-06-16)
 
