@@ -176,10 +176,14 @@ def send_stream(
     # Set cache-control
     if not restricted:
         rv.cache_control.public = True
+        # See flask config variable "SEND_FILE_MAX_AGE_DEFAULT"
+        # https://flask.palletsprojects.com/en/2.1.x/api/#flask.Flask.get_send_file_max_age
         cache_timeout = current_app.get_send_file_max_age(filename)
         if cache_timeout is not None:
             rv.cache_control.max_age = cache_timeout
             rv.expires = int(time() + cache_timeout)
+    else:
+        rv.cache_control.no_cache = True
 
     if conditional:
         accept_ranges = current_app.config.get("FILES_REST_ALLOW_RANGE_REQUESTS", False)
