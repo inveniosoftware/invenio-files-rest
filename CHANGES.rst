@@ -8,6 +8,13 @@
 Changes
 =======
 
+
+Version v5.0.2 (released 2026-07-23)
+
+- helpers: add no_cache cache-control for restricted files
+- fix(errors): fix construction of StorageError instances 
+- fix(errors): handle FileNotFoundError to avoid leaking details
+
 Version v5.0.1 (released 2026-07-21)
 
 - chore(setup): migrate from setuptools to hatchling
