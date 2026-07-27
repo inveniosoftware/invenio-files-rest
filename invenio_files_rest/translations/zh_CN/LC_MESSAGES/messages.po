@@ -1,8 +1,8 @@
 # Translations template for invenio-files-rest.
-# Copyright (C) 2025 CERN
+# Copyright (C) 2026 CERN
 # This file is distributed under the same license as the invenio-files-rest
 # project.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
 # 
 # Translators:
 # Kalven Richie, 2022
@@ -10,134 +10,134 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: invenio-files-rest 3.2.0\n"
+"Project-Id-Version: invenio-files-rest 5.0.0\n"
 "Report-Msgid-Bugs-To: info@inveniosoftware.org\n"
-"POT-Creation-Date: 2025-07-08 19:31+0000\n"
+"POT-Creation-Date: 2026-06-22 20:33+0000\n"
 "PO-Revision-Date: 2016-08-25 08:03+0000\n"
 "Last-Translator: Kalven Richie, 2022\n"
 "Language-Team: Chinese (China) (https://app.transifex.com/inveniosoftware/teams/23537/zh_CN/)\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.17.0\n"
+"Generated-By: Babel 2.18.0\n"
 "Language: zh_CN\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-#: invenio_files_rest/admin.py:42
+#: invenio_files_rest/admin.py:37
 msgid "Invalid location name."
 msgstr "位置名称无效。"
 
-#: invenio_files_rest/admin.py:69 invenio_files_rest/admin.py:280
-#: invenio_files_rest/admin.py:373
+#: invenio_files_rest/admin.py:64 invenio_files_rest/admin.py:275
+#: invenio_files_rest/admin.py:368
 msgid "ID"
 msgstr "身份证明"
 
-#: invenio_files_rest/admin.py:70 invenio_files_rest/admin.py:197
-#: invenio_files_rest/admin.py:281
+#: invenio_files_rest/admin.py:65 invenio_files_rest/admin.py:192
+#: invenio_files_rest/admin.py:276
 msgid "URI"
 msgstr "统一资源标识符"
 
-#: invenio_files_rest/admin.py:134
+#: invenio_files_rest/admin.py:129
 msgid "UUID"
 msgstr "通用唯一识别码"
 
-#: invenio_files_rest/admin.py:135
+#: invenio_files_rest/admin.py:130
 msgid "Location"
 msgstr "位置"
 
-#: invenio_files_rest/admin.py:136
+#: invenio_files_rest/admin.py:131
 msgid "Storage Class"
 msgstr "储存类别"
 
-#: invenio_files_rest/admin.py:195
+#: invenio_files_rest/admin.py:190
 msgid "Version"
 msgstr "版本"
 
-#: invenio_files_rest/admin.py:196
+#: invenio_files_rest/admin.py:191
 msgid "File UUID"
 msgstr "通用唯一识别码文件"
 
-#: invenio_files_rest/admin.py:198
+#: invenio_files_rest/admin.py:193
 msgid "Size"
 msgstr "规模"
 
-#: invenio_files_rest/admin.py:199
+#: invenio_files_rest/admin.py:194
 msgid "Deleted"
 msgstr "已删除"
 
-#: invenio_files_rest/admin.py:200
+#: invenio_files_rest/admin.py:195
 msgid "Checksum"
 msgstr "校验和"
 
-#: invenio_files_rest/admin.py:201
+#: invenio_files_rest/admin.py:196
 msgid "Readable"
 msgstr "可读的"
 
-#: invenio_files_rest/admin.py:202
+#: invenio_files_rest/admin.py:197
 msgid "Storage class"
 msgstr "储存类别"
 
-#: invenio_files_rest/admin.py:203
+#: invenio_files_rest/admin.py:198
 msgid "Objects"
 msgstr "对象"
 
-#: invenio_files_rest/admin.py:204 invenio_files_rest/admin.py:375
+#: invenio_files_rest/admin.py:199 invenio_files_rest/admin.py:370
 msgid "File"
 msgstr "文件"
 
-#: invenio_files_rest/admin.py:282
+#: invenio_files_rest/admin.py:277
 msgid "Fixity"
 msgstr "固定性"
 
-#: invenio_files_rest/admin.py:283
+#: invenio_files_rest/admin.py:278
 msgid "Checked"
 msgstr "选中的"
 
-#: invenio_files_rest/admin.py:335
+#: invenio_files_rest/admin.py:330
 msgid "Run fixity check"
 msgstr "固定性运行检查"
 
-#: invenio_files_rest/admin.py:347
+#: invenio_files_rest/admin.py:342
 msgid "Cannot find file instance."
 msgstr "找不到文件实例。"
 
-#: invenio_files_rest/admin.py:351
+#: invenio_files_rest/admin.py:346
 msgid "Fixity check(s) sent to queue."
 msgstr "发送到队列的固定性检查。"
 
-#: invenio_files_rest/admin.py:356
+#: invenio_files_rest/admin.py:351
 msgid "Failed to run fixity checks."
 msgstr "无法运行固定性检查。"
 
-#: invenio_files_rest/admin.py:374
+#: invenio_files_rest/admin.py:369
 msgid "Complete"
 msgstr "完成"
 
-#: invenio_files_rest/admin.py:402 invenio_files_rest/admin.py:404
-#: invenio_files_rest/admin.py:406 invenio_files_rest/admin.py:409
-#: invenio_files_rest/admin.py:412
+#: invenio_files_rest/admin.py:397 invenio_files_rest/admin.py:399
+#: invenio_files_rest/admin.py:401 invenio_files_rest/admin.py:404
+#: invenio_files_rest/admin.py:407
 msgid "Files"
 msgstr "文件"
 
-#: invenio_files_rest/storage/base.py:36
+#: invenio_files_rest/storage/base.py:30
 msgid "File size limit exceeded."
 msgstr ""
 
-#: invenio_files_rest/storage/base.py:44
+#: invenio_files_rest/storage/base.py:38
 msgid "File is bigger than expected."
 msgstr ""
 
-#: invenio_files_rest/storage/base.py:56
+#: invenio_files_rest/storage/base.py:50
 msgid "File is smaller than expected."
 msgstr ""
 
-#: invenio_files_rest/storage/base.py:121
-#: invenio_files_rest/storage/base.py:152
+#: invenio_files_rest/storage/base.py:115
+#: invenio_files_rest/storage/base.py:146
 #, python-format
 msgid "Could not send file: %(error)s"
 msgstr ""
 
-#: invenio_files_rest/storage/base.py:220
+#: invenio_files_rest/storage/base.py:214
 #, python-format
 msgid "Could not compute checksum of file: %(error)s"
 msgstr ""
