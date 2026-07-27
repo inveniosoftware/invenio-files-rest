@@ -4,10 +4,6 @@
 # project.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
 # 
-# Translators:
-# Tibor Simko <tibor.simko@cern.ch>, 2016
-# Anna Sakoyan, 2025
-# 
 #, fuzzy
 msgid ""
 msgstr ""
@@ -15,14 +11,13 @@ msgstr ""
 "Report-Msgid-Bugs-To: info@inveniosoftware.org\n"
 "POT-Creation-Date: 2026-06-22 20:33+0000\n"
 "PO-Revision-Date: 2016-08-25 08:03+0000\n"
-"Last-Translator: Anna Sakoyan, 2025\n"
-"Language-Team: Russian (https://app.transifex.com/inveniosoftware/teams/23537/ru/)\n"
+"Language-Team: Danish (Denmark) (https://app.transifex.com/inveniosoftware/teams/23537/da_DK/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
-"Language: ru\n"
-"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n%100>=11 && n%100<=14)? 2 : 3);\n"
+"Language: da_DK\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: invenio_files_rest/admin.py:37
 msgid "Invalid location name."
@@ -31,60 +26,60 @@ msgstr ""
 #: invenio_files_rest/admin.py:64 invenio_files_rest/admin.py:275
 #: invenio_files_rest/admin.py:368
 msgid "ID"
-msgstr "ID"
+msgstr ""
 
 #: invenio_files_rest/admin.py:65 invenio_files_rest/admin.py:192
 #: invenio_files_rest/admin.py:276
 msgid "URI"
-msgstr "URI"
+msgstr ""
 
 #: invenio_files_rest/admin.py:129
 msgid "UUID"
-msgstr "UUID"
+msgstr ""
 
 #: invenio_files_rest/admin.py:130
 msgid "Location"
-msgstr "Местонахождение"
+msgstr ""
 
 #: invenio_files_rest/admin.py:131
 msgid "Storage Class"
-msgstr "Класс хранилища"
+msgstr ""
 
 #: invenio_files_rest/admin.py:190
 msgid "Version"
-msgstr "Версия"
+msgstr ""
 
 #: invenio_files_rest/admin.py:191
 msgid "File UUID"
-msgstr "UUID файла"
+msgstr ""
 
 #: invenio_files_rest/admin.py:193
 msgid "Size"
-msgstr "Размер"
+msgstr ""
 
 #: invenio_files_rest/admin.py:194
 msgid "Deleted"
-msgstr "Удалено"
+msgstr ""
 
 #: invenio_files_rest/admin.py:195
 msgid "Checksum"
-msgstr "Контрольная сумма"
+msgstr ""
 
 #: invenio_files_rest/admin.py:196
 msgid "Readable"
-msgstr "Читаемый"
+msgstr ""
 
 #: invenio_files_rest/admin.py:197
 msgid "Storage class"
-msgstr "Класс хранилища"
+msgstr ""
 
 #: invenio_files_rest/admin.py:198
 msgid "Objects"
-msgstr "Объекты"
+msgstr ""
 
 #: invenio_files_rest/admin.py:199 invenio_files_rest/admin.py:370
 msgid "File"
-msgstr "Файл"
+msgstr ""
 
 #: invenio_files_rest/admin.py:277
 msgid "Fixity"
@@ -92,7 +87,7 @@ msgstr ""
 
 #: invenio_files_rest/admin.py:278
 msgid "Checked"
-msgstr "Проверено"
+msgstr ""
 
 #: invenio_files_rest/admin.py:330
 msgid "Run fixity check"
@@ -100,7 +95,7 @@ msgstr ""
 
 #: invenio_files_rest/admin.py:342
 msgid "Cannot find file instance."
-msgstr "Не получается найти экземпляр файла."
+msgstr ""
 
 #: invenio_files_rest/admin.py:346
 msgid "Fixity check(s) sent to queue."
@@ -112,17 +107,17 @@ msgstr ""
 
 #: invenio_files_rest/admin.py:369
 msgid "Complete"
-msgstr "Завершено"
+msgstr ""
 
 #: invenio_files_rest/admin.py:397 invenio_files_rest/admin.py:399
 #: invenio_files_rest/admin.py:401 invenio_files_rest/admin.py:404
 #: invenio_files_rest/admin.py:407
 msgid "Files"
-msgstr "Файлы"
+msgstr ""
 
 #: invenio_files_rest/storage/base.py:30
 msgid "File size limit exceeded."
-msgstr "Размер файла превышает лимит."
+msgstr ""
 
 #: invenio_files_rest/storage/base.py:38
 msgid "File is bigger than expected."
