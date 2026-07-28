@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2015-2025 CERN.
-# SPDX-FileCopyrightText: 2022-2026 Graz University of Technology
+# SPDX-FileCopyrightText: 2022-2026 Graz University of Technology.
 # SPDX-FileCopyrightText: 2024 KTH Royal Institute of Technology.
 # SPDX-FileCopyrightText: 2026 TU Wien.
 # SPDX-License-Identifier: MIT
@@ -129,6 +129,11 @@ encoding = "utf-8"
 
 [tool.hatch.version]
 path = "invenio_files_rest/__init__.py"
+
+[tool.hatch.build]
+artifacts = [
+  "*.mo",
+]
 
 [tool.hatch.build.targets.sdist]
 include = [
