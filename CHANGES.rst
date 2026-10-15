@@ -12,11 +12,10 @@
 Changes
 =======
 
-Version v3.5.0 (released 2026-10-16)
+Version v3.5.1 (released 2026-10-16)
 
 - deps: pin setuptools to avoid pkg_resources failure
--  fix(sphinx): Ignoring ErrorHandler to prevent sphinx reference error
-e636d4a
+- fix(sphinx): Ignoring ErrorHandler to prevent sphinx reference error
 - ci: fix python 3.13+ compatibility and docstrings
 
 Version v3.4.1 (released 2025-10-20)
