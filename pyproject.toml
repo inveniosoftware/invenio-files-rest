@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2015-2025 CERN.
 # SPDX-FileCopyrightText: 2022-2026 Graz University of Technology
-# SPDX-FileCopyrightText: 2024 KTH Royal Institute of Technology.
+# SPDX-FileCopyrightText: 2024-2026 KTH Royal Institute of Technology.
 # SPDX-FileCopyrightText: 2026 TU Wien.
 # SPDX-FileCopyrightText: 2026 Graz University of Technology.
 # SPDX-License-Identifier: MIT
@@ -99,7 +99,6 @@ build-backend = "hatchling.build"
 [tool.babel]
 [tool.babel.compile_catalog]
 directory = "invenio_files_rest/translations/"
-use_fuzzy = true
 
 [tool.babel.extract_messages]
 copyright_holder = "CERN"

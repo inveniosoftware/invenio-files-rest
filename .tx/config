@@ -1,11 +1,26 @@
-# -*- coding: utf-8 -*-
 #
-# This file is part of Invenio.
-# Copyright (C) 2015-2019 CERN.
-# Copyright (C)      2023 Graz University of Technology.
+# SPDX-FileCopyrightText: 2015-2019 CERN.
+# SPDX-FileCopyrightText: 2023 Graz University of Technology.
+# SPDX-FileCopyrightText: 2026 KTH Royal Institute of Technology.
+# SPDX-License-Identifier: MIT
 #
-# Invenio is free software; you can redistribute it and/or modify it
-# under the terms of the MIT License; see LICENSE file for more details.
+
+# Workflow: backend extract, pull and compile
+# Requires an authenticated Transifex CLI.
+# 1) $ cd "$(git rev-parse --show-toplevel)"
+# 2) $ pybabel extract -F pyproject.toml -o invenio_files_rest/translations/messages.pot invenio_files_rest
+# 3) $ tx pull -a
+# 4) $ pybabel compile -d invenio_files_rest/translations
+
+# Optional workflow: push extracted sources
+# 1) $ cd "$(git rev-parse --show-toplevel)"
+# 2) $ tx push -s
+
+# Optional workflow: new backend language
+# 1) $ cd "$(git rev-parse --show-toplevel)"
+# 2) $ pybabel init -i invenio_files_rest/translations/messages.pot -d invenio_files_rest/translations -l <lang>
+# 3) Translate the PO file, then compile:
+#    $ pybabel compile -d invenio_files_rest/translations -l <lang>
 
 [main]
 host = https://app.transifex.com
