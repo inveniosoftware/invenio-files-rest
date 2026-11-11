@@ -10,7 +10,6 @@
 # Rim Sharif, 2023
 # Mattias Vesterlund, 2025
 # 
-#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: invenio-files-rest 3.2.0\n"

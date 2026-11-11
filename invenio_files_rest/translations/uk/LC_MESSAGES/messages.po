@@ -7,7 +7,6 @@
 # Translators:
 # Vasyl Ostrovskyi <vasyusya@yahoo.com>, 2023
 # 
-#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: invenio-files-rest 3.2.0\n"
