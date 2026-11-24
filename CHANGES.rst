@@ -1,5 +1,5 @@
 ..
-    SPDX-FileCopyrightText: 2015-2024 CERN.
+    SPDX-FileCopyrightText: 2015-2026 CERN.
     SPDX-FileCopyrightText: 2024-2026 Graz University of Technology.
     SPDX-FileCopyrightText: 2025 KTH Royal Institute of Technology.
     SPDX-FileCopyrightText: 2026 TU Wien.
@@ -8,6 +8,10 @@
 
 Changes
 =======
+
+Version v6.2.0 (released 2026-11-24)
+
+- chore(setup): bump dependencies
 
 Version v6.1.0 (released 2026-08-04)
 

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2015-2025 CERN.
+# SPDX-FileCopyrightText: 2015-2026 CERN.
 # SPDX-FileCopyrightText: 2023-2026 Graz University of Technology.
 # SPDX-FileCopyrightText: 2024-2025 KTH Royal Institute of Technology.
 # SPDX-FileCopyrightText: 2026 TU Wien.
@@ -969,7 +969,7 @@ a reference to the old :code:`FileInstance` to reference the new
 from .ext import InvenioFilesREST
 from .proxies import current_files_rest
 
-__version__ = "6.1.0"
+__version__ = "6.2.0"
 
 __all__ = (
     "__version__",
