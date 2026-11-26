@@ -9,7 +9,7 @@
 name = "invenio-files-rest"
 description = "Files download/upload REST API similar to S3 for Invenio."
 readme = "README.rst"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = "MIT"
 authors = [
   { name = "CERN", email = "info@inveniosoftware.org" },
